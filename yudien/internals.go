@@ -5,8 +5,8 @@ import (
 	"container/list"
 	"strings"
 	"fmt"
-	. "yudien/yudienutil"
-	. "yudien/yudiencore"
+	. "github.com/ghowland/yudien/yudienutil"
+	. "github.com/ghowland/yudien/yudiencore"
 )
 
 

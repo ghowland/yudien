@@ -6,7 +6,7 @@ import (
 	"gopkg.in/ldap.v2"
 	"strconv"
 	"os/user"
-	. "yudien/yudienutil"
+	. "github.com/ghowland/yudien/yudienutil"
 )
 
 type LdapUser struct {

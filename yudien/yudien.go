@@ -8,9 +8,9 @@ import (
 	"log"
 	"github.com/segmentio/ksuid"
 	"io/ioutil"
-	. "yudien/yudienutil"
-	. "yudien/yudiendata"
-	. "yudien/yudiencore"
+	. "github.com/ghowland/yudien/yudienutil"
+	. "github.com/ghowland/yudien/yudiendata"
+	. "github.com/ghowland/yudien/yudiencore"
 )
 
 const (

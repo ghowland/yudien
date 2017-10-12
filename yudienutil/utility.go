@@ -9,7 +9,7 @@ import (
 	"os"
 	"log"
 	"strconv"
-	. "yudien/yudiencore"
+	. "github.com/ghowland/yudien/yudiencore"
 	"bytes"
 )
 
