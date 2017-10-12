@@ -1,4 +1,4 @@
-package yudien
+package yudiendata
 
 import (
 	"database/sql"
@@ -10,10 +10,37 @@ import (
 	"strconv"
 	"strings"
 	"github.com/jacksontj/dataman/src/storage_node"
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
+	"io/ioutil"
+	"encoding/json"
+	. "yudien/yudienutil"
+)
+
+const (
+	part_unknown  = iota
+	part_function = iota
+	part_item     = iota
+	part_string   = iota
+	part_compound = iota
+	part_list     = iota
+	part_map      = iota
+	part_map_key  = iota
+)
+
+const (
+	type_int				= iota
+	type_float				= iota
+	type_string				= iota
+	type_string_force		= iota	// This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
+	type_array				= iota	// []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
+	type_map				= iota	// map[string]interface{}
 )
 
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
+
+var PgConnect string
+
 
 
 func GetSelectedDb(db_web *sql.DB, db *sql.DB, db_id int64) *sql.DB {
@@ -236,4 +263,41 @@ func SanitizeSQL(text string) string {
 	text = strings.Replace(text, "'", "''", -1)
 
 	return text
+}
+
+
+func InitDataman() {
+	config := storagenode.DatasourceInstanceConfig{
+		StorageNodeType: "postgres",
+		StorageConfig:  map[string]interface{} {
+			"pg_string": PgConnect,
+		},
+	}
+
+	schema_str, err := ioutil.ReadFile("./data/schema.json")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	//fmt.Printf("Schema STR: %s\n\n", schema_str)
+
+	var meta metadata.Meta
+	err = json.Unmarshal(schema_str, &meta)
+	if err != nil {
+		panic(err)
+	}
+
+	if datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta); err == nil {
+		DatasourceInstance["opsdb"] = datasource
+	} else {
+		panic(err)
+	}
+}
+
+func init() {
+	PgConnect = ReadPathData("data/opsdb.connect")
+
+	// Initialize Dataman
+	InitDataman()
+
 }

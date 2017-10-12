@@ -1,17 +1,16 @@
 package yudien
 
 import (
-	"container/list"
 	"fmt"
-	"strconv"
 	"strings"
 	"encoding/json"
 	"database/sql"
 	"log"
-	"net/http"
-	"bytes"
 	"github.com/segmentio/ksuid"
 	"io/ioutil"
+	. "yudien/yudienutil"
+	. "yudien/yudiendata"
+	. "yudien/yudiencore"
 )
 
 const (
@@ -25,70 +24,6 @@ const (
 	part_map_key  = iota
 )
 
-var PartTypeName map[int]string
-
-func NewUdnPart() UdnPart {
-	return UdnPart{
-		Children: list.New(),
-	}
-}
-
-type UdnPart struct {
-	Depth          int
-	PartType       int
-
-	Value          string
-
-	// List of UdnPart structs, list is easier to use dynamically
-	//TODO(g): Switch this to an array.  Lists suck...
-	Children       *list.List
-
-	Id             string
-
-	// Puts the data here after it's been evaluated
-	ValueFinal     interface{}
-	ValueFinalType int
-
-	// Allows casting the type, not sure about this, but seems useful to cast ints from strings for indexing.  We'll see
-	CastValue      string
-
-	ParentUdnPart *UdnPart
-	NextUdnPart   *UdnPart
-
-	// For block functions (ex: Begin: __iterate, End: __end_iterate).  For each block begin/end, save them during parsing, so we know which __end_ function ends which block, if there are multiple per UDN statement
-	BlockBegin	  *UdnPart
-	BlockEnd	  *UdnPart
-}
-
-
-
-type UdnResult struct {
-	// This is the result
-	Result interface{}
-
-	Type int
-
-	// This is the next UdnPart to process.  If nil, the executor will just continue from current UdnPart.NextUdnPart
-	NextUdnPart *UdnPart
-
-	// Error messages, we will stop processing if not nil
-	Error string
-}
-
-
-func (part *UdnPart) String() string {
-	output := ""
-
-	if part.PartType == part_function {
-		output += fmt.Sprintf("%s: %s [%s]\n", PartTypeName[part.PartType], part.Value, part.Id)
-	} else {
-		output += fmt.Sprintf("%s: %s\n", PartTypeName[part.PartType], part.Value)
-	}
-
-	return output
-}
-
-
 const (
 	type_int				= iota
 	type_float				= iota
@@ -97,6 +32,7 @@ const (
 	type_array				= iota	// []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
 	type_map				= iota	// map[string]interface{}
 )
+
 
 
 func DescribeUdnPart(part *UdnPart) string {
@@ -128,243 +64,6 @@ func DescribeUdnPart(part *UdnPart) string {
 	}
 
 	return output
-}
-
-func GetResult(input interface{}, type_value int) interface{} {
-	type_str := fmt.Sprintf("%T", input)
-
-	// Unwrap UdnResult, if it is wrapped
-	if type_str == "main.UdnResult" {
-		input = input.(UdnResult).Result
-	} else if type_str == "*main.UdnResult" {
-		input = input.(*UdnResult).Result
-	}
-
-	switch type_value {
-	case type_int:
-		switch input.(type) {
-		case string:
-			result, err := strconv.ParseInt(input.(string), 10, 64)
-			if err != nil {
-				fmt.Printf("\nGetResult: int: ERROR: %v (%T): %s\n\n", input, input, err)
-				return nil
-			}
-			return result
-		case int:
-			return input
-		case int8:
-			return input
-		case int16:
-			return input
-		case int32:
-			return input
-		case int64:
-			return input
-		case uint:
-			return input
-		case uint8:
-			return input
-		case uint16:
-			return input
-		case uint32:
-			return input
-		case uint64:
-			return input
-		case float64:
-			return int(input.(float64))
-		case float32:
-			return int(input.(float32))
-		default:
-			fmt.Printf("\nGetResult: int: default: %v (%T)\n\n", input, input)
-			return nil
-		}
-	case type_float:
-		switch input.(type) {
-		case string:
-			result, err := strconv.ParseFloat(input.(string), 64)
-			if err != nil {
-				return nil
-			}
-			return result
-		case float64:
-			return input
-		case float32:
-			return input
-		case int:
-			return float64(input.(int))
-		case int8:
-			return float64(input.(int8))
-		case int16:
-			return float64(input.(int16))
-		case int32:
-			return float64(input.(int32))
-		case int64:
-			return float64(input.(int64))
-		case uint:
-			return float64(input.(uint))
-		case uint8:
-			return float64(input.(uint8))
-		case uint16:
-			return float64(input.(uint16))
-		case uint32:
-			return float64(input.(uint32))
-		case uint64:
-			return float64(input.(uint64))
-		default:
-			return nil
-		}
-	case type_string:
-		switch input.(type) {
-		case string:
-			return input
-		default:
-			if input == nil {
-				return ""
-			}
-
-			// If this is already an array, return it as-is
-			if strings.HasPrefix(type_str, "[]") {
-				fmt.Printf("GetResult: Will attempt to coerce to string from []: %s\n", SnippetData(input, 60))
-				concat := ""
-				all_strings := true
-				not_strings := make([]interface{}, 0)
-
-				// If all these are strings, just concatenate them
-				for _, arr_value := range input.([]interface{}) {
-					switch arr_value.(type) {
-					case string:
-						concat += arr_value.(string)
-					default:
-						all_strings = false
-						fmt.Printf("GetResult: Coerce failure.  Array element is not a string: %s\n", SnippetData(arr_value, 60))
-						not_strings = AppendArray(not_strings, SnippetData(arr_value, 30))
-					}
-				}
-
-				if all_strings {
-					fmt.Printf("GetResult: Concatenated array to string\n")
-					return concat
-				} else {
-					fmt.Printf("GetResult: Array cannot be coerced into a string:  Not all elements are strings: %v\n", not_strings)
-
-					json_output, _ := json.MarshalIndent(input, "", "  ")
-					return string(json_output)
-				}
-			} else {
-				return fmt.Sprintf("%v", input)
-			}
-
-			//NOTE(g): Use type_string_force if you want to coerce this into a string, because this destroys too much data I think.  Testing this as 2 things anyways, easy to fold back into 1 if it doesnt work out.
-			return input
-		}
-	case type_string_force:
-		switch input.(type) {
-		case string:
-			return input
-		default:
-			if input == nil {
-				return ""
-			}
-
-			return fmt.Sprintf("%v", input)
-		}
-	case type_map:
-		//fmt.Printf("GetResult: Map: %s\n", type_str)
-
-		// If this is already a map, return it
-		if type_str == "map[string]interface {}" {
-			return input
-		} else if type_str == "*list.List" {
-			// Else, if this is a list, convert the elements into a map, with keys as string indexes values ("0", "1")
-			result := make(map[string]interface{})
-
-			count := 0
-			for child := input.(*list.List).Front() ; child != nil ; child = child.Next() {
-				count_str := strconv.Itoa(count)
-
-				// Add the index as a string, and the value to the map
-				result[count_str] = child.Value
-				count++
-			}
-
-			return result
-
-		} else if strings.HasPrefix(type_str, "[]") {
-			// Else, if this is an array, convert the elements into a map, with keys as string indexes values ("0", "1")
-			result := make(map[string]interface{})
-
-			for count, value := range input.([]interface{}) {
-				count_str := strconv.Itoa(count)
-
-				// Add the index as a string, and the value to the map
-				result[count_str] = value
-			}
-
-			return result
-
-		} else {
-			// Else, this is not a map yet, so turn it into one, of the key "value"
-			result := make(map[string]interface{})
-			result["value"] = input
-			return result
-		}
-	case type_array:
-		// If this is already an array, return it as-is
-		if type_str == "[]map[string]interface {}" {
-			new_array := make([]interface{}, 0)
-			for _, item := range input.([]map[string]interface{}) {
-				new_array = AppendArray(new_array, item)
-			}
-			return new_array
-		} else if strings.HasPrefix(type_str, "[]") {
-			return input
-		} else if type_str == "*list.List" {
-			// Else, if this is a List, then create an array and store all the list elements into the array
-			result := make([]interface{}, input.(*list.List).Len())
-
-			count := 0
-			for child := input.(*list.List).Front() ; child != nil ; child = child.Next() {
-				// Add the index as a string, and the value to the map
-				result[count] = child.Value
-				count++
-			}
-			return result
-
-		} else if type_str == "map[string]interface {}" {
-			// Else, if this is a Map, then create an array and all the key/values as a single item map, with keys: "key", "value"
-			result := make([]interface{}, len(input.(map[string]interface{})))
-
-			count := 0
-			for key, value := range input.(map[string]interface{}) {
-				// Make a tuple array
-				item := make(map[string]interface{})
-				item["key"] = key
-				item["value"] = value
-
-				// Save the tuple to our array
-				result[count] = item
-
-				count++
-			}
-
-			return result
-
-		} else {
-			if input != nil {
-				// Just make a single item array and stick it in
-				result := make([]interface{}, 1)
-				result[0] = input
-				return result
-			} else {
-				// Empty array
-				result := make([]interface{}, 0)
-				return result
-			}
-		}
-	}
-
-
-	return nil
 }
 
 // Execution group allows for Blocks to be run concurrently.  A Group has Concurrent Blocks, which has UDN pairs of strings, so 3 levels of arrays for grouping
@@ -399,7 +98,6 @@ func InitUdn() {
 		"__get_first":          UDN_GetFirst,		// Takes N strings, which are dotted for udn_data accessing.  The first value that isnt nil is returned.  nil is returned if they all are
 		"__get_temp":          UDN_GetTemp,			// Function stack based temp storage
 		"__set_temp":          UDN_SetTemp,			// Function stack based temp storage
-		"__temp_label":          UDN_GetTempAccessor,		// This takes a string as an arg, like "info", then returns "(__get.'__function_stack.-1.uuid').info".  Later we will make temp data concurrency safe, so when you need accessors as a string, to a temp (like __string_clear), use this
 		//"__temp_clear":          UDN_ClearTemp,
 		//"__watch": UDN_WatchSyncronization,
 		//"___watch_timeout": UDN_WatchTimeout,				//TODO(g): Should this just be an arg to __watch?  I think so...  Like if/else, watch can control the flow...
@@ -515,6 +213,7 @@ func init() {
 }
 
 
+/*
 func TestUdn() {
 	fmt.Printf("\n\n\n\n\n======================\n======================\n\n----------------------\n\n\n\n     STARTING UDN TEST\n\n\n\n----------------------\n\n======================\n======================\n\n\n\n\n")
 
@@ -569,56 +268,7 @@ func TestUdn() {
 
 	_ = ProcessSchemaUDNSet(db_web, udn_schema, udn_json_group, udn_data)
 }
-
-
-func MapListToDict(map_array []map[string]interface{}, key string) map[string]interface{} {
-	// Build a map of all our web site page widgets, so we can
-	output_map := make(map[string]interface{})
-
-	for _, map_item := range map_array {
-		output_map[map_item[key].(string)] = map_item
-	}
-
-	return output_map
-}
-
-
-// Take an array of maps, and make a single map, from one of the keys
-func MapArrayToMap(map_array []map[string]interface{}, key string) map[string]interface{} {
-	result := make(map[string]interface{})
-
-	for _, item := range map_array {
-		//fmt.Printf("MapArrayToMap: %s: %s: %v\n", key, item[key].(string), SnippetData(item, 600))
-		result[item[key].(string)] = item
-	}
-
-	return result
-}
-
-
-func JsonDump(value interface{}) string {
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
-	err := encoder.Encode(value)
-	if err != nil {
-		panic(err)
-	}
-
-	return buffer.String()
-}
-
-
-func MapCopy(input map[string]interface{}) map[string]interface{} {
-	new_map := make(map[string]interface{})
-
-	for k, v := range input {
-		new_map[k] = v
-	}
-
-	return new_map
-}
+*/
 
 
 func Lock(lock string) {
@@ -1208,62 +858,6 @@ func ExecuteUdnCompound(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	return udn_result
 }
 
-
-func MapKeysToUdnMapForHtmlSelect(position_location string, data map[string]interface{}) string {
-	keys := MapKeys(data)
-
-	fmt.Printf("MapKeysToUdnMapForHtmlSelect: %v\n  Keys: %v\n", data, keys)
-
-	map_values := make([]string, 0)
-
-	for index, key := range keys {
-		new_position := fmt.Sprintf("%s.%d", position_location, index)
-
-		map_values = append(map_values, fmt.Sprintf("{name='%s',value='%s'}", key, new_position))
-	}
-
-	map_value_str := strings.Join(map_values, ",")
-
-	udn_final := fmt.Sprintf("[%s]", map_value_str)
-
-	fmt.Printf("MapKeysToUdnMapForHtmlSelect: Result: %s\n", udn_final)
-
-	return udn_final
-}
-
-func MapKeysToUdnMap(data map[string]interface{}) string {
-	keys := MapKeys(data)
-
-	fmt.Printf("MapKeysToUdnMap: %v\n  Keys: %v\n", data, keys)
-
-	map_values := make([]string, 0)
-
-	for _, key := range keys {
-		map_values = append(map_values, fmt.Sprintf("%s='%s'", key, key))
-	}
-
-	map_value_str := strings.Join(map_values, ",")
-
-	udn_final := fmt.Sprintf("{%s}", map_value_str)
-
-	fmt.Printf("MapKeysToUdnMap: Result: %s\n", udn_final)
-
-	return udn_final
-}
-
-func MapArrayToToUdnMap(map_array []map[string]interface{}, key_key string, value_key string) string {
-	map_values := make([]string, 0)
-
-	for _, data := range map_array {
-		map_values = append(map_values, fmt.Sprintf("%s='%s'", data[key_key], data[value_key]))
-	}
-
-	map_value_str := strings.Join(map_values, ",")
-
-	udn_final := fmt.Sprintf("{%s}", map_value_str)
-
-	return udn_final
-}
 
 
 
