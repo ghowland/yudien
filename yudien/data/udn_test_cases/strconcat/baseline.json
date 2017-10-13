@@ -1,11 +1,6 @@
 {
-  "udn_result": {
-    "result": "ab",
-    "type": 0
-  },
-  "input": [
-    "a",
-    "b"
-  ],
-  "udn_data": {}
+  "udn_result": "ab",
+  "udn_data": {
+    "arg": []
+  }
 }

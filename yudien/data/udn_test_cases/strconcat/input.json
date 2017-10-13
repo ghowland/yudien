@@ -1,4 +1,4 @@
 {
-    "func": "__concat",
+    "statement": "__concat",
     "input": ["a", "b"]
 }

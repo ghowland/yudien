@@ -10,14 +10,12 @@ import (
 	"path"
 	"path/filepath"
 	"testing"
-
-	"github.com/ghowland/yudien/yudiencore"
 )
 
 var testDir = "data/udn_test_cases"
 
 type udnTestCase struct {
-	Func    string                 `json:"func"`
+	Statement    string                 `json:"statement"`
 	Args    []interface{}          `json:"args"`
 	Input   interface{}            `json:"input"`
 	UdnData map[string]interface{} `json:"udn_data"`
@@ -40,8 +38,8 @@ func (u *udnTestCase) UnmarshalJSON(data []byte) error {
 }
 
 type udnTestCaseResult struct {
-	UdnResult *yudiencore.UdnResult  `json:"udn_result"`
-	Input     interface{}            `json:"input"`
+	// TODO: wat?
+	UdnResult interface{}  `json:"udn_result"`
 	UdnData   map[string]interface{} `json:"udn_data"`
 }
 
@@ -56,9 +54,6 @@ func TestUDN(t *testing.T) {
 	// Test the UDN Processor
 	udn_schema := PrepareSchemaUDN(db_web)
 	//fmt.Printf("\n\nUDN Schema: %v\n\n", udn_schema)
-
-	// TODO: b etter
-	udn_start := yudiencore.NewUdnPart()
 
 	// Setup for the UDN stuff
 
@@ -88,20 +83,13 @@ func TestUDN(t *testing.T) {
 
 		t.Run(relFilePath, func(t *testing.T) {
 
-			// Find the function
-			f, ok := UdnFunctions[testCase.Func]
-			if !ok {
-				t.Fatalf("Unknown UDN function: %s", testCase.Func)
-			}
-
 			// Process args
-			args := ProcessUdnArguments(db_web, udn_schema, &udn_start, testCase.Input, testCase.UdnData)
+			ret := ProcessSingleUDNTarget(db_web, udn_schema, testCase.Statement, testCase.Input, testCase.UdnData)
 
-			ret := f(db_web, udn_schema, &udn_start, args, testCase.Input, testCase.UdnData)
+
 			// Generate result
 			result := &udnTestCaseResult{
 				UdnResult: &ret,
-				Input:     testCase.Input,
 				UdnData:   testCase.UdnData,
 			}
 
