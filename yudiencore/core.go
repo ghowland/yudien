@@ -81,15 +81,15 @@ func (part *UdnPart) String() string {
 
 type UdnResult struct {
 	// This is the result
-	Result interface{}
+	Result interface{} `json:"result"`
 
-	Type int
+	Type int `json:"type"`
 
 	// This is the next UdnPart to process.  If nil, the executor will just continue from current UdnPart.NextUdnPart
-	NextUdnPart *UdnPart
+	NextUdnPart *UdnPart `json:"next_udp_part,omitempty"`
 
 	// Error messages, we will stop processing if not nil
-	Error string
+	Error string `json:"error,omitempty"`
 }
 
 

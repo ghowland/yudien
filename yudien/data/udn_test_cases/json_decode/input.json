@@ -1,0 +1,4 @@
+{
+    "statement": "__input.'{\"a\": 1}'.__json_decode",
+    "input": ["1"]
+}
