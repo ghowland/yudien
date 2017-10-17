@@ -13,7 +13,7 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"io/ioutil"
 	"encoding/json"
-	. "yudien/yudienutil"
+	. "github.com/ghowland/yudien/yudienutil"
 )
 
 const (

@@ -8,9 +8,9 @@ import (
 	"log"
 	"github.com/segmentio/ksuid"
 	"io/ioutil"
-	. "yudien/yudienutil"
-	. "yudien/yudiendata"
-	. "yudien/yudiencore"
+	. "github.com/ghowland/yudien/yudienutil"
+	. "github.com/ghowland/yudien/yudiendata"
+	. "github.com/ghowland/yudien/yudiencore"
 )
 
 const (
@@ -206,69 +206,13 @@ func InitUdn() {
 }
 
 func init() {
+	fmt.Printf("Initializing Yudien\n")
+
 	PgConnect = ReadPathData("data/opsdb.connect")
 
 	// Initialize UDN
 	InitUdn()
 }
-
-
-/*
-func TestUdn() {
-	fmt.Printf("\n\n\n\n\n======================\n======================\n\n----------------------\n\n\n\n     STARTING UDN TEST\n\n\n\n----------------------\n\n======================\n======================\n\n\n\n\n")
-
-	// DB Web
-	db_web, err := sql.Open("postgres", PgConnect)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db_web.Close()
-
-	// Test the UDN Processor
-	udn_schema := PrepareSchemaUDN(db_web)
-	//fmt.Printf("\n\nUDN Schema: %v\n\n", udn_schema)
-
-	// Load the test JSON data from a path, so it can be complex and can iterate quickly
-	udn_json_group := ReadPathData("template/test.json")
-
-	// Get UDN starting data values
-	uri := "/"
-	request_body := strings.NewReader("")
-	param_map := make(map[string][]string)
-	header_map := make(map[string][]string)
-	cookie_array := make([]*http.Cookie, 0)
-
-	//DEBUG: Add params and stuff to here...
-	//param_map["id"] = 11
-
-	// Load website
-	web_site_id := 1
-	sql := fmt.Sprintf("SELECT * FROM web_site WHERE _id = %d", web_site_id)
-	web_site_result := Query(db_web, sql)
-	if web_site_result == nil {
-		panic("Failed to load website")
-	}
-
-	// Get the path to match from the DB
-	sql = fmt.Sprintf("SELECT * FROM web_site_page WHERE web_site_id = %d ORDER BY name LIMIT 1", web_site_id)
-	web_site_page_result := Query(db_web, sql)
-	//fmt.Printf("\n\nTest Against: Web Page Results: %v\n\n", web_site_page_result)
-
-
-	// Create the starting UDN data set
-	udn_data := GetStartingUdnData(db_web, db_web, web_site_result[0], web_site_page_result[0], uri, request_body, param_map, header_map, cookie_array)
-
-	fmt.Printf("Starting UDN Data: %v\n\n", udn_data)
-
-	// Save all our base web_widgets, so we can access them anytime we want
-	sql = fmt.Sprintf("SELECT * FROM web_widget")
-	all_widgets := Query(db_web, sql)
-	udn_data["base_widget"] = MapArrayToMap(all_widgets, "name")
-
-
-	_ = ProcessSchemaUDNSet(db_web, udn_schema, udn_json_group, udn_data)
-}
-*/
 
 
 func Lock(lock string) {

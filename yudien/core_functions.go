@@ -11,10 +11,10 @@ import (
 	"container/list"
 	"strconv"
 	"text/template"
-	. "ddd/ddd"
-	. "yudien/yudienutil"
-	. "yudien/yudiencore"
-	. "yudien/yudiendata"
+	. "github.com/ghowland/ddd/ddd"
+	. "github.com/ghowland/yudien/yudienutil"
+	. "github.com/ghowland/yudien/yudiencore"
+	. "github.com/ghowland/yudien/yudiendata"
 )
 
 func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
