@@ -247,6 +247,8 @@ __input.Testing123.__set_'temp.testing'.__get_temp.testing
 
 ## Database  <a name="database"></a>
 
+See https://docs.google.com/document/d/1YDbwuQPpObAK06nnDd-v-rded3ma25AUToZ5iuewTiU/edit# for details related to Dataman
+
 ### __data_get ::: Dataman Get <a name="__data_get"></a>
 
 Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
@@ -329,7 +331,7 @@ Just like __set, except uses a portino of the Global Data space behind a UUID fo
 **Example:**
 
 ```
-__data_filter.web_widget_type.{name=Base Page}
+__data_filter.web_widget_type.{name={'=', 'Base Page'}}
 ```
 
 **Result:**
