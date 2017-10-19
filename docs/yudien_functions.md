@@ -167,7 +167,7 @@ Hello World
 
 ### __get_temp ::: Get Temporary Data  <a name="__get_temp"></a>
 
-Just like __get, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __get, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_GetTemp
 
@@ -207,7 +207,7 @@ __input.Testing123.__set_temp.'temp.testing'.__get_temp.temp.testing
 
 ### __set_temp ::: Set Global Data  <a name="__set_temp"></a>
 
-Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __set, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_SetTemp
 
@@ -249,7 +249,7 @@ __input.Testing123.__set_'temp.testing'.__get_temp.testing
 
 ### __data_get ::: Dataman Get <a name="__data_get"></a>
 
-Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __set, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_DataGet
 
@@ -281,7 +281,7 @@ __data_get.web_widget_type.1
 
 ### __data_set ::: Dataman Set <a name="__data_set"></a>
 
-Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __set, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_DataSet
 
@@ -312,7 +312,7 @@ __data_set.web_widget_type.{_id: 1, name: "Base Page"}
 
 ### __data_filter ::: Dataman Filter <a name="__data_filter"></a>
 
-Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __set, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_DataFilter
 
