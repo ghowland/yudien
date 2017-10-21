@@ -55,6 +55,8 @@
     1. [__ddd_render - Render DDD Dialog Editor](#__ddd_render)
 10. [Debugging](#debugging)
     1. [__debug_output - Debug Output](#__debug_output)
+11. [Comments](#comments)
+    1. [__comment - UDN Comment](#__comment)
 
 
 
@@ -1397,4 +1399,22 @@ __debug_output
 **Side Effect:** Prints input to the debug log
 
 
+## Comments <a name="comments"></a>
 
+### __comments ::: UDN Comments <a name="__comment"></a>
+
+**Go:** UDN_Comment
+
+**Input:** Any
+
+**Args:** Any
+
+**Output:** Pass Through Input
+
+**Example:**
+
+```
+__comment.hello.this is a comment
+```
+
+**Side Effect:** None
