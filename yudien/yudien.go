@@ -81,6 +81,7 @@ func InitUdn() {
 	Debug_Udn = false
 
 	UdnFunctions = map[string]UdnFunc{
+		"__comment":      UDN_Comment,
 		"__query":        UDN_QueryById,
 		"__debug_output": UDN_DebugOutput,
 		"__if":           UDN_IfCondition,
@@ -261,7 +262,7 @@ func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data
 		//TODO(g): Add in concurrency, right now it does it all sequentially
 		for _, udn_group := range udn_execution_group.Blocks {
 			for _, udn_group_block := range udn_group {
-				result = ProcessUDN(db, udn_schema, udn_group_block[0], udn_group_block[1], udn_data)
+				result = ProcessUDN(db, udn_schema, udn_group_block, udn_data)
 			}
 		}
 
@@ -376,46 +377,39 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 }
 
 // Pass in a UDN string to be processed - Takes function map, and UDN schema data and other things as input, as it works stand-alone from the application it supports
-func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_source string, udn_value_target string, udn_data map[string]interface{}) interface{} {
-	UdnLog(udn_schema, "\n\nProcess UDN: Source:  %s   Target:  %s\n\n", udn_value_source, udn_value_target)
+func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []string, udn_data map[string]interface{}) interface{} {
+	UdnLog(udn_schema, "\n\nProcess UDN: \n\n")
 
-	udn_source := ParseUdnString(db, udn_schema, udn_value_source)
-	udn_target := ParseUdnString(db, udn_schema, udn_value_target)
+	var udn_command_value interface{} // used to track the piped input/output of UDN commands
 
-	//UdnLog(udn_schema, "\n-------DESCRIPTION: SOURCE-------\n\n%s\n", DescribeUdnPart(udn_source))
+	// Walk through each UDN string in the list - the output of one UDN string is piped onto the input of the next
+	for i := 0; i < len(udn_value_list); i++ {
+		fmt.Println("###########################")
+		fmt.Println(udn_command_value)
+		fmt.Println("###########################")
 
-	UdnDebugIncrementChunk(udn_schema)
-	UdnLogHtml(udn_schema, "-------UDN: SOURCE-------\n%s\n", udn_value_source)
-	UdnLog(udn_schema, "-------BEGIN EXECUTION: SOURCE-------\n\n")
+		UdnLog(udn_schema, "\n\nProcess UDN:  %s   \n\n", udn_value_list[i])
+		udn_command := ParseUdnString(db, udn_schema, udn_value_list[i])
 
+		// UdnLog(udn_schema, "\n-------DESCRIPTION: -------\n\n%s", DescribeUdnPart(udn_command))
 
-	var source_input interface{}
+		UdnDebugIncrementChunk(udn_schema)
+		UdnLogHtml(udn_schema, "------- UDN: COMMAND -------\n%s\n", udn_value_list[i])
+		UdnLog(udn_schema, "------- BEGIN EXECUTION: -------\n\n")
 
-	// Execute the Source UDN
-	source_result := ExecuteUdn(db, udn_schema, udn_source, source_input, udn_data)
+		// Execute the UDN Command
+		udn_command_value = ExecuteUdn(db, udn_schema, udn_command, udn_command_value, udn_data)
 
-	UdnLog(udn_schema, "-------RESULT: SOURCE: %v\n\n", SnippetData(source_result, 300))
+		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+		fmt.Println(udn_command_value)
+		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
-	//UdnLog(udn_schema, "\n-------DESCRIPTION: TARGET-------\n\n%s", DescribeUdnPart(udn_target))
+		UdnLog(udn_schema, "\n------- END EXECUTION: -------\n\n")
 
-	UdnDebugIncrementChunk(udn_schema)
-	UdnLogHtml(udn_schema, "-------UDN: TARGET-------\n%s\n", udn_value_target)
-	UdnLog(udn_schema, "-------BEGIN EXECUTION: TARGET-------\n\n")
-
-	// Execute the Target UDN
-	target_result := ExecuteUdn(db, udn_schema, udn_target, source_result, udn_data)
-
-	UdnLog(udn_schema, "\n-------END EXECUTION: TARGET-------\n\n")
-
-	// If we got something from our target result, return it
-	if target_result != nil {
-		UdnLog(udn_schema, "-------RETURNING: TARGET: %v\n\n", SnippetData(target_result, 300))
-		return target_result
-	} else {
-		// Else, return our source result.  It makes more sense to return Target since it ran last, if it exists...
-		UdnLog(udn_schema, "-------RETURNING: SOURCE: %v\n\n", SnippetData(target_result, 300))
-		return source_result
+		UdnLog(udn_schema, "------- RESULT: %v\n\n", SnippetData(udn_command_value, 300))
 	}
+
+	return udn_command_value
 }
 
 func ProcessSingleUDNTarget(db *sql.DB, udn_schema map[string]interface{}, udn_value_target string, input interface{}, udn_data map[string]interface{}) interface{} {
@@ -665,7 +659,7 @@ func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interf
 	udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + "<pre>" + HtmlClean(output) + "</pre>"
 }
 
-// Execute a single UDN (Soure or Target) and return the result
+// Execute a single UDN command and return the result
 //NOTE(g): This function does not return UdnPart, because we want to get direct information, so we return interface{}
 func ExecuteUdn(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, input interface{}, udn_data map[string]interface{}) interface{} {
 	// Process all our arguments, Executing any functions, at all depths.  Furthest depth first, to meet dependencies
