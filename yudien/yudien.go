@@ -384,10 +384,6 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 
 	// Walk through each UDN string in the list - the output of one UDN string is piped onto the input of the next
 	for i := 0; i < len(udn_value_list); i++ {
-		fmt.Println("###########################")
-		fmt.Println(udn_command_value)
-		fmt.Println("###########################")
-
 		UdnLog(udn_schema, "\n\nProcess UDN:  %s   \n\n", udn_value_list[i])
 		udn_command := ParseUdnString(db, udn_schema, udn_value_list[i])
 
@@ -399,10 +395,6 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 
 		// Execute the UDN Command
 		udn_command_value = ExecuteUdn(db, udn_schema, udn_command, udn_command_value, udn_data)
-
-		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-		fmt.Println(udn_command_value)
-		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
 		UdnLog(udn_schema, "\n------- END EXECUTION: -------\n\n")
 
