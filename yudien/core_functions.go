@@ -631,6 +631,9 @@ func UDN_StringTemplateFromValueShort(db *sql.DB, udn_schema map[string]interfac
 		actual_input = args[1]
 	}
 
+	actual_input = GetResult(actual_input, type_map)
+
+	/*
 	// If this is an array, convert it to a string, so it is a concatenated string, and then can be properly turned into a map.
 	if actual_input != nil {
 		if strings.HasPrefix(fmt.Sprintf("%T", actual_input), "[]") {
@@ -642,7 +645,7 @@ func UDN_StringTemplateFromValueShort(db *sql.DB, udn_schema map[string]interfac
 		}
 	} else {
 		UdnLog(udn_schema, "Short Template: Input is nil\n")
-	}
+	}*/
 
 	template_str := GetResult(args[0], type_string).(string)
 
