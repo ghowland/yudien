@@ -17,6 +17,13 @@ import (
 	. "github.com/ghowland/yudien/yudiendata"
 )
 
+func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult{
+	result := UdnResult{}
+	result.Result = input
+
+	return result
+}
+
 func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	result := UdnResult{}
 

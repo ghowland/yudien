@@ -55,6 +55,8 @@
     1. [__ddd_render - Render DDD Dialog Editor](#__ddd_render)
 10. [Debugging](#debugging)
     1. [__debug_output - Debug Output](#__debug_output)
+11. [Comments](#comments)
+    1. [__comment - UDN Comment](#__comment)
 
 
 
@@ -167,7 +169,7 @@ Hello World
 
 ### __get_temp ::: Get Temporary Data  <a name="__get_temp"></a>
 
-Just like __get, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __get, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_GetTemp
 
@@ -207,7 +209,7 @@ __input.Testing123.__set_temp.'temp.testing'.__get_temp.temp.testing
 
 ### __set_temp ::: Set Global Data  <a name="__set_temp"></a>
 
-Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __set, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_SetTemp
 
@@ -247,9 +249,11 @@ __input.Testing123.__set_'temp.testing'.__get_temp.testing
 
 ## Database  <a name="database"></a>
 
+See docs on Dataman for more details: https://docs.google.com/document/d/1YDbwuQPpObAK06nnDd-v-rded3ma25AUToZ5iuewTiU/edit#
+
 ### __data_get ::: Dataman Get <a name="__data_get"></a>
 
-Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __set, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_DataGet
 
@@ -281,7 +285,7 @@ __data_get.web_widget_type.1
 
 ### __data_set ::: Dataman Set <a name="__data_set"></a>
 
-Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __set, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_DataSet
 
@@ -312,7 +316,7 @@ __data_set.web_widget_type.{_id: 1, name: "Base Page"}
 
 ### __data_filter ::: Dataman Filter <a name="__data_filter"></a>
 
-Just like __set, except uses a portino of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
+Just like __set, except uses a portion of the Global Data space behind a UUID for this ProcessSchemaUDNSet() or __function call.  It allows names to be re-used, which they cannot be in the normal Global Data space, as it is global.
 
 **Go:** UDN_DataFilter
 
@@ -329,8 +333,10 @@ Just like __set, except uses a portino of the Global Data space behind a UUID fo
 **Example:**
 
 ```
-__data_filter.web_widget_type.{name=Base Page}
+__data_filter.web_widget_type.{name=(__input.['=', 'Base Page'])}
 ```
+
+* Note that it is necessary to create a list first to adhere to the dataman requirements
 
 **Result:**
 
@@ -1393,4 +1399,22 @@ __debug_output
 **Side Effect:** Prints input to the debug log
 
 
+## Comments <a name="comments"></a>
 
+### __comments ::: UDN Comments <a name="__comment"></a>
+
+**Go:** UDN_Comment
+
+**Input:** Any
+
+**Args:** Any
+
+**Output:** Pass Through Input
+
+**Example:**
+
+```
+__comment.hello.this is a comment
+```
+
+**Side Effect:** None
