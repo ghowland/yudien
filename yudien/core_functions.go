@@ -669,11 +669,14 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 		actual_input = args[1]
 	}
 
+	actual_input = GetResult(actual_input, type_map)
+
+	/*
 	// If this is an array, convert it to a string, so it is a concatenated string, and then can be properly turned into a map.
 	if actual_input != nil {
 		if strings.HasPrefix(fmt.Sprintf("%T", actual_input), "[]") {
 			UdnLog(udn_schema, "String Template: Converting from array to string: %s\n", SnippetData(actual_input, 60))
-			actual_input = GetResult(actual_input, type_string)
+			actual_input = GetResult(actual_input, type_map)
 		} else {
 			UdnLog(udn_schema, "String Template: Input is not an array: %s\n", SnippetData(actual_input, 60))
 			//UdnLog(udn_schema, "String Template: Input is not an array: %s\n", actual_input)
@@ -681,6 +684,7 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 	} else {
 		UdnLog(udn_schema, "String Template: Input is nil\n")
 	}
+	*/
 
 	template_str := GetResult(args[0], type_string).(string)
 
