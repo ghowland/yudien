@@ -698,7 +698,9 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 
 	template_str := GetResult(args[0], type_string).(string)
 
-	UdnLog(udn_schema, "String Template From Value: Template String: %s Template Input: %v\n\n", SnippetData(actual_input, 60), SnippetData(template_str, 60))
+	UdnLog(udn_schema, "String Template From Value: Template Input: %s Template String: %v\n\n", SnippetData(actual_input, 60), SnippetData(template_str, 60))
+
+	UdnLog(udn_schema, "String Template From Value: Template Input: %s\n\n", JsonDump(actual_input))
 
 	// Use the actual_input, which may be input or arg_1
 	input_template := NewTextTemplateMap()
@@ -1042,7 +1044,15 @@ func UDN_StoredFunction(db *sql.DB, udn_schema map[string]interface{}, udn_start
 }
 
 func UDN_Execute(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	udn_target := GetResult(args[0], type_string).(string)
+
+	// Try from input
+	udn_target := GetResult(input, type_string).(string)
+
+	// If we have an argument, override input
+	if len(args) > 0 {
+		udn_target = GetResult(args[0], type_string).(string)
+	}
+
 
 	UdnLog(udn_schema, "Execute: UDN String As Target: %s\n", udn_target)
 
@@ -1509,12 +1519,12 @@ func UDN_Get(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, 
 }
 
 func UDN_Set(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLog(udn_schema, "Set: %v   Input: %s\n", SnippetData(args, 80), SnippetData(input, 40))
+	//UdnLog(udn_schema, "Set: %v   Input: %s\n", SnippetData(args, 80), SnippetData(input, 40))
 
 	result := UdnResult{}
 	result.Result = MapSet(args, input, udn_data)
 
-	UdnLog(udn_schema, "Set: %v  Result: %s\n\n", SnippetData(args, 80), SnippetData(result.Result, 80))
+	//UdnLog(udn_schema, "Set: %v  Result: %s\n\n", SnippetData(args, 80), SnippetData(result.Result, 80))
 
 	return result
 }
@@ -1801,7 +1811,6 @@ func UDN_NotNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 
 	return result
 }
-
 
 func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn_data map[string]interface{}, site_page_widget map[string]interface{}, udn_update_map map[string]interface{}) {
 	// Render a Widget Instance

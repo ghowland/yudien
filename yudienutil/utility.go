@@ -286,7 +286,10 @@ func SnippetData(data interface{}, size int) string {
 	// Get rid of newlines, they make snippets hard to read
 	data_str = strings.Replace(data_str,"\n", "", -1)
 
+
 	data_str = fmt.Sprintf("%s (%T)", data_str, data)
+	//size_str := fmt.Sprint("%v", data)	//TODO(g):PERFORMANCE: Need to test sizes, super slow!
+	//data_str = fmt.Sprintf("%s (%T:%d)", data_str, data, len(size_str))
 
 	return data_str
 }
