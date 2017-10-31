@@ -630,14 +630,15 @@ func UdnDebugUpdate(udn_schema map[string]interface{}) {
 
 
 func UdnLog(udn_schema map[string]interface{}, format string, args ...interface{}) {
-	// Format the incoming Printf args, and print them
-	output := fmt.Sprintf(format, args...)
 	if Debug_Udn || udn_schema["udn_debug"] == true {
-		fmt.Print(output)
-	}
+		// Format the incoming Printf args, and print them
+		output := fmt.Sprintf(format, args...)
 
-	// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
-	udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
+		fmt.Print(output)
+
+		// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
+		udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
+	}
 }
 
 func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interface{}) {
