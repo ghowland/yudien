@@ -1,14 +1,13 @@
 package yudien
 
 import (
-	"database/sql"
 	"container/list"
-	"strings"
+	"database/sql"
 	"fmt"
-	. "github.com/ghowland/yudien/yudienutil"
 	. "github.com/ghowland/yudien/yudiencore"
+	. "github.com/ghowland/yudien/yudienutil"
+	"strings"
 )
-
 
 type DynamicResult struct {
 	// This is the result
@@ -98,7 +97,6 @@ func GetArgsFromArgsOrStrings(args []interface{}) []interface{} {
 	return out_args
 }
 
-
 func GetChildResult(parent interface{}, child interface{}) DynamicResult {
 	type_str := fmt.Sprintf("%T", parent)
 	//fmt.Printf("\n\nGetChildResult: %s: %s: %v\n\n", type_str, child, SnippetData(parent, 300))
@@ -138,7 +136,7 @@ func _MapGet(args []interface{}, udn_data map[string]interface{}) interface{} {
 	cur_udn_data = udn_data
 
 	// Go to the last element, so that we can set it with the last arg
-	for count := 0; count < len(args) - 1; count++ {
+	for count := 0; count < len(args)-1; count++ {
 		arg := GetResult(args[count], type_string).(string)
 
 		if count != 0 {
@@ -199,7 +197,7 @@ func _MapSet(args []interface{}, input interface{}, udn_data map[string]interfac
 	cur_udn_data = udn_data
 
 	// Go to the last element, so that we can set it with the last arg
-	for count := 0; count < len(args) - 1; count++ {
+	for count := 0; count < len(args)-1; count++ {
 		child_result := GetChildResult(cur_udn_data, args[count])
 
 		// If we dont have this key, create a map[string]interface{} to allow it to be created easily
@@ -254,7 +252,6 @@ func MapSet(args []interface{}, input interface{}, udn_data map[string]interface
 	// Input is a pass-through
 	return input
 }
-
 
 // Parse a UDN string and return a hierarchy under UdnPart
 func ParseUdnString(db *sql.DB, udn_schema map[string]interface{}, udn_value_source string) *UdnPart {
@@ -488,7 +485,6 @@ func FinalParseProcessUdnParts(db *sql.DB, udn_schema map[string]interface{}, pa
 	}
 }
 
-
 // Take partially split text, and start putting it into the structure we need
 func CreateUdnPartsFromSplit_Initial(db *sql.DB, udn_schema map[string]interface{}, source_array []string) UdnPart {
 	udn_start := NewUdnPart()
@@ -573,7 +569,6 @@ func CreateUdnPartsFromSplit_Initial(db *sql.DB, udn_schema map[string]interface
 
 				// Make this compound current, so we continue to add into it, until it closes
 				udn_current = udn_current.AddChild(part_compound, cur_item)
-
 
 			} else if cur_item == ")" {
 				//UdnLog(udn_schema, "Create UDN: Closing Compound\n")

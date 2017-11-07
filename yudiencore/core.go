@@ -18,47 +18,42 @@ const (
 )
 
 const (
-	type_int				= iota
-	type_float				= iota
-	type_string				= iota
-	type_string_force		= iota	// This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
-	type_array				= iota	// []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
-	type_map				= iota	// map[string]interface{}
+	type_int          = iota
+	type_float        = iota
+	type_string       = iota
+	type_string_force = iota // This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
+	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
+	type_map          = iota // map[string]interface{}
 )
-
 
 var PartTypeName map[int]string
 
-
-
 type UdnPart struct {
-	Depth          int
-	PartType       int
+	Depth    int
+	PartType int
 
-	Value          string
+	Value string
 
 	// List of UdnPart structs, list is easier to use dynamically
 	//TODO(g): Switch this to an array.  Lists suck...
-	Children       *list.List
+	Children *list.List
 
-	Id             string
+	Id string
 
 	// Puts the data here after it's been evaluated
 	ValueFinal     interface{}
 	ValueFinalType int
 
 	// Allows casting the type, not sure about this, but seems useful to cast ints from strings for indexing.  We'll see
-	CastValue      string
+	CastValue string
 
 	ParentUdnPart *UdnPart
 	NextUdnPart   *UdnPart
 
 	// For block functions (ex: Begin: __iterate, End: __end_iterate).  For each block begin/end, save them during parsing, so we know which __end_ function ends which block, if there are multiple per UDN statement
-	BlockBegin	  *UdnPart
-	BlockEnd	  *UdnPart
+	BlockBegin *UdnPart
+	BlockEnd   *UdnPart
 }
-
-
 
 func NewUdnPart() UdnPart {
 	return UdnPart{
@@ -78,7 +73,6 @@ func (part *UdnPart) String() string {
 	return output
 }
 
-
 type UdnResult struct {
 	// This is the result
 	Result interface{} `json:"result"`
@@ -91,7 +85,6 @@ type UdnResult struct {
 	// Error messages, we will stop processing if not nil
 	Error string `json:"error,omitempty"`
 }
-
 
 // Returns a function that starts with the value string, which doesnt have a BlockBegin/BlockEnd set yet
 func (start_udn_part *UdnPart) FindBeginBlock(value string) *UdnPart {
@@ -131,7 +124,6 @@ func (udn_parent *UdnPart) AddFunction(value string) *UdnPart {
 	new_part.Value = value
 
 	new_part.Id = fmt.Sprintf("%p", &new_part)
-
 
 	// Because this is a function, it is the NextUdnPart, which is how flow control is performed
 	udn_parent.NextUdnPart = &new_part

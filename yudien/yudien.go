@@ -1,16 +1,16 @@
 package yudien
 
 import (
-	"fmt"
-	"strings"
-	"encoding/json"
 	"database/sql"
-	"log"
+	"encoding/json"
+	"fmt"
+	. "github.com/ghowland/yudien/yudiencore"
+	. "github.com/ghowland/yudien/yudiendata"
+	. "github.com/ghowland/yudien/yudienutil"
 	"github.com/segmentio/ksuid"
 	"io/ioutil"
-	. "github.com/ghowland/yudien/yudienutil"
-	. "github.com/ghowland/yudien/yudiendata"
-	. "github.com/ghowland/yudien/yudiencore"
+	"log"
+	"strings"
 )
 
 const (
@@ -25,15 +25,13 @@ const (
 )
 
 const (
-	type_int				= iota
-	type_float				= iota
-	type_string				= iota
-	type_string_force		= iota	// This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
-	type_array				= iota	// []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
-	type_map				= iota	// map[string]interface{}
+	type_int          = iota
+	type_float        = iota
+	type_string       = iota
+	type_string_force = iota // This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
+	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
+	type_map          = iota // map[string]interface{}
 )
-
-
 
 func DescribeUdnPart(part *UdnPart) string {
 
@@ -75,7 +73,6 @@ type UdnFunc func(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnP
 
 var UdnFunctions = map[string]UdnFunc{}
 
-
 func InitUdn() {
 	Debug_Udn_Api = true
 	Debug_Udn = false
@@ -91,19 +88,19 @@ func InitUdn() {
 		"__else_if":      UDN_ElseIfCondition,
 		"__end_else_if":  nil,
 		"__not":          UDN_Not,
-		"__not_nil":          UDN_NotNil,
+		"__not_nil":      UDN_NotNil,
 		"__iterate":      UDN_Iterate,
 		"__end_iterate":  nil,
 		"__get":          UDN_Get,
 		"__set":          UDN_Set,
-		"__get_first":          UDN_GetFirst,		// Takes N strings, which are dotted for udn_data accessing.  The first value that isnt nil is returned.  nil is returned if they all are
-		"__get_temp":          UDN_GetTemp,			// Function stack based temp storage
-		"__set_temp":          UDN_SetTemp,			// Function stack based temp storage
+		"__get_first":    UDN_GetFirst, // Takes N strings, which are dotted for udn_data accessing.  The first value that isnt nil is returned.  nil is returned if they all are
+		"__get_temp":     UDN_GetTemp,  // Function stack based temp storage
+		"__set_temp":     UDN_SetTemp,  // Function stack based temp storage
 		//"__temp_clear":          UDN_ClearTemp,
 		//"__watch": UDN_WatchSyncronization,
 		//"___watch_timeout": UDN_WatchTimeout,				//TODO(g): Should this just be an arg to __watch?  I think so...  Like if/else, watch can control the flow...
 		//"__end_watch": nil,
-		"__test_return":           UDN_TestReturn, // Return some data as a result
+		"__test_return":    UDN_TestReturn, // Return some data as a result
 		"__test":           UDN_Test,
 		"__test_different": UDN_TestDifferent,
 		// Migrating from old functions
@@ -111,53 +108,50 @@ func InitUdn() {
 		"__widget": UDN_Widget,
 		// New functions for rendering web pages (finally!)
 		//"__template": UDN_StringTemplate,					// Does a __get from the args...
-		"__template": UDN_StringTemplateFromValue,					// Does a __get from the args...
-		"__template_wrap": UDN_StringTemplateMultiWrap,					// Takes N-2 tuple args, after 0th arg, which is the wrap_key, (also supports a single arg templating, like __template, but not the main purpose).  For each N-Tuple, the new map data gets "value" set by the previous output of the last template, creating a rolling "wrap" function.
-		"__template_map": UDN_MapTemplate,		//TODO(g): Like format, for templating.  Takes 3*N args: (key,text,map), any number of times.  Performs template and assigns key into the input map
-		"__format": UDN_MapStringFormat,			//TODO(g): Updates a map with keys and string formats.  Uses the map to format the strings.  Takes N args, doing each arg in sequence, for order control
-		"__template_short": UDN_StringTemplateFromValueShort,		// Like __template, but uses {{{fieldname}}} instead of {{index .Max "fieldname"}}, using strings.Replace instead of text/template
-
+		"__template":       UDN_StringTemplateFromValue,      // Does a __get from the args...
+		"__template_wrap":  UDN_StringTemplateMultiWrap,      // Takes N-2 tuple args, after 0th arg, which is the wrap_key, (also supports a single arg templating, like __template, but not the main purpose).  For each N-Tuple, the new map data gets "value" set by the previous output of the last template, creating a rolling "wrap" function.
+		"__template_map":   UDN_MapTemplate,                  //TODO(g): Like format, for templating.  Takes 3*N args: (key,text,map), any number of times.  Performs template and assigns key into the input map
+		"__format":         UDN_MapStringFormat,              //TODO(g): Updates a map with keys and string formats.  Uses the map to format the strings.  Takes N args, doing each arg in sequence, for order control
+		"__template_short": UDN_StringTemplateFromValueShort, // Like __template, but uses {{{fieldname}}} instead of {{index .Max "fieldname"}}, using strings.Replace instead of text/template
 
 		//TODO(g): DEPRICATE.  Longer name, same function.
-		"__template_string": UDN_StringTemplateFromValue,	// Templates the string passed in as arg_0
+		"__template_string": UDN_StringTemplateFromValue, // Templates the string passed in as arg_0
 
 		"__string_append": UDN_StringAppend,
-		"__string_clear": UDN_StringClear,		// Initialize a string to empty string, so we can append to it again
-		"__concat": UDN_StringConcat,
-		"__input": UDN_Input,			//TODO(g): This takes any input as the first arg, and then passes it along, so we can type in new input to go down the pipeline...
-		"__input_get": UDN_InputGet,			// Gets information from the input, accessing it like __get
-		"__function": UDN_StoredFunction,			//TODO(g): This uses the udn_stored_function.name as the first argument, and then uses the current input to pass to the function, returning the final result of the function.		Uses the web_site.udn_stored_function_domain_id to determine the stored function
-		"__execute": UDN_Execute,			//TODO(g): Executes ("eval") a UDN string, assumed to be a "Set" type (Target), will use __input as the Source, and the passed in string as the Target UDN
+		"__string_clear":  UDN_StringClear, // Initialize a string to empty string, so we can append to it again
+		"__concat":        UDN_StringConcat,
+		"__input":         UDN_Input,          //TODO(g): This takes any input as the first arg, and then passes it along, so we can type in new input to go down the pipeline...
+		"__input_get":     UDN_InputGet,       // Gets information from the input, accessing it like __get
+		"__function":      UDN_StoredFunction, //TODO(g): This uses the udn_stored_function.name as the first argument, and then uses the current input to pass to the function, returning the final result of the function.		Uses the web_site.udn_stored_function_domain_id to determine the stored function
+		"__execute":       UDN_Execute,        //TODO(g): Executes ("eval") a UDN string, assumed to be a "Set" type (Target), will use __input as the Source, and the passed in string as the Target UDN
 
-		"__html_encode": UDN_HtmlEncode,		// Encode HTML symbols so they are not taken as literal HTML
+		"__html_encode": UDN_HtmlEncode, // Encode HTML symbols so they are not taken as literal HTML
 
+		"__array_append": UDN_ArrayAppend, // Appends the input into the specified target location (args)
 
-		"__array_append": UDN_ArrayAppend,			// Appends the input into the specified target location (args)
+		"__array_divide":    UDN_ArrayDivide,   //TODO(g): Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
+		"__array_map_remap": UDN_ArrayMapRemap, //TODO(g): Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
 
-		"__array_divide": UDN_ArrayDivide,			//TODO(g): Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
-		"__array_map_remap": UDN_ArrayMapRemap,			//TODO(g): Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
+		"__map_key_delete": UDN_MapKeyDelete, // Each argument is a key to remove
+		"__map_key_set":    UDN_MapKeySet,    // Sets N keys, like __format, but with no formatting
+		"__map_copy":       UDN_MapCopy,      // Make a copy of the current map, in a new map
+		"__map_update":     UDN_MapUpdate,    // Input map has fields updated with arg0 map
 
+		"__render_data": UDN_RenderDataWidgetInstance, // Renders a Data Widget Instance:  arg0 = web_data_widget_instance.id, arg1 = widget_instance map update
 
-		"__map_key_delete": UDN_MapKeyDelete,			// Each argument is a key to remove
-		"__map_key_set": UDN_MapKeySet,			// Sets N keys, like __format, but with no formatting
-		"__map_copy": UDN_MapCopy,			// Make a copy of the current map, in a new map
-		"__map_update": UDN_MapUpdate,			// Input map has fields updated with arg0 map
+		"__json_decode": UDN_JsonDecode, // Decode JSON
+		"__json_encode": UDN_JsonEncode, // Encode JSON
 
-		"__render_data": UDN_RenderDataWidgetInstance,			// Renders a Data Widget Instance:  arg0 = web_data_widget_instance.id, arg1 = widget_instance map update
+		"__data_get":    UDN_DataGet,    // Dataman Get
+		"__data_set":    UDN_DataSet,    // Dataman Set
+		"__data_filter": UDN_DataFilter, // Dataman Filter
 
-		"__json_decode": UDN_JsonDecode,			// Decode JSON
-		"__json_encode": UDN_JsonEncode,			// Encode JSON
+		"__compare_equal":     UDN_CompareEqual,    // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
+		"__compare_not_equal": UDN_CompareNotEqual, // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
 
-		"__data_get": UDN_DataGet,					// Dataman Get
-		"__data_set": UDN_DataSet,					// Dataman Set
-		"__data_filter": UDN_DataFilter,			// Dataman Filter
+		"__ddd_render": UDN_DddRender, // DDD Render.current: the JSON Dialog Form data for this DDD position.  Uses __ddd_get to get the data, and ___ddd_move to change position.
 
-		"__compare_equal": UDN_CompareEqual,		// Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
-		"__compare_not_equal": UDN_CompareNotEqual,		// Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
-
-		"__ddd_render": UDN_DddRender,			// DDD Render.current: the JSON Dialog Form data for this DDD position.  Uses __ddd_get to get the data, and ___ddd_move to change position.
-
-		"__login": UDN_Login,				// Login through LDAP
+		"__login": UDN_Login, // Login through LDAP
 
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
@@ -195,14 +189,14 @@ func InitUdn() {
 	}
 
 	PartTypeName = map[int]string{
-		int(part_unknown): "Unknown",
+		int(part_unknown):  "Unknown",
 		int(part_function): "Function",
-		int(part_item): "Item",
-		int(part_string): "String",
+		int(part_item):     "Item",
+		int(part_string):   "String",
 		int(part_compound): "Compound",
-		int(part_list): "List",
-		int(part_map): "Map",
-		int(part_map_key): "Map Key",
+		int(part_list):     "List",
+		int(part_map):      "Map",
+		int(part_map_key):  "Map Key",
 	}
 }
 
@@ -214,7 +208,6 @@ func init() {
 	// Initialize UDN
 	InitUdn()
 }
-
 
 func Lock(lock string) {
 	// This must lock things globally.  Global lock server required, only for this Customer though, since "global" can be customer oriented.
@@ -229,7 +222,6 @@ func Unlock(lock string) {
 
 	// Release a lock.  Should we ensure we still had it?  Can do if we gave it our request UUID
 }
-
 
 func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data_json string, udn_data map[string]interface{}) interface{} {
 	fmt.Printf("ProcessSchemaUDNSet: JSON:\n%s\n\n", udn_data_json)
@@ -352,7 +344,6 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 		udn_stored_function[string(value["name"].(string))] = make(map[string]interface{})
 	}
 
-
 	//fmt.Printf("udn_group_map: %v\n", udn_group_map)
 
 	// Pack a result map for return
@@ -418,7 +409,6 @@ func ProcessSingleUDNTarget(db *sql.DB, udn_schema map[string]interface{}, udn_v
 	return target_result
 }
 
-
 func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, input interface{}, udn_data map[string]interface{}) []interface{} {
 	if udn_start.Children.Len() > 0 {
 		UdnLog(udn_schema, "Processing UDN Arguments: %s [%s]  Starting: Arg Count: %d \n", udn_start.Value, udn_start.Id, udn_start.Children.Len())
@@ -470,7 +460,6 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 				//udn_part_result := ExecuteUdnPart(db, udn_schema, udn_part_value, input, udn_data)
 				udn_part_result := ExecuteUdnCompound(db, udn_schema, udn_part_value, input, udn_data)
 				arg_result_result[key] = udn_part_result.Result
-
 
 				UdnLog(udn_schema, "--  Map:  Key: %s  Value: %v (%T)--\n\n", key, udn_part_result.Result, udn_part_result.Result)
 			}
@@ -631,7 +620,6 @@ func UdnDebugUpdate(udn_schema map[string]interface{}) {
 	}
 }
 
-
 func UdnLog(udn_schema map[string]interface{}, format string, args ...interface{}) {
 	if (Debug_Udn || udn_schema["udn_debug"].(bool)) && udn_schema["allow_logging"].(bool) {
 		// Format the incoming Printf args, and print them
@@ -645,7 +633,7 @@ func UdnLog(udn_schema map[string]interface{}, format string, args ...interface{
 }
 
 func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interface{}) {
-	if udn_schema["allow_logging"].(bool)  {
+	if udn_schema["allow_logging"].(bool) {
 		// Format the incoming Printf args, and print them
 		output := fmt.Sprintf(format, args...)
 		fmt.Print(output)
@@ -700,7 +688,6 @@ func ExecuteUdn(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 	return result
 }
 
-
 // Execute a single UdnPart.  This is necessary, because it may not be a function, it might be a Compound, which has a function inside it.
 //		At the top level, this is not necessary, but for flow control, we need to wrap this so that each Block Executor doesnt need to duplicate logic.
 //NOTE(g): This function must return a UdnPart, because it is necessary for Flow Control (__iterate, etc)
@@ -715,7 +702,6 @@ func ExecuteUdnPart(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	// Store this so we can access it if we want
 	//TODO(g): Is this required?  Is it the best place for it?  Investiage at some point...  Not sure re-reading it.
 	udn_data["arg"] = args
-
 
 	// What we return, unified return type in UDN
 	udn_result := UdnResult{}
@@ -759,7 +745,6 @@ func ExecuteUdnPart(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	return udn_result
 }
 
-
 // Execute a UDN Compound
 func ExecuteUdnCompound(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, input interface{}, udn_data map[string]interface{}) UdnResult {
 	udn_result := UdnResult{}
@@ -769,7 +754,6 @@ func ExecuteUdnCompound(db *sql.DB, udn_schema map[string]interface{}, udn_start
 		udn_current := udn_start.NextUdnPart
 
 		done := false
-
 
 		for !done {
 			//fmt.Printf("Execute UDN Compound: %s\n", DescribeUdnPart(udn_current))
@@ -793,7 +777,3 @@ func ExecuteUdnCompound(db *sql.DB, udn_schema map[string]interface{}, udn_start
 
 	return udn_result
 }
-
-
-
-

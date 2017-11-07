@@ -1,23 +1,23 @@
 package yudien
 
 import (
-	"database/sql"
-	"fmt"
-	"encoding/json"
-	"github.com/segmentio/ksuid"
-	"log"
-	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
-	"strings"
 	"container/list"
-	"strconv"
-	"text/template"
+	"database/sql"
+	"encoding/json"
+	"fmt"
 	. "github.com/ghowland/ddd/ddd"
-	. "github.com/ghowland/yudien/yudienutil"
 	. "github.com/ghowland/yudien/yudiencore"
 	. "github.com/ghowland/yudien/yudiendata"
+	. "github.com/ghowland/yudien/yudienutil"
+	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
+	"github.com/segmentio/ksuid"
+	"log"
+	"strconv"
+	"strings"
+	"text/template"
 )
 
-func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult{
+func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	result := UdnResult{}
 	result.Result = input
 
@@ -56,10 +56,9 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		return result
 	}
 
-
 	// Get the user (if it exists)
-	filter := map[string]interface{} {}
-	filter["name"] = []interface{} {"=", ldap_user.Username}
+	filter := map[string]interface{}{}
+	filter["name"] = []interface{}{"=", ldap_user.Username}
 
 	filter_options := make(map[string]interface{})
 	user_data_result := DatamanFilter("user", filter, filter_options)
@@ -74,7 +73,7 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		user_data["name"] = ldap_user.Username
 		user_data["email"] = ldap_user.Email
 		user_data["name_full"] = ldap_user.FullName
-		user_data["user_domain_id"] = 1		//TODO(g): Make dynamic
+		user_data["user_domain_id"] = 1 //TODO(g): Make dynamic
 
 		// Save the LDAP data
 		user_map_json, err := json.Marshal(user_map)
@@ -97,19 +96,18 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		}
 	}
 
-
 	// Get the web_user_session
-	web_user_session := map[string]interface{} {}
+	web_user_session := map[string]interface{}{}
 	filter = make(map[string]interface{})
-	filter["user_id"] = []interface{} {"=", user_data["_id"]}
-	filter["web_site_id"] = []interface{} {"=", 1}		//TODO(g): Make dynamic
+	filter["user_id"] = []interface{}{"=", user_data["_id"]}
+	filter["web_site_id"] = []interface{}{"=", 1} //TODO(g): Make dynamic
 	filter_options = make(map[string]interface{})
 	web_user_session_filter := DatamanFilter("web_user_session", filter, filter_options)
 
 	if len(web_user_session_filter) == 0 {
 		// If we dont have a session, create one
 		web_user_session["user_id"] = user_data["_id"]
-		web_user_session["web_site_id"] = 1		//TODO(g): Make dynamic
+		web_user_session["web_site_id"] = 1 //TODO(g): Make dynamic
 
 		//TODO(g): Something better than a UUID here?  I think its the best option actually.  Could salt it with a digest...
 		id := ksuid.New()
@@ -123,75 +121,72 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		web_user_session = web_user_session_filter[0]
 	}
 
-
-
 	//TODO(g): Ensure they have a user account in our DB, save the ldap_user data, update UDN with their session data...
 
 	// Trying to update the fetch code
 	/*
-	get_options := make(map[string]interface{})
-	get_options["web_site_id"] = web_site["_id"]
-	get_options["name"] = session_id_value
-	user_session := DatamanGet("web_user_session", get_options)
+		get_options := make(map[string]interface{})
+		get_options["web_site_id"] = web_site["_id"]
+		get_options["name"] = session_id_value
+		user_session := DatamanGet("web_user_session", get_options)
 
-	get_options = make(map[string]interface{})
-	get_options["_id"] = user_session["user_id"]
-	user_data := DatamanGet("user", get_options)
+		get_options = make(map[string]interface{})
+		get_options["_id"] = user_session["user_id"]
+		user_data := DatamanGet("user", get_options)
 	*/
 
 	// What we are doing currently...
 	/*
-	// Verify that this user is logged in, render the login page, if they arent logged in
-	udn_data["session"] = make(map[string]interface{})
-	udn_data["user"] = make(map[string]interface{})
-	udn_data["user_data"] = make(map[string]interface{})
-	udn_data["web_site"] = web_site
-	udn_data["web_site_page"] = web_site_page
-	if session_value, ok := udn_data["cookie"].(map[string]interface{})["opsdb_session"]; ok {
-		session_sql := fmt.Sprintf("SELECT * FROM web_user_session WHERE web_site_id = %d AND name = '%s'", web_site["_id"], SanitizeSQL(session_value.(string)))
-		session_rows := Query(db_web, session_sql)
-		if len(session_rows) == 1 {
-			session := session_rows[0]
-			user_id := session["user_id"]
+		// Verify that this user is logged in, render the login page, if they arent logged in
+		udn_data["session"] = make(map[string]interface{})
+		udn_data["user"] = make(map[string]interface{})
+		udn_data["user_data"] = make(map[string]interface{})
+		udn_data["web_site"] = web_site
+		udn_data["web_site_page"] = web_site_page
+		if session_value, ok := udn_data["cookie"].(map[string]interface{})["opsdb_session"]; ok {
+			session_sql := fmt.Sprintf("SELECT * FROM web_user_session WHERE web_site_id = %d AND name = '%s'", web_site["_id"], SanitizeSQL(session_value.(string)))
+			session_rows := Query(db_web, session_sql)
+			if len(session_rows) == 1 {
+				session := session_rows[0]
+				user_id := session["user_id"]
 
-			fmt.Printf("Found User ID: %d  Session: %v\n\n", user_id, session)
+				fmt.Printf("Found User ID: %d  Session: %v\n\n", user_id, session)
 
-			// Load session from json_data
-			target_map := make(map[string]interface{})
-			if session["data_json"] != nil {
-				err := json.Unmarshal([]byte(session["data_json"].(string)), &target_map)
-				if err != nil {
-					log.Panic(err)
-				}
-			}
-
-			fmt.Printf( "Session Data: %v\n\n", target_map)
-
-			udn_data["session"] = target_map
-
-			// Load the user data too
-			user_sql := fmt.Sprintf("SELECT * FROM \"user\" WHERE _id = %d", user_id)
-			user_rows := Query(db_web, user_sql)
-			target_map_user := make(map[string]interface{})
-			if len(user_rows) == 1 {
-				// Set the user here
-				udn_data["user"] = user_rows[0]
-
-				// Load from user data from json_data
-				if user_rows[0]["data_json"] != nil {
-					err := json.Unmarshal([]byte(user_rows[0]["data_json"].(string)), &target_map_user)
+				// Load session from json_data
+				target_map := make(map[string]interface{})
+				if session["data_json"] != nil {
+					err := json.Unmarshal([]byte(session["data_json"].(string)), &target_map)
 					if err != nil {
 						log.Panic(err)
 					}
 				}
+
+				fmt.Printf( "Session Data: %v\n\n", target_map)
+
+				udn_data["session"] = target_map
+
+				// Load the user data too
+				user_sql := fmt.Sprintf("SELECT * FROM \"user\" WHERE _id = %d", user_id)
+				user_rows := Query(db_web, user_sql)
+				target_map_user := make(map[string]interface{})
+				if len(user_rows) == 1 {
+					// Set the user here
+					udn_data["user"] = user_rows[0]
+
+					// Load from user data from json_data
+					if user_rows[0]["data_json"] != nil {
+						err := json.Unmarshal([]byte(user_rows[0]["data_json"].(string)), &target_map_user)
+						if err != nil {
+							log.Panic(err)
+						}
+					}
+				}
+				fmt.Printf("User Data: %v\n\n", target_map_user)
+
+				udn_data["user_data"] = target_map_user
 			}
-			fmt.Printf("User Data: %v\n\n", target_map_user)
-
-			udn_data["user_data"] = target_map_user
 		}
-	}
 	*/
-
 
 	//TODO(g): Login returns the SESSION_ID
 
@@ -208,12 +203,11 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	move_y := GetResult(args[2], type_int).(int64)
 	is_delete := GetResult(args[3], type_int).(int64)
 	ddd_id := GetResult(args[4], type_int).(int64)
-	data_location := GetResult(args[5], type_string).(string)			// The data (record) we are operating on should be at this location
-	save_data := GetResult(args[6], type_map).(map[string]interface{})	// This is incoming data, and will be only for the position_location's data, not the complete record
-	temp_id := GetResult(args[7], type_int).(int64)						// Initial value is passed in as 0, not empty string or nil
+	data_location := GetResult(args[5], type_string).(string)          // The data (record) we are operating on should be at this location
+	save_data := GetResult(args[6], type_map).(map[string]interface{}) // This is incoming data, and will be only for the position_location's data, not the complete record
+	temp_id := GetResult(args[7], type_int).(int64)                    // Initial value is passed in as 0, not empty string or nil
 
 	UdnLog(udn_schema, "\nDDD Render: Position: %s  Move X: %d  Y: %d  Is Delete: %d  DDD: %d  Data Location: %s\nSave Data:\n%s\n\n", position_location, move_x, move_y, is_delete, ddd_id, data_location, JsonDump(save_data))
-
 
 	//TEST: Add some static rows...
 	input_map := input.(map[string]interface{})
@@ -221,9 +215,6 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 	//TODO(g): Process the move_x/y with position location.  Get a new position location.  Do this same thing with the buttons, and test each one for validity to see if we should add that button
 	//		Just update the string with the move, then do the get.  Makes it simple, no working 2 things at once.  String is manipulated, and get.  That's it.
-
-
-
 
 	// -- Do work here to change stuff
 
@@ -267,13 +258,11 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	}
 	//fmt.Printf("DDD Data Record: (%d): %s\n\n", temp_id, JsonDump(data_record))
 
-
 	// Get the DDD node, which has our
 	ddd_label, ddd_node, ddd_cursor_data := DddGetNode(position_location, ddd_data, data_record, udn_data)
 
 	fmt.Printf("DDD Node: %s\n\n", JsonDump(ddd_node))
 	fmt.Printf("DDD Cursor Data: %s\n\n", JsonDump(ddd_cursor_data))
-
 
 	// -- Done changing stuff, time to RENDER!
 
@@ -283,22 +272,20 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 		input_map_rows = append(input_map_rows, ddd_spec_render_nodes)
 	}
 
-
-
 	// New Row
 	new_row_html := make([]interface{}, 0)
 
 	// HTML Descriptive content  -- Showing the position so I can test it...
 	new_html_field := map[string]interface{}{
-		"color": "primary",
-		"icon": "icon-make-group",
-		"info": "",
-		"label": "Position Location",
-		"name": "position_location",
+		"color":       "primary",
+		"icon":        "icon-make-group",
+		"info":        "",
+		"label":       "Position Location",
+		"name":        "position_location",
 		"placeholder": "",
-		"size": "12",
-		"type": "html",
-		"value":  fmt.Sprintf("<b>Cursor:</b> %s<br>%s", position_location, SnippetData(JsonDump(ddd_node), 80)),
+		"size":        "12",
+		"type":        "html",
+		"value":       fmt.Sprintf("<b>Cursor:</b> %s<br>%s", position_location, SnippetData(JsonDump(ddd_node), 80)),
 	}
 	new_row_html = AppendArray(new_row_html, new_html_field)
 
@@ -308,57 +295,56 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	// New Row
 	new_row_buttons := make([]interface{}, 0)
 
-
 	// Add buttons
 	new_button := map[string]interface{}{
-		"color": "primary",
-		"icon": "icon-arrow-up8",
-		"info": "",
-		"label": "Move Up",
-		"name": "move_up",
+		"color":       "primary",
+		"icon":        "icon-arrow-up8",
+		"info":        "",
+		"label":       "Move Up",
+		"name":        "move_up",
 		"placeholder": "",
-		"size": "2",
-		"type": "button",
-		"onclick": fmt.Sprintf("$(this).closest('.ui-dialog-content').dialog('close'); RPC('/api/dwi_render_ddd', {'move_x': 0, 'move_y': -1, 'position_location': '%s', 'ddd_id': %d, 'is_delete': 0, 'web_data_widget_instance_id': '{{{_id}}}', 'web_widget_instance_id': '{{{web_widget_instance_id}}}', '_web_data_widget_instance_id': 34, 'dom_target_id':'dialog_target', 'temp_id': %d})", position_location, ddd_id, temp_id),
-		"value":  "",
+		"size":        "2",
+		"type":        "button",
+		"onclick":     fmt.Sprintf("$(this).closest('.ui-dialog-content').dialog('close'); RPC('/api/dwi_render_ddd', {'move_x': 0, 'move_y': -1, 'position_location': '%s', 'ddd_id': %d, 'is_delete': 0, 'web_data_widget_instance_id': '{{{_id}}}', 'web_widget_instance_id': '{{{web_widget_instance_id}}}', '_web_data_widget_instance_id': 34, 'dom_target_id':'dialog_target', 'temp_id': %d})", position_location, ddd_id, temp_id),
+		"value":       "",
 	}
 	// Check if the button is valid, by getting an item from this
-	if _, test_node, _ := DddGetNode(DddMove(position_location, 0, -1), ddd_data, data_record, udn_data) ; test_node == nil {
+	if _, test_node, _ := DddGetNode(DddMove(position_location, 0, -1), ddd_data, data_record, udn_data); test_node == nil {
 		new_button["color"] = ""
 		new_button["onclick"] = ""
 	}
 	new_row_buttons = AppendArray(new_row_buttons, new_button)
 
 	new_button = map[string]interface{}{
-		"color": "primary",
-		"icon": "icon-arrow-down8",
-		"info": "",
-		"label": "Move Down",
-		"name": "move_down",
+		"color":       "primary",
+		"icon":        "icon-arrow-down8",
+		"info":        "",
+		"label":       "Move Down",
+		"name":        "move_down",
 		"placeholder": "",
-		"size": "2",
-		"type": "button",
-		"onclick": fmt.Sprintf("$(this).closest('.ui-dialog-content').dialog('close'); RPC('/api/dwi_render_ddd', {'move_x': 0, 'move_y': 1, 'position_location': '%s', 'ddd_id': %d, 'is_delete': 0, 'web_data_widget_instance_id': '{{{_id}}}', 'web_widget_instance_id': '{{{web_widget_instance_id}}}', '_web_data_widget_instance_id': 34, 'dom_target_id':'dialog_target', 'temp_id': %d})", position_location, ddd_id, temp_id),
-		"value":  "",
+		"size":        "2",
+		"type":        "button",
+		"onclick":     fmt.Sprintf("$(this).closest('.ui-dialog-content').dialog('close'); RPC('/api/dwi_render_ddd', {'move_x': 0, 'move_y': 1, 'position_location': '%s', 'ddd_id': %d, 'is_delete': 0, 'web_data_widget_instance_id': '{{{_id}}}', 'web_widget_instance_id': '{{{web_widget_instance_id}}}', '_web_data_widget_instance_id': 34, 'dom_target_id':'dialog_target', 'temp_id': %d})", position_location, ddd_id, temp_id),
+		"value":       "",
 	}
 	// Check if the button is valid, by getting an item from this
-	if _, test_node, _ := DddGetNode(DddMove(position_location, 0, 1), ddd_data, data_record, udn_data) ; test_node == nil {
+	if _, test_node, _ := DddGetNode(DddMove(position_location, 0, 1), ddd_data, data_record, udn_data); test_node == nil {
 		new_button["color"] = ""
 		new_button["onclick"] = ""
 	}
 	new_row_buttons = AppendArray(new_row_buttons, new_button)
 
 	new_button = map[string]interface{}{
-		"color": "primary",
-		"icon": "icon-arrow-left8",
-		"info": "",
-		"label": "Move Left",
-		"name": "move_left",
+		"color":       "primary",
+		"icon":        "icon-arrow-left8",
+		"info":        "",
+		"label":       "Move Left",
+		"name":        "move_left",
 		"placeholder": "",
-		"size": "2",
-		"type": "button",
-		"onclick": fmt.Sprintf("$(this).closest('.ui-dialog-content').dialog('close'); RPC('/api/dwi_render_ddd', {'move_x': -1, 'move_y': 0, 'position_location': '%s', 'ddd_id': %d, 'is_delete': 0, 'web_data_widget_instance_id': '{{{_id}}}', 'web_widget_instance_id': '{{{web_widget_instance_id}}}', '_web_data_widget_instance_id': 34, 'dom_target_id':'dialog_target', 'temp_id': %d})", position_location, ddd_id, temp_id),
-		"value":  "",
+		"size":        "2",
+		"type":        "button",
+		"onclick":     fmt.Sprintf("$(this).closest('.ui-dialog-content').dialog('close'); RPC('/api/dwi_render_ddd', {'move_x': -1, 'move_y': 0, 'position_location': '%s', 'ddd_id': %d, 'is_delete': 0, 'web_data_widget_instance_id': '{{{_id}}}', 'web_widget_instance_id': '{{{web_widget_instance_id}}}', '_web_data_widget_instance_id': 34, 'dom_target_id':'dialog_target', 'temp_id': %d})", position_location, ddd_id, temp_id),
+		"value":       "",
 	}
 	// Check if the button is valid, by getting an item from this
 	if len(position_location) == 1 {
@@ -368,19 +354,19 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	new_row_buttons = AppendArray(new_row_buttons, new_button)
 
 	new_button = map[string]interface{}{
-		"color": "primary",
-		"icon": "icon-arrow-right8",
-		"info": "",
-		"label": "Move Right",
-		"name": "move_right",
+		"color":       "primary",
+		"icon":        "icon-arrow-right8",
+		"info":        "",
+		"label":       "Move Right",
+		"name":        "move_right",
 		"placeholder": "",
-		"size": "2",
-		"type": "button",
-		"onclick": fmt.Sprintf("$(this).closest('.ui-dialog-content').dialog('close'); RPC('/api/dwi_render_ddd', {'move_x': 1, 'move_y': 0, 'position_location': '%s', 'ddd_id': %d, 'is_delete': 0, 'web_data_widget_instance_id': '{{{_id}}}', 'web_widget_instance_id': '{{{web_widget_instance_id}}}', '_web_data_widget_instance_id': 34, 'dom_target_id':'dialog_target', 'temp_id': %d})", position_location, ddd_id, temp_id),
-		"value":  "",
+		"size":        "2",
+		"type":        "button",
+		"onclick":     fmt.Sprintf("$(this).closest('.ui-dialog-content').dialog('close'); RPC('/api/dwi_render_ddd', {'move_x': 1, 'move_y': 0, 'position_location': '%s', 'ddd_id': %d, 'is_delete': 0, 'web_data_widget_instance_id': '{{{_id}}}', 'web_widget_instance_id': '{{{web_widget_instance_id}}}', '_web_data_widget_instance_id': 34, 'dom_target_id':'dialog_target', 'temp_id': %d})", position_location, ddd_id, temp_id),
+		"value":       "",
 	}
 	// Check if the button is valid, by getting an item from this
-	if _, test_node, _ := DddGetNode(DddMove(position_location, 1, 0), ddd_data, data_record, udn_data) ; test_node == nil {
+	if _, test_node, _ := DddGetNode(DddMove(position_location, 1, 0), ddd_data, data_record, udn_data); test_node == nil {
 		new_button["color"] = ""
 		new_button["onclick"] = ""
 	}
@@ -388,7 +374,6 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 	// Add buttons
 	input_map_rows = AppendArray(input_map_rows, new_row_buttons)
-
 
 	// Add static JSON field
 	new_item := make(map[string]interface{})
@@ -404,14 +389,12 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	new_item["udn_process"] = "__json_encode"
 	new_item["value"] = ""
 
-
 	new_row := make([]interface{}, 0)
 	new_row = AppendArray(new_row, new_item)
 
 	input_map_rows = AppendArray(input_map_rows, new_row)
 
 	input_map["form"] = input_map_rows
-
 
 	/*
 
@@ -443,7 +426,7 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	//ddd_node := DddGetNode(position_location, ddd_id, udn_data)
 
 	result := UdnResult{}
-	result.Result = input_map		//TODO(g): Need to modify this, which is the point of this function...
+	result.Result = input_map //TODO(g): Need to modify this, which is the point of this function...
 
 	fmt.Printf("\nDDD Render: Result:\n%s\n\n", JsonDump(input_map))
 
@@ -520,10 +503,7 @@ func UDN_QueryById(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 	UdnLog(udn_schema, "Query: %s  Stored Query: %s  Data Args: %v\n", udn_start.Value, arg_0, arg_1)
 
-
-
 	query_sql := fmt.Sprintf("SELECT * FROM datasource_query WHERE _id = %s", arg_0)
-
 
 	//TODO(g): Make a new function that returns a list of UdnResult with map.string
 
@@ -566,7 +546,6 @@ func UDN_QueryById(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 		UdnLog(udn_schema, "Query: Final SQL: %s\n", result_sql)
 	}
 
-
 	// This query returns a list.List of map[string]interface{}, new method for more-raw data
 	result.Result = UDN_Library_Query(db, result_sql)
 
@@ -578,7 +557,6 @@ func UDN_QueryById(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	//	real_item := item.Value.(map[string]interface{})
 	//	UdnLog(udn_schema, "Query Result Value: %v\n", real_item)
 	//}
-
 
 	return result
 }
@@ -615,7 +593,7 @@ func UDN_Widget(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 
 	result := UdnResult{}
 	//result.Result = udn_data["widget"].Map[arg_0.Result.(string)]
-	result.Result = udn_data_page[args[0].(string)]			//TODO(g): We get this from the page map.  Is this is the best naming?  Check it...
+	result.Result = udn_data_page[args[0].(string)] //TODO(g): We get this from the page map.  Is this is the best naming?  Check it...
 
 	return result
 }
@@ -634,18 +612,18 @@ func UDN_StringTemplateFromValueShort(db *sql.DB, udn_schema map[string]interfac
 	actual_input = GetResult(actual_input, type_map)
 
 	/*
-	// If this is an array, convert it to a string, so it is a concatenated string, and then can be properly turned into a map.
-	if actual_input != nil {
-		if strings.HasPrefix(fmt.Sprintf("%T", actual_input), "[]") {
-			UdnLog(udn_schema, "Short Template: Converting from array to string: %s\n", SnippetData(actual_input, 60))
-			actual_input = GetResult(actual_input, type_string)
+		// If this is an array, convert it to a string, so it is a concatenated string, and then can be properly turned into a map.
+		if actual_input != nil {
+			if strings.HasPrefix(fmt.Sprintf("%T", actual_input), "[]") {
+				UdnLog(udn_schema, "Short Template: Converting from array to string: %s\n", SnippetData(actual_input, 60))
+				actual_input = GetResult(actual_input, type_string)
+			} else {
+				UdnLog(udn_schema, "Short Template: Input is not an array: %s\n", SnippetData(actual_input, 60))
+				//UdnLog(udn_schema, "String Template: Input is not an array: %s\n", actual_input)
+			}
 		} else {
-			UdnLog(udn_schema, "Short Template: Input is not an array: %s\n", SnippetData(actual_input, 60))
-			//UdnLog(udn_schema, "String Template: Input is not an array: %s\n", actual_input)
-		}
-	} else {
-		UdnLog(udn_schema, "Short Template: Input is nil\n")
-	}*/
+			UdnLog(udn_schema, "Short Template: Input is nil\n")
+		}*/
 
 	template_str := GetResult(args[0], type_string).(string)
 
@@ -682,18 +660,18 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 	actual_input = GetResult(actual_input, type_map)
 
 	/*
-	// If this is an array, convert it to a string, so it is a concatenated string, and then can be properly turned into a map.
-	if actual_input != nil {
-		if strings.HasPrefix(fmt.Sprintf("%T", actual_input), "[]") {
-			UdnLog(udn_schema, "String Template: Converting from array to string: %s\n", SnippetData(actual_input, 60))
-			actual_input = GetResult(actual_input, type_map)
+		// If this is an array, convert it to a string, so it is a concatenated string, and then can be properly turned into a map.
+		if actual_input != nil {
+			if strings.HasPrefix(fmt.Sprintf("%T", actual_input), "[]") {
+				UdnLog(udn_schema, "String Template: Converting from array to string: %s\n", SnippetData(actual_input, 60))
+				actual_input = GetResult(actual_input, type_map)
+			} else {
+				UdnLog(udn_schema, "String Template: Input is not an array: %s\n", SnippetData(actual_input, 60))
+				//UdnLog(udn_schema, "String Template: Input is not an array: %s\n", actual_input)
+			}
 		} else {
-			UdnLog(udn_schema, "String Template: Input is not an array: %s\n", SnippetData(actual_input, 60))
-			//UdnLog(udn_schema, "String Template: Input is not an array: %s\n", actual_input)
+			UdnLog(udn_schema, "String Template: Input is nil\n")
 		}
-	} else {
-		UdnLog(udn_schema, "String Template: Input is nil\n")
-	}
 	*/
 
 	template_str := GetResult(args[0], type_string).(string)
@@ -729,11 +707,11 @@ func UDN_StringTemplateMultiWrap(db *sql.DB, udn_schema map[string]interface{}, 
 	// Ensure our arg count is correct
 	if len(args) < 2 {
 		panic("Wrong number of arguments.  Map Template takes N 2-tuples: set_key, map_data.  The first map_data may be skipped if there is only one set_key, input will be used.")
-	} else if len(args) > 3 || len(args) % 2 != 1 {
+	} else if len(args) > 3 || len(args)%2 != 1 {
 		panic("Wrong number of arguments.  Map Template takes N 2-tuples: set_key, map_data")
 	}
 
-	items := (len(args)-1) / 2
+	items := (len(args) - 1) / 2
 
 	current_output := ""
 
@@ -743,7 +721,7 @@ func UDN_StringTemplateMultiWrap(db *sql.DB, udn_schema map[string]interface{}, 
 		current_input = GetResult(args[2], type_map).(map[string]interface{})
 	}
 
-	for count := 0 ; count < items ; count++ {
+	for count := 0; count < items; count++ {
 		offset := count * 2
 
 		// Use the input we already had set up before this for loop for the actual_input, initially, every other iteration use our arg map data
@@ -785,13 +763,13 @@ func UDN_MapStringFormat(db *sql.DB, udn_schema map[string]interface{}, udn_star
 	UdnLog(udn_schema, "Map String Format: %v\n", args)
 
 	// Ensure our arg count is correct
-	if len(args) < 2 || len(args) % 2 != 0 {
+	if len(args) < 2 || len(args)%2 != 0 {
 		panic("Wrong number of arguments.  Map Template takes N 2-tuples: set_key, format")
 	}
 
 	items := len(args) / 2
 
-	for count := 0 ; count < items ; count++ {
+	for count := 0; count < items; count++ {
 		offset := count * 2
 
 		set_key := GetResult(args[offset+0], type_string).(string)
@@ -835,13 +813,13 @@ func UDN_MapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	UdnLog(udn_schema, "Map Template: %v\n", args)
 
 	// Ensure our arg count is correct
-	if len(args) < 3 || len(args) % 3 != 0 {
+	if len(args) < 3 || len(args)%3 != 0 {
 		panic("Wrong number of arguments.  Map Template takes N 3-tuples: set_key, text, map")
 	}
 
 	items := len(args) / 3
 
-	for count := 0 ; count < items ; count++ {
+	for count := 0; count < items; count++ {
 		offset := count * 3
 
 		set_key := args[offset].(string)
@@ -1053,7 +1031,6 @@ func UDN_Execute(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 		udn_target = GetResult(args[0], type_string).(string)
 	}
 
-
 	UdnLog(udn_schema, "Execute: UDN String As Target: %s\n", udn_target)
 
 	// Execute the Target against the input
@@ -1104,10 +1081,9 @@ func UDN_ArrayDivide(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	result_array := make([]interface{}, 0)
 	current_array := make([]interface{}, 0)
 
-
 	// Loop until we have taken account of all the elements in the array
 	for count, element := range input.([]interface{}) {
-		if count % divisor == 0 && count > 0 {
+		if count%divisor == 0 && count > 0 {
 			result_array = AppendArray(result_array, current_array)
 			current_array = make([]interface{}, 0)
 
@@ -1192,7 +1168,6 @@ func UDN_RenderDataWidgetInstance(db *sql.DB, udn_schema map[string]interface{},
 	}
 	udn_data["data_instance_static"] = decoded_instance_json
 
-
 	// Get the web_data_widget data
 	sql = fmt.Sprintf("SELECT * FROM web_data_widget WHERE _id = %d", web_data_widget_instance["web_data_widget_id"])
 	web_data_widget := Query(db, sql)[0]
@@ -1206,7 +1181,6 @@ func UDN_RenderDataWidgetInstance(db *sql.DB, udn_schema map[string]interface{},
 		}
 	}
 	udn_data["data_static"] = decoded_json
-
 
 	// If we dont have this bucket yet, make it
 	if udn_data["widget_instance"] == nil {
@@ -1223,7 +1197,6 @@ func UDN_RenderDataWidgetInstance(db *sql.DB, udn_schema map[string]interface{},
 		fmt.Printf("Render Data Widget Instance: Update udn_data: %s: %v\n", key, value)
 		udn_data[key] = value
 	}
-
 
 	// Render the Widget Instance, from the web_data_widget_instance
 	RenderWidgetInstance(db, udn_schema, udn_data, fake_site_page_widget, udn_update_map)
@@ -1359,13 +1332,13 @@ func UDN_MapKeySet(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	UdnLog(udn_schema, "Map Key Set: %v\n", args)
 
 	// Ensure our arg count is correct
-	if len(args) < 2 || len(args) % 2 != 0 {
+	if len(args) < 2 || len(args)%2 != 0 {
 		panic("Wrong number of arguments.  Map Template takes N 2-tuples: set_key, format")
 	}
 
 	items := len(args) / 2
 
-	for count := 0 ; count < items ; count++ {
+	for count := 0; count < items; count++ {
 		offset := count * 2
 
 		set_key := GetResult(args[offset+0], type_string).(string)
@@ -1412,7 +1385,6 @@ func UDN_CompareEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	}
 
 	fmt.Printf("Compare: Equal: '%s' == '%s' : %d\n", arg0, arg1, value)
-
 
 	result := UdnResult{}
 	result.Result = value
@@ -1498,7 +1470,6 @@ func UDN_GetFirst(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnP
 			break
 		}
 	}
-
 
 	//UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
 	UdnLog(udn_schema, "Get First: %v   Result: %v\n", SnippetData(args, 300), result.Result)
@@ -1587,7 +1558,6 @@ func UDN_Iterate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	// This is our final input list, as an array, it always works and gets input to pass into the first function
 	input_array := GetResult(input, type_array).([]interface{})
 
-
 	UdnLog(udn_schema, "Iterate: [%s]  Input: %v\n\n", udn_start.Id, input_array)
 
 	// Our result will be a list, of the result of each of our iterations, with a UdnResult per element, so that we can Transform data, as a pipeline
@@ -1649,7 +1619,6 @@ func UDN_Iterate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 			result.NextUdnPart = udn_current
 		}
 	}
-
 
 	// Store the result list
 	result.Result = result_list
@@ -1815,10 +1784,7 @@ func UDN_NotNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn_data map[string]interface{}, site_page_widget map[string]interface{}, udn_update_map map[string]interface{}) {
 	// Render a Widget Instance
 
-
 	// data_static  --  data_instance_static --  Available for default data...
-
-
 
 	// We are rendering a Web Widget Instance here instead, load the data necessary for the Processing UDN
 	// Data for the widget instance goes here (Inputs: data, columns, rows, etc.  These are set from the Processing UDN
@@ -1832,13 +1798,11 @@ func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn
 	id := ksuid.New()
 	udn_data["widget_instance"].(map[string]interface{})["uuid"] = id.String()
 
-
 	// Widgets go here (ex: base, row, row_column, header).  We set this here, below.
 	udn_data["widget"] = make(map[string]interface{})
 
 	// Set web_widget_instance output location (where the Instance's UDN will string append the output)
 	udn_data["widget_instance"].(map[string]interface{})["output_location"] = site_page_widget["web_widget_instance_output"]
-
 
 	// Use this to abstract between site_page_widget and web_data_widget_instance
 	widget_instance := site_page_widget
@@ -1914,4 +1878,3 @@ func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn
 		fmt.Printf("Widget Instance UDN Execution: %s: None\n\n", site_page_widget["name"])
 	}
 }
-

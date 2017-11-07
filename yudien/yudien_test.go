@@ -15,10 +15,10 @@ import (
 var testDir = "data/udn_test_cases"
 
 type udnTestCase struct {
-	Statement    string                 `json:"statement"`
-	Args    []interface{}          `json:"args"`
-	Input   interface{}            `json:"input"`
-	UdnData map[string]interface{} `json:"udn_data"`
+	Statement string                 `json:"statement"`
+	Args      []interface{}          `json:"args"`
+	Input     interface{}            `json:"input"`
+	UdnData   map[string]interface{} `json:"udn_data"`
 }
 
 func (u *udnTestCase) UnmarshalJSON(data []byte) error {
@@ -39,7 +39,7 @@ func (u *udnTestCase) UnmarshalJSON(data []byte) error {
 
 type udnTestCaseResult struct {
 	// TODO: wat?
-	UdnResult interface{}  `json:"udn_result"`
+	UdnResult interface{}            `json:"udn_result"`
 	UdnData   map[string]interface{} `json:"udn_data"`
 }
 
@@ -85,7 +85,6 @@ func TestUDN(t *testing.T) {
 
 			// Process args
 			ret := ProcessSingleUDNTarget(db_web, udn_schema, testCase.Statement, testCase.Input, testCase.UdnData)
-
 
 			// Generate result
 			result := &udnTestCaseResult{

@@ -1,16 +1,16 @@
 package yudieutil
 
 import (
-	"fmt"
-	"strings"
-	"sort"
+	"bytes"
 	"container/list"
 	"encoding/json"
-	"os"
-	"log"
-	"strconv"
+	"fmt"
 	. "github.com/ghowland/yudien/yudiencore"
-	"bytes"
+	"log"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -25,19 +25,16 @@ const (
 )
 
 const (
-	type_int				= iota
-	type_float				= iota
-	type_string				= iota
-	type_string_force		= iota	// This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
-	type_array				= iota	// []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
-	type_map				= iota	// map[string]interface{}
+	type_int          = iota
+	type_float        = iota
+	type_string       = iota
+	type_string_force = iota // This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
+	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
+	type_map          = iota // map[string]interface{}
 )
-
 
 var Debug_Udn bool
 var Debug_Udn_Api bool
-
-
 
 func GetResult(input interface{}, type_value int) interface{} {
 	type_str := fmt.Sprintf("%T", input)
@@ -188,7 +185,7 @@ func GetResult(input interface{}, type_value int) interface{} {
 			result := make(map[string]interface{})
 
 			count := 0
-			for child := input.(*list.List).Front() ; child != nil ; child = child.Next() {
+			for child := input.(*list.List).Front(); child != nil; child = child.Next() {
 				count_str := strconv.Itoa(count)
 
 				// Add the index as a string, and the value to the map
@@ -232,7 +229,7 @@ func GetResult(input interface{}, type_value int) interface{} {
 			result := make([]interface{}, input.(*list.List).Len())
 
 			count := 0
-			for child := input.(*list.List).Front() ; child != nil ; child = child.Next() {
+			for child := input.(*list.List).Front(); child != nil; child = child.Next() {
 				// Add the index as a string, and the value to the map
 				result[count] = child.Value
 				count++
@@ -272,10 +269,8 @@ func GetResult(input interface{}, type_value int) interface{} {
 		}
 	}
 
-
 	return nil
 }
-
 
 func SnippetData(data interface{}, size int) string {
 	data_str := fmt.Sprintf("%v", data)
@@ -284,8 +279,7 @@ func SnippetData(data interface{}, size int) string {
 	}
 
 	// Get rid of newlines, they make snippets hard to read
-	data_str = strings.Replace(data_str,"\n", "", -1)
-
+	data_str = strings.Replace(data_str, "\n", "", -1)
 
 	data_str = fmt.Sprintf("%s (%T)", data_str, data)
 	//size_str := fmt.Sprint("%v", data)	//TODO(g):PERFORMANCE: Need to test sizes, super slow!
@@ -293,7 +287,6 @@ func SnippetData(data interface{}, size int) string {
 
 	return data_str
 }
-
 
 func AppendArray(slice []interface{}, data ...interface{}) []interface{} {
 	//fmt.Printf("AppendArray: Start: %v\n", slice)
@@ -311,7 +304,6 @@ func AppendArray(slice []interface{}, data ...interface{}) []interface{} {
 	return slice
 }
 
-
 func HtmlClean(html string) string {
 	html = strings.Replace(html, "<", "&lt;", -1)
 	html = strings.Replace(html, ">", "&gt;", -1)
@@ -320,7 +312,6 @@ func HtmlClean(html string) string {
 
 	return html
 }
-
 
 func MapKeys(data map[string]interface{}) []string {
 	// Get the slice of keys
@@ -336,7 +327,6 @@ func MapKeys(data map[string]interface{}) []string {
 	return keys
 }
 
-
 func ArrayIntMax(ints []int) int {
 	highest := ints[0]
 
@@ -348,7 +338,6 @@ func ArrayIntMax(ints []int) int {
 
 	return highest
 }
-
 
 // This function takes a string like "some.elements.here", and makes it into a list of ["some", "elements", here"]
 func SimpleDottedStringToUdnResultList(arg_str string) list.List {
@@ -367,6 +356,7 @@ func SimpleDottedStringToUdnResultList(arg_str string) list.List {
 
 	return *args
 }
+
 // This function takes a string like "some.elements.here", and makes it into a list of ["some", "elements", here"]
 func SimpleDottedStringToArray(arg_str string) []interface{} {
 	args := make([]interface{}, 0)
@@ -383,7 +373,6 @@ func SimpleDottedStringToArray(arg_str string) []interface{} {
 	return args
 }
 
-
 func SprintList(items list.List) string {
 	output := ""
 
@@ -399,7 +388,6 @@ func SprintList(items list.List) string {
 
 	return output
 }
-
 
 // We take an input element, and a count, and will walk the list elements, until the count is complete
 func ConvertListToMap(input *list.Element, count int) map[string]interface{} {
@@ -418,7 +406,6 @@ func ConvertListToMap(input *list.Element, count int) map[string]interface{} {
 			fmt.Printf("ConvertListToMap: %d: Input is nil\n", index)
 			result[index_str] = nil
 		}
-
 
 		count--
 		index++
@@ -445,7 +432,6 @@ func PrettyPrint(data interface{}) string {
 
 	return string(b)
 }
-
 
 func ReadPathData(path string) string {
 	file, err := os.Open(path)
@@ -474,7 +460,6 @@ func ReadPathData(path string) string {
 	return ""
 }
 
-
 func MapCopy(input map[string]interface{}) map[string]interface{} {
 	new_map := make(map[string]interface{})
 
@@ -484,7 +469,6 @@ func MapCopy(input map[string]interface{}) map[string]interface{} {
 
 	return new_map
 }
-
 
 func JsonDump(value interface{}) string {
 	buffer := &bytes.Buffer{}
@@ -499,8 +483,6 @@ func JsonDump(value interface{}) string {
 	return buffer.String()
 }
 
-
-
 func MapListToDict(map_array []map[string]interface{}, key string) map[string]interface{} {
 	// Build a map of all our web site page widgets, so we can
 	output_map := make(map[string]interface{})
@@ -511,7 +493,6 @@ func MapListToDict(map_array []map[string]interface{}, key string) map[string]in
 
 	return output_map
 }
-
 
 // Take an array of maps, and make a single map, from one of the keys
 func MapArrayToMap(map_array []map[string]interface{}, key string) map[string]interface{} {
@@ -524,7 +505,6 @@ func MapArrayToMap(map_array []map[string]interface{}, key string) map[string]in
 
 	return result
 }
-
 
 func MapKeysToUdnMapForHtmlSelect(position_location string, data map[string]interface{}) string {
 	keys := MapKeys(data)
@@ -582,7 +562,6 @@ func MapArrayToToUdnMap(map_array []map[string]interface{}, key_key string, valu
 	return udn_final
 }
 
-
 type StringFile struct {
 	String string
 }
@@ -608,4 +587,3 @@ func NewTextTemplateMapItem() TextTemplateMap {
 type TextTemplateMap struct {
 	Map map[string]interface{}
 }
-

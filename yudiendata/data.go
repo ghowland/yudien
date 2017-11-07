@@ -1,19 +1,19 @@
 package yudiendata
 
 import (
-	"database/sql"
-	"fmt"
-	"log"
-	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
-	"github.com/jacksontj/dataman/src/query"
 	"context"
-	"strconv"
-	"strings"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	. "github.com/ghowland/yudien/yudienutil"
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
 	"io/ioutil"
-	"encoding/json"
-	. "github.com/ghowland/yudien/yudienutil"
+	"log"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -28,20 +28,17 @@ const (
 )
 
 const (
-	type_int				= iota
-	type_float				= iota
-	type_string				= iota
-	type_string_force		= iota	// This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
-	type_array				= iota	// []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
-	type_map				= iota	// map[string]interface{}
+	type_int          = iota
+	type_float        = iota
+	type_string       = iota
+	type_string_force = iota // This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
+	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
+	type_map          = iota // map[string]interface{}
 )
-
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
 
 var PgConnect string
-
-
 
 func GetSelectedDb(db_web *sql.DB, db *sql.DB, db_id int64) *sql.DB {
 	// Assume we are using the non-web DB
@@ -110,13 +107,13 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
 	fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
-	get_map :=  map[string]interface{} {
+	get_map := map[string]interface{}{
 		"db":             "opsdb",
 		"shard_instance": "public",
 		"collection":     collection_name,
 		//"_id":            record_id,
-		"pkey":           map[string]interface{}{"_id": record_id},
-		"join":			  options["join"],
+		"pkey": map[string]interface{}{"_id": record_id},
+		"join": options["join"],
 	}
 
 	//fmt.Printf("Dataman Get: %v\n\n", get_map)
@@ -206,7 +203,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	// Form the Dataman query
 	dataman_query := &query.Query{
 		query.Set,
-		map[string]interface{} {
+		map[string]interface{}{
 			"db":             "opsdb",
 			"shard_instance": "public",
 			"collection":     collection_name,
@@ -234,14 +231,13 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	//fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
 
-
-	filter_map := map[string]interface{} {
+	filter_map := map[string]interface{}{
 		"db":             "opsdb",
 		"shard_instance": "public",
 		"collection":     collection_name,
 		"filter":         filter,
-		"join":			  options["join"],
-		"sort":			  options["sort"],
+		"join":           options["join"],
+		"sort":           options["sort"],
 		//"sort_reverse":	  []bool{true},
 	}
 
@@ -265,11 +261,10 @@ func SanitizeSQL(text string) string {
 	return text
 }
 
-
 func InitDataman() {
 	config := storagenode.DatasourceInstanceConfig{
 		StorageNodeType: "postgres",
-		StorageConfig:  map[string]interface{} {
+		StorageConfig: map[string]interface{}{
 			"pg_string": PgConnect,
 		},
 	}
