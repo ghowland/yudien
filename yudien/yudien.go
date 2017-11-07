@@ -368,6 +368,9 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 	// By default, do not debug this request
 	result_map["udn_debug"] = false
 
+	// By default, logging is turned on
+	result_map["allow_logging"] = true
+
 	// Debug information, for rendering the debug output
 	UdnDebugReset(result_map)
 
@@ -630,7 +633,7 @@ func UdnDebugUpdate(udn_schema map[string]interface{}) {
 
 
 func UdnLog(udn_schema map[string]interface{}, format string, args ...interface{}) {
-	if Debug_Udn || udn_schema["udn_debug"] == true {
+	if (Debug_Udn || udn_schema["udn_debug"].(bool)) && udn_schema["allow_logging"].(bool) {
 		// Format the incoming Printf args, and print them
 		output := fmt.Sprintf(format, args...)
 
@@ -642,14 +645,16 @@ func UdnLog(udn_schema map[string]interface{}, format string, args ...interface{
 }
 
 func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interface{}) {
-	// Format the incoming Printf args, and print them
-	output := fmt.Sprintf(format, args...)
-	fmt.Print(output)
+	if udn_schema["allow_logging"].(bool)  {
+		// Format the incoming Printf args, and print them
+		output := fmt.Sprintf(format, args...)
+		fmt.Print(output)
 
-	// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
-	udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
-	// Append to HTML as well, so it shows up.  This is a convenience function for this reason.  Headers and stuff.
-	udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + "<pre>" + HtmlClean(output) + "</pre>"
+		// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
+		udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
+		// Append to HTML as well, so it shows up.  This is a convenience function for this reason.  Headers and stuff.
+		udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + "<pre>" + HtmlClean(output) + "</pre>"
+	}
 }
 
 // Execute a single UDN command and return the result
