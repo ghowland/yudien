@@ -301,7 +301,7 @@ Just like __set, except uses a portion of the Global Data space behind a UUID fo
 **Example:**
 
 ```
-__data_set.web_widget_type.{_id: 1, name: "Base Page"}
+__data_set.web_widget_type.{_id=1, name='Base Page'}
 ```
 
 **Result:**
