@@ -228,8 +228,15 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 
 func DatamanFilter(collection_name string, filter map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
 
-	//fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
+	fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
+
+	for k, v := range filter {
+		switch v.(type) {
+		case string:
+			filter[k] = []string{"=", v.(string)}
+		}
+	}
 
 	filter_map := map[string]interface{}{
 		"db":             "opsdb",
@@ -241,15 +248,18 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 		//"sort_reverse":	  []bool{true},
 	}
 
-	//fmt.Printf("Dataman Filter: %v\n\n", filter_map)
+	fmt.Printf("Dataman Filter: %v\n\n", filter_map)
+	fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
+	fmt.Printf("Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
 	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
 
-	//fmt.Printf("Dataman FILTER: %v\n", result.Return)
 	if result.Error != "" {
 		fmt.Printf("Dataman ERROR: %v\n", result.Error)
+	} else {
+		fmt.Printf("Dataman FILTER: %v\n", result.Return)
 	}
 
 	return result.Return

@@ -1237,7 +1237,7 @@ func UDN_JsonDecode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	result.Result = decoded_interface
 
 	//UdnLog(udn_schema, "JSON Decode: Result: %v\n", decoded_map)
-	UdnLog(udn_schema, "JSON Decode: Result: %v\n", decoded_interface)
+	UdnLog(udn_schema, "JSON Decode: Result: %s\n", SnippetData(decoded_interface, 120))
 
 	return result
 }
@@ -1257,7 +1257,7 @@ func UDN_JsonEncode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	result := UdnResult{}
 	result.Result = JsonDump(input)
 
-	UdnLog(udn_schema, "JSON Endcode: Result: %v\n", result.Result)
+	UdnLog(udn_schema, "JSON Encode: Result: %v\n", result.Result)
 
 	return result
 }
@@ -1483,8 +1483,8 @@ func UDN_Get(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, 
 	result := UdnResult{}
 	result.Result = MapGet(args, udn_data)
 
-	//UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
-	UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), result.Result)
+	UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
+	//UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), result.Result)
 
 	return result
 }
@@ -1558,7 +1558,7 @@ func UDN_Iterate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	// This is our final input list, as an array, it always works and gets input to pass into the first function
 	input_array := GetResult(input, type_array).([]interface{})
 
-	UdnLog(udn_schema, "Iterate: [%s]  Input: %v\n\n", udn_start.Id, input_array)
+	UdnLog(udn_schema, "Iterate: [%s]  Input: %s\n\n", udn_start.Id, SnippetData(input_array, 240))
 
 	// Our result will be a list, of the result of each of our iterations, with a UdnResult per element, so that we can Transform data, as a pipeline
 	result := UdnResult{}
