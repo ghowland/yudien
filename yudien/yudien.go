@@ -153,6 +153,10 @@ func InitUdn() {
 
 		"__login": UDN_Login, // Login through LDAP
 
+		"__split": UDN_StringSplit, // Split a string
+		"__lower": UDN_StringLower, // Lower case a string
+		"__upper": UDN_StringUpper, // Upper case a string
+
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
 		//"__ddd_get": UDN_DddGet,					// DDD Get.current.{}

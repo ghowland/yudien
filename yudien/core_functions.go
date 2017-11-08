@@ -940,7 +940,7 @@ func UDN_StringClear(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 }
 
 func UDN_StringConcat(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLog(udn_schema, "String Concat:\n")
+	UdnLog(udn_schema, "String Concat: %v\n", args)
 
 	output := ""
 
@@ -953,6 +953,48 @@ func UDN_StringConcat(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	// Input is a pass-through
 	result := UdnResult{}
 	result.Result = output
+
+	return result
+}
+
+func UDN_StringSplit(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "String Concat: %v\n", args)
+
+	input_str := GetResult(input, type_string).(string)
+
+	separator := GetResult(args[0], type_string).(string)
+
+	//max_split := int64(0)
+	//if len(args) > 1 {
+	//	max_split = GetResult(args[1], type_int).(int64)
+	//}
+
+
+	// Input is a pass-through
+	result := UdnResult{}
+	result.Result = strings.Split(input_str, separator)
+
+	return result
+}
+
+func UDN_StringLower(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "String Lower: %v\n", args)
+
+	arg_0 := GetResult(args[0], type_string).(string)
+
+	result := UdnResult{}
+	result.Result = strings.ToLower(arg_0)
+
+	return result
+}
+
+func UDN_StringUpper(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "String Upper: %v\n", args)
+
+	arg_0 := GetResult(args[0], type_string).(string)
+
+	result := UdnResult{}
+	result.Result = strings.ToUpper(arg_0)
 
 	return result
 }
