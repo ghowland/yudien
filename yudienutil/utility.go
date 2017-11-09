@@ -129,7 +129,14 @@ func GetResult(input interface{}, type_value int) interface{} {
 			}
 
 			// If this is already an array, return it as-is
-			if strings.HasPrefix(type_str, "[]") {
+			if strings.HasPrefix(type_str, "[]string") {
+				concat := ""
+				for _, arr_value := range input.([]string) {
+					concat += arr_value
+				}
+				return concat
+
+			} else if strings.HasPrefix(type_str, "[]") {
 				fmt.Printf("GetResult: Will attempt to coerce to string from []: %s\n", SnippetData(input, 60))
 				concat := ""
 				all_strings := true
