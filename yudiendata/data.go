@@ -131,6 +131,10 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 }
 
 func DatamanSet(collection_name string, record map[string]interface{}) map[string]interface{} {
+	// Duplicate this map, because we are messing with a live map, that we dont expect to change in this function...
+	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
+	record = MapCopy(record)
+
 	// Remove the _id field, if it is nil.  This means it should be new/insert
 	if record["_id"] == nil || record["_id"] == "<nil>" || record["_id"] == "\u003cnil\u003e" || record["_id"] == "" {
 		fmt.Printf("DatamanSet: Removing _id key: %s\n", record["_id"])
@@ -138,10 +142,6 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	} else {
 		fmt.Printf("DatamanSet: Not Removing _id: %s\n", record["_id"])
 	}
-
-	// Duplicate this map, because we are messing with a live map, that we dont expect to change in this function...
-	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
-	record = MapCopy(record)
 
 	// Fix data manually, for now
 	for k, v := range record {

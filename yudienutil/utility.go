@@ -53,7 +53,7 @@ func GetResult(input interface{}, type_value int) interface{} {
 			result, err := strconv.ParseInt(input.(string), 10, 64)
 			if err != nil {
 				fmt.Printf("\nGetResult: int: ERROR: %v (%T): %s\n\n", input, input, err)
-				return nil
+				return 0
 			}
 			return result
 		case int:
@@ -82,7 +82,7 @@ func GetResult(input interface{}, type_value int) interface{} {
 			return int(input.(float32))
 		default:
 			fmt.Printf("\nGetResult: int: default: %v (%T)\n\n", input, input)
-			return nil
+			return 0
 		}
 	case type_float:
 		switch input.(type) {
