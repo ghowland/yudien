@@ -5,15 +5,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"strconv"
+	"strings"
+
 	. "github.com/ghowland/yudien/yudienutil"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
-	"io/ioutil"
-	"log"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -37,8 +38,6 @@ const (
 )
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
-
-var PgConnect string
 
 func GetSelectedDb(db_web *sql.DB, db *sql.DB, db_id int64) *sql.DB {
 	// Assume we are using the non-web DB
@@ -271,11 +270,11 @@ func SanitizeSQL(text string) string {
 	return text
 }
 
-func InitDataman() {
+func InitDataman(pgconnect string) {
 	config := storagenode.DatasourceInstanceConfig{
 		StorageNodeType: "postgres",
 		StorageConfig: map[string]interface{}{
-			"pg_string": PgConnect,
+			"pg_string": pgconnect,
 		},
 	}
 
@@ -297,12 +296,4 @@ func InitDataman() {
 	} else {
 		panic(err)
 	}
-}
-
-func init() {
-	PgConnect = ReadPathData("data/opsdb.connect")
-
-	// Initialize Dataman
-	InitDataman()
-
 }
