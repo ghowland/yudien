@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"strings"
+
 	. "github.com/ghowland/yudien/yudiencore"
 	. "github.com/ghowland/yudien/yudiendata"
 	. "github.com/ghowland/yudien/yudienutil"
 	"github.com/segmentio/ksuid"
-	"io/ioutil"
-	"log"
-	"strings"
 )
 
 const (
@@ -72,6 +73,30 @@ type UdnExecutionGroup struct {
 type UdnFunc func(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult
 
 var UdnFunctions = map[string]UdnFunc{}
+
+type LdapConfig struct {
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	LoginDN     string `json:"login_dn"`
+	Password    string `json:"password"`
+	UserSearch  string `json:"user_search"`
+	GroupSearch string `json:"group_search"`
+}
+
+type OpsdbConfig struct {
+	ConnectOptions string `json:"connect_opts"`
+}
+
+var Opsdb *OpsdbConfig
+var Ldap *LdapConfig
+
+func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
+	fmt.Printf("Configuring Yudien\n")
+	Ldap = ldap
+	Opsdb = opsdb
+
+	InitDataman(Opsdb.ConnectOptions)
+}
 
 func InitUdn() {
 	Debug_Udn_Api = true
@@ -153,10 +178,10 @@ func InitUdn() {
 
 		"__login": UDN_Login, // Login through LDAP
 
-		"__split": UDN_StringSplit, // Split a string
-		"__lower": UDN_StringLower, // Lower case a string
-		"__upper": UDN_StringUpper, // Upper case a string
-		"__get_index": UDN_GetIndex, // Get data from an index
+		"__split":     UDN_StringSplit, // Split a string
+		"__lower":     UDN_StringLower, // Lower case a string
+		"__upper":     UDN_StringUpper, // Upper case a string
+		"__get_index": UDN_GetIndex,    // Get data from an index
 
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
@@ -207,10 +232,6 @@ func InitUdn() {
 
 func init() {
 	fmt.Printf("Initializing Yudien\n")
-
-	PgConnect = ReadPathData("data/opsdb.connect")
-
-	// Initialize UDN
 	InitUdn()
 }
 

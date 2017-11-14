@@ -15,6 +15,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/ghowland/ddd"
+  packages = ["ddd"]
+  revision = "2eafe38a30c2f610f83d8e8f47f512f48c46547b"
+
+[[projects]]
+  branch = "master"
   name = "github.com/jacksontj/dataman"
   packages = ["src/datamantype","src/httputil","src/query","src/router_node/functiondefault","src/router_node/sharding","src/storage_node","src/storage_node/datasource","src/storage_node/datasource/pgstore","src/storage_node/metadata","src/storage_node/metadata/filter"]
   revision = "de2b7a0179d3b93d6d01191e80fed6ec531683a5"
@@ -74,6 +80,18 @@
   revision = "ebfc5b4631820b793c9010c87fd8fef0f39eb082"
 
 [[projects]]
+  name = "gopkg.in/asn1-ber.v1"
+  packages = ["."]
+  revision = "379148ca0225df7a432012b8df0355c2a2063ac0"
+  version = "v1.2"
+
+[[projects]]
+  name = "gopkg.in/ldap.v2"
+  packages = ["."]
+  revision = "8168ee085ee43257585e50c6441aadf54ecb2c9f"
+  version = "v2.5.0"
+
+[[projects]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -82,6 +100,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "728fdf17933ba4e0604bbfc69fb1e2239adee961217b5ef3c9fb851bee6049fd"
+  inputs-digest = "b3e15ee4330793add3675ad5bf7f78a84d64fc33ac14c8bbe9f0145b9aea89f4"
   solver-name = "gps-cdcl"
   solver-version = 1
