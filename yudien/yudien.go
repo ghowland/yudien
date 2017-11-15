@@ -118,6 +118,8 @@ func InitUdn() {
 		"__end_iterate":  nil,
 		"__get":          UDN_Get,
 		"__set":          UDN_Set,
+		"__get_index": 	  UDN_GetIndex, // Get data using input rather than args (otherwise same as __get)
+		"__set_index": 	  UDN_SetIndex, // Set data like __set but does not the result is passed to output and not stored
 		"__get_first":    UDN_GetFirst, // Takes N strings, which are dotted for udn_data accessing.  The first value that isnt nil is returned.  nil is returned if they all are
 		"__get_temp":     UDN_GetTemp,  // Function stack based temp storage
 		"__set_temp":     UDN_SetTemp,  // Function stack based temp storage
@@ -181,7 +183,6 @@ func InitUdn() {
 		"__split":     UDN_StringSplit, // Split a string
 		"__lower":     UDN_StringLower, // Lower case a string
 		"__upper":     UDN_StringUpper, // Upper case a string
-		"__get_index": UDN_GetIndex,    // Get data from an index
 
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1

@@ -1520,13 +1520,12 @@ func UDN_GetFirst(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnP
 }
 
 func UDN_Get(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLog(udn_schema, "Get: %v\n", SnippetData(args, 80))
+	//UdnLog(udn_schema, "Get: %v\n", SnippetData(args, 80))
 
 	result := UdnResult{}
 	result.Result = MapGet(args, udn_data)
 
-	UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
-	//UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), result.Result)
+	//UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
 
 	return result
 }
@@ -1536,6 +1535,43 @@ func UDN_Set(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, 
 
 	result := UdnResult{}
 	result.Result = MapSet(args, input, udn_data)
+
+	//UdnLog(udn_schema, "Set: %v  Result: %s\n\n", SnippetData(args, 80), SnippetData(result.Result, 80))
+
+	return result
+}
+
+func UDN_GetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	//UdnLog(udn_schema, "Get Index: %v\n", SnippetData(args, 80))
+
+	result := UdnResult{}
+
+	if len(args) > 0 {
+		result.Result = MapGet(args, input)
+	} else {
+		result.Result = input
+	}
+
+	//UdnLog(udn_schema, "Get Index: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
+
+	return result
+}
+
+func UDN_SetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	//UdnLog(udn_schema, "Set: %v   Input: %s\n", SnippetData(args, 80), SnippetData(input, 40))
+
+	result := UdnResult{}
+
+	args_len := len(args)
+
+	if args_len >= 2 {
+		// args[args_len - 1] is the new value to update the input while args[0:args_len - 1] represent the target path
+		result.Result = MapIndexSet(args[0:args_len - 1], args[args_len - 1], input)
+	} else if args_len == 1 { // Return the only argument
+		result.Result = args[0]
+	} else { // Pass through input if no args passed
+		result.Result = input
+	}
 
 	//UdnLog(udn_schema, "Set: %v  Result: %s\n\n", SnippetData(args, 80), SnippetData(result.Result, 80))
 
