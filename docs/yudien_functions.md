@@ -191,7 +191,7 @@ value2
 
 **Go:** UDN_SetIndex
 
-Note: similar to __set, however data is not stored in the gloabl udn_data. Output is directly piped out to result and not stored. Data comes directly from input and is modified and piped out.
+Note: similar to __set, however data is not stored in the global udn_data. Output is directly piped out to result and not stored. Data comes directly from input and is modified and piped out.
 
 **Input:** Any
 
