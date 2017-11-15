@@ -3,49 +3,54 @@
 1. [Data Access](#data_access)
     1. [__get - Get Global Data](#__get)
     2. [__set - Set Global Data](#__set)
-    3. [__get_first - Get First non-nil Data](#__get_first)
-    4. [__get_temp - Get Temp Data](#__get_temp)
-    5. [__set_temp - Set Temp Data](#__set_temp)
+    3. [__get_index - Get data from input](#__get_index)
+    4. [__set_index - Set data to output](#__set_index)
+    5. [__get_first - Get First non-nil Data](#__get_first)
+    6. [__get_temp - Get Temp Data](#__get_temp)
+    7. [__set_temp - Set Temp Data](#__set_temp)
 2. [Database](#database)
     1. [__data_get - Dataman Get](#__data_get)
-    1. [__data_set - Dataman Set](#__data_set)
-    1. [__data_filter - Dataman Filter](#__data_filter)
-    1. [__query - Stored SQL Querying](#__query)
+    2. [__data_set - Dataman Set](#__data_set)
+    3. [__data_filter - Dataman Filter](#__data_filter)
+    4. [__query - Stored SQL Querying](#__query)
 3. [Conditions and Looping](#looping)
     1. [__if - If](#__if)
-    1. [__else_if  - Debug Output](#__else_if)
-    1. [__end_if - Debug Output](#__end_if)
-    1. [__not - Not](#__not)
-    1. [__not_nil - Not Nil](#__not_nil)
-    1. [__iterate - Iterate](#__iterate)
-    1. [__end_iterate - End Iterate](#__end_iterate)
-    1. [compare_equal - Compare Equal](#compare_equal)
-    1. [compare_not_equal - Compare Not Equal](#compare_not_equal)
+    2. [__else_if  - Debug Output](#__else_if)
+    3. [__end_if - Debug Output](#__end_if)
+    4. [__not - Not](#__not)
+    5. [__not_nil - Not Nil](#__not_nil)
+    6. [__iterate - Iterate](#__iterate)
+    7. [__end_iterate - End Iterate](#__end_iterate)
+    8. [compare_equal - Compare Equal](#compare_equal)
+    9. [compare_not_equal - Compare Not Equal](#compare_not_equal)
 4. [Execution Control](#execution)
     1. [__input - Input](#__input)
     2. [__input_get - Input Get](#__input_get)
-    2. [__function - Call Function](#__function)
-    2. [__execute  - Execute UDN](#__execute)
+    3. [__function - Call Function](#__function)
+    4. [__execute  - Execute UDN](#__execute)
 3. [Text](#text)
     1. [__template - String Template from Value](#__template)
-    1. [__template_wrap - TBD](#__template_wrap)
-    1. [__format - Format Strings from Map](#__format)
-    1. [__template_short - String Template from Value](#__template_short)
-    1. [__string_append - String Append](#__string_append)
-    1. [__string_clear - String Clear](#__string_clear)
-    1. [__concat - String Concatenate](#__concat)
-    1. [__json_decode - JSON Decode](#__json_decode)
-    1. [__json_encode - JSON Encode](#__json_encode)
-    1. [__html_encode - HTML Encode](#__html_encode)
+    2. [__template_wrap - TBD](#__template_wrap)
+    3. [__format - Format Strings from Map](#__format)
+    4. [__template_short - String Template from Value](#__template_short)
+    5. [__string_append - String Append](#__string_append)
+    6. [__string_clear - String Clear](#__string_clear)
+    7. [__concat - String Concatenate](#__concat)
+    8. [__upper - String Uppercase](#__upper)
+    9. [__lower - String Lowercase](#__lower)
+    10. [__split - String Split](#__split)
+    11. [__json_decode - JSON Decode](#__json_decode)
+    12. [__json_encode - JSON Encode](#__json_encode)
+    13. [__html_encode - HTML Encode](#__html_encode)
 6. [Maps](#map)
     1. [__map_key_set - Map Key Set](#__map_key_set)
     2. [__map_key_delete - Map Key Delete](#__map_key_delete)
-    2. [__map_copy - Map Copy](#__map_copy)
-    2. [__map_update - Map Update](#__map_update)
+    3. [__map_copy - Map Copy](#__map_copy)
+    4. [__map_update - Map Update](#__map_update)
 7. [Array](#array)
     1. [__array_append - Array Append](#__array_append)
     2. [__array_map_remap - Array Map Remap](#__array_map_remap)
-    2. [__array_divide - Array Divide](#__array_divide)
+    3. [__array_divide - Array Divide](#__array_divide)
 5. [Rendering](#rendering)
     1. [__widget - Render Widget](#__widget)
     2. [__render_data - Render Data Widget](#__render_data)
@@ -136,6 +141,94 @@ __input.Testing123.__set.'temp.testing'.__get.temp.testing
 **Side Effect:** None
 
 **Related Functions:** [__get](#__get)
+
+
+### __get_index ::: Get Input Data <a name="__get_index"></a>
+
+**Go:** UDN_GetIndex
+
+Note: similar to __get, however the global udn_data is not used. Data comes directly from input
+
+**Input:** Any
+
+**Args:**
+
+  0. string :: If quoted, this can contain dots, of each arg will become part of a "dotted string" to access the input data
+  1. string (optional, variadic) :: Any number of args can be provided, all strings
+
+**Output:** Any depending on what is specified
+
+**Example:**
+
+```
+__input.{key1=value1}.__get_index.key1
+```
+
+**Result:**
+
+```
+value1
+```
+
+Alternate Example:
+
+```
+__input.[{key1=value1}, {key2=value2}].__get_index.1.key2
+```
+
+**Result:**
+
+```
+value2
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__set_index](#__set_index)
+
+
+### __set_index ::: Set Input Data <a name="__set_index"></a>
+
+**Go:** UDN_SetIndex
+
+Note: similar to __set, however data is not stored in the gloabl udn_data. Output is directly piped out to result and not stored. Data comes directly from input and is modified and piped out.
+
+**Input:** Any
+
+**Args:**
+
+  0. string :: If quoted, this can contain dots, of each arg will become part of a "dotted string" to access the input data
+  1. string :: The last argument is the value that is set to the specified location in the input string
+
+**Output:** The updated input string with the specified updated value
+
+**Example:**
+
+```
+__input.{key1=value1}.__set_index.key1.value2
+```
+
+**Result:**
+
+```
+{key1: value2}
+```
+
+Alternate Example:
+
+```
+__input.[{key1=value1}, {key2=value2}].__set_index.1.key2.value3
+```
+
+**Result:**
+
+```
+[{key1=value1, key2=value3}]
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__get_index](#__get_index)
 
 
 ### __get_first ::: Get first non-nil Global Data  <a name="__get_first"></a>
@@ -951,7 +1044,94 @@ TODO(g): Not Yet Implemented
 ```
 ```
 
-**Related Functions:**  [__string_clear](#__string_clear), [__string_append](#__string_append)a
+**Related Functions:**  [__string_clear](#__string_clear), [__string_append](#__string_append)
+
+**Side Effect:** None
+
+
+### __upper :: String Uppercase  <a name="__upper"></a>
+
+**Go:** UDN_StringUpper
+
+**Input:** String
+
+**Args:**
+
+  0. string :: string that will be set to uppercase
+
+**Output:** String (upper case)
+
+**Example:**
+
+```
+"__upper.hElLo"
+```
+
+**Returns:**
+
+```
+HELLO
+```
+
+**Related Functions:**  [__lower](#__lower)
+
+**Side Effect:** None
+
+
+### __lower :: String Lowercase  <a name="__lower"></a>
+
+**Go:** UDN_StringLower
+
+**Input:** String
+
+**Args:**
+
+  0. string :: string that will be set to lowercase
+
+**Output:** String (lower case)
+
+**Example:**
+
+```
+"__lower.hElLo"
+```
+
+**Returns:**
+
+```
+hello
+```
+
+**Related Functions:**  [__upper](#__upper)
+
+**Side Effect:** None
+
+
+### __split :: String Split  <a name="__split"></a>
+
+**Go:** UDN_StringSplit
+
+**Input:** String that will be split
+
+**Args:**
+
+  0. string :: string that is used as the separator
+
+**Output:** List (of strings)
+
+**Example:**
+
+```
+"__input.'hello.world.how.are.you'.__split.'.'"
+```
+
+**Returns:**
+
+```
+[hello, world, how, are, you]
+```
+
+**Related Functions:**  [__concat](#__concat), [__string_append](#__string_append)
 
 **Side Effect:** None
 
