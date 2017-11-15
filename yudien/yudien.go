@@ -284,12 +284,14 @@ func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data
 			}
 		}
 
-		// Remove the latest function stack, that we just put on
-		udn_data["__function_stack"] = udn_data["__function_stack"].([]map[string]interface{})[0:len(udn_data["__function_stack"].([]map[string]interface{}))]
+		// Remove the udn_data["__temp_UUID"] data, so it doesn't just pollute the udn_data space
+		if udn_data["__temp"] != nil {
+			delete(udn_data["__temp"].(map[string]interface{}), new_function_stack["uuid"].(string))
+		}
 
-		//TODO(g): Remove the udn_data["__temp_UUID"] data, so it doesnt just polluate up the udn_data space?  Once we have returned, we dont need it anymore...
-		//CleanUdnTempSpace(new_function_stack["uuid"])
-		//
+		// Remove the latest function stack, that we just put on
+		udn_data["__function_stack"] = udn_data["__function_stack"].([]map[string]interface{})[0:len(udn_data["__function_stack"].([]map[string]interface{}))-1]
+
 	} else {
 		fmt.Print("UDN Execution Group: None\n\n")
 	}
