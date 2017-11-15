@@ -103,13 +103,27 @@ func GetChildResult(parent interface{}, child interface{}) DynamicResult {
 
 	result := DynamicResult{}
 
+	// Check if the parent is an array or a map
 	if strings.HasPrefix(type_str, "[]") {
-		// Array access
-		parent_array := parent.([]interface{})
+		// Array access - check what type of array the parent is
+		switch parent.(type) {
+		case []string:
+			parent_array := parent.([]string)
+			index := GetResult(child, type_int).(int64)
+			result.Result = parent_array[index]
+		case []interface{}:
+			parent_array := parent.([]interface{})
+			index := GetResult(child, type_int).(int64)
+			result.Result = parent_array[index]
+		case []map[string]interface{}:
+			parent_array := parent.([]map[string]interface{})
+			index := GetResult(child, type_int).(int64)
+			result.Result = parent_array[index]
+		default:
+			// Array type not recognized - return parent for now
+			result.Result = parent
+		}
 
-		index := GetResult(child, type_int).(int64)
-
-		result.Result = parent_array[index]
 		result.Type = type_array
 
 		return result
@@ -169,13 +183,26 @@ func SetChildResult(parent interface{}, child interface{}, value interface{}) {
 	type_str := fmt.Sprintf("%T", parent)
 	//fmt.Printf("\n\nSetChildResult: %s: %v: %v\n\n", type_str, child, SnippetData(parent, 300))
 
+	// Check if the parent is an array or a map
 	if strings.HasPrefix(type_str, "[]") {
-		// Array access
-		parent_array := parent.([]interface{})
+		// Array access - check what type of array the parent is
+		switch parent.(type) {
+		case []string:
+			parent_array := parent.([]string)
+			index := GetResult(child, type_int).(int64)
+			parent_array[index] = value.(string)
+		case []interface{}:
+			parent_array := parent.([]interface{})
+			index := GetResult(child, type_int).(int64)
+			parent_array[index] = value
+		case []map[string]interface{}:
+			parent_array := parent.([]map[string]interface{})
+			index := GetResult(child, type_int).(int64)
+			parent_array[index] = value.(map[string]interface{})
+		default:
+			// type is not recognized - do nothing for now
+		}
 
-		index := GetResult(child, type_int).(int64)
-
-		parent_array[index] = value
 	} else {
 		child_str := GetResult(child, type_string).(string)
 

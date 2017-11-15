@@ -1304,38 +1304,6 @@ func UDN_JsonEncode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	return result
 }
 
-func UDN_GetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLog(udn_schema, "Get Index: %v\n", args)
-
-	result := UdnResult{}
-
-	index := GetResult(args[0], type_string).(string)
-
-	actual_input := input
-	if len(args) > 1 {
-		actual_input = args[1]
-	}
-
-	switch actual_input.(type) {
-	case []string:
-		index_int := GetResult(index, type_int).(int64)
-		result.Result = actual_input.([]string)[index_int]
-	case []interface{}:
-		index_int := GetResult(index, type_int).(int64)
-		result.Result = actual_input.([]interface{})[index_int]
-	case []map[string]interface{}:
-		index_int := GetResult(index, type_int).(int64)
-		result.Result = actual_input.([]map[string]interface{})[index_int]
-	case map[string]interface{}:
-		result.Result = actual_input.(map[string]interface{})[index]
-	default:
-		result.Result = actual_input
-	}
-
-
-	return result
-}
-
 func UDN_DataGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "Data Get: %v\n", args)
 
