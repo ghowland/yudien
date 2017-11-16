@@ -1096,6 +1096,8 @@ func UDN_ArraySlice(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 
 	// Find len of input array
 	switch input.(type){
+	case []string:
+		input_len = len(input.([]string))
 	case []interface{}:
 		input_len = len(input.([]interface{}))
 	case []map[string]interface{}:
@@ -1163,6 +1165,8 @@ func UDN_ArraySlice(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 
 	// Finally, return the slice of array
 	switch input.(type){
+	case []string:
+		result.Result = input.([]string)[start_index:end_index]
 	case []interface{}:
 		result.Result = input.([]interface{})[start_index:end_index]
 	case []map[string]interface{}:
