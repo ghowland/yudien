@@ -49,8 +49,9 @@
     4. [__map_update - Map Update](#__map_update)
 7. [Array](#array)
     1. [__array_append - Array Append](#__array_append)
-    2. [__array_map_remap - Array Map Remap](#__array_map_remap)
-    3. [__array_divide - Array Divide](#__array_divide)
+    2. [__array_slice - Array Slice](#__array_slice)
+    3. [__array_map_remap - Array Map Remap](#__array_map_remap)
+    4. [__array_divide - Array Divide](#__array_divide)
 5. [Rendering](#rendering)
     1. [__widget - Render Widget](#__widget)
     2. [__render_data - Render Data Widget](#__render_data)
@@ -1368,6 +1369,62 @@ __input.[1,2,3].__array_append.4
 
 ```
 [1,2,3,4]
+```
+
+**Side Effect:** None
+
+
+### __array_slice ::: Array Slice <a name="__array_slice"></a>
+
+Splits the array based on the start and end index (args)
+
+**Go:** UDN_ArraySlice
+
+**Input:** Array
+
+**Args:**
+
+  0. Int :: Start index (can be negative)
+  1. Int :: End index (can be positive) - if end index not provided then end index is assumed to be end of array
+  
+Note: for positive indices the end index is non-inclusive. For negative indices the start index is non inclusive. Also, for positive indices the first element of the array is at 0. For negative indices the last element is at -1.
+
+**Output:** Array Slice based on start & end index
+
+**Example:**
+
+```
+__input.[1,2,3,4,5,6].__array_slice.0.6
+```
+
+**Result:**
+
+```
+[1,2,3,4,5,6]
+```
+
+**Example 2:**
+
+```
+__input.[1,2,3,4,5,6].__array_slice.-2.-1
+```
+
+**Result:**
+
+```
+[6]
+```
+
+**Example 3:**
+
+```
+__input.[1,2,3,4,5,6].__array_slice.-7.-1
+```
+
+**Result:**
+
+```
+[1,2,3,4,5,6]
 ```
 
 **Side Effect:** None
