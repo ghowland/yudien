@@ -103,13 +103,27 @@ func GetChildResult(parent interface{}, child interface{}) DynamicResult {
 
 	result := DynamicResult{}
 
+	// Check if the parent is an array or a map
 	if strings.HasPrefix(type_str, "[]") {
-		// Array access
-		parent_array := parent.([]interface{})
+		// Array access - check what type of array the parent is
+		switch parent.(type) {
+		case []string:
+			parent_array := parent.([]string)
+			index := GetResult(child, type_int).(int64)
+			result.Result = parent_array[index]
+		case []interface{}:
+			parent_array := parent.([]interface{})
+			index := GetResult(child, type_int).(int64)
+			result.Result = parent_array[index]
+		case []map[string]interface{}:
+			parent_array := parent.([]map[string]interface{})
+			index := GetResult(child, type_int).(int64)
+			result.Result = parent_array[index]
+		default:
+			// Array type not recognized - return parent for now
+			result.Result = parent
+		}
 
-		index := GetResult(child, type_int).(int64)
-
-		result.Result = parent_array[index]
 		result.Type = type_array
 
 		return result
@@ -127,7 +141,7 @@ func GetChildResult(parent interface{}, child interface{}) DynamicResult {
 	}
 }
 
-func _MapGet(args []interface{}, udn_data map[string]interface{}) interface{} {
+func _MapGet(args []interface{}, udn_data interface{}) interface{} {
 	// This is what we will use to Set the data into the last map[string]
 	last_argument := GetResult(args[len(args)-1], type_string).(string)
 
@@ -169,13 +183,26 @@ func SetChildResult(parent interface{}, child interface{}, value interface{}) {
 	type_str := fmt.Sprintf("%T", parent)
 	//fmt.Printf("\n\nSetChildResult: %s: %v: %v\n\n", type_str, child, SnippetData(parent, 300))
 
+	// Check if the parent is an array or a map
 	if strings.HasPrefix(type_str, "[]") {
-		// Array access
-		parent_array := parent.([]interface{})
+		// Array access - check what type of array the parent is
+		switch parent.(type) {
+		case []string:
+			parent_array := parent.([]string)
+			index := GetResult(child, type_int).(int64)
+			parent_array[index] = value.(string)
+		case []interface{}:
+			parent_array := parent.([]interface{})
+			index := GetResult(child, type_int).(int64)
+			parent_array[index] = value
+		case []map[string]interface{}:
+			parent_array := parent.([]map[string]interface{})
+			index := GetResult(child, type_int).(int64)
+			parent_array[index] = value.(map[string]interface{})
+		default:
+			// type is not recognized - do nothing for now
+		}
 
-		index := GetResult(child, type_int).(int64)
-
-		parent_array[index] = value
 	} else {
 		child_str := GetResult(child, type_string).(string)
 
@@ -187,7 +214,7 @@ func SetChildResult(parent interface{}, child interface{}, value interface{}) {
 	}
 }
 
-func _MapSet(args []interface{}, input interface{}, udn_data map[string]interface{}) {
+func _MapSet(args []interface{}, input interface{}, udn_data interface{}) {
 
 	// This is what we will use to Set the data into the last map[string]
 	last_argument := GetResult(args[len(args)-1], type_string).(string)
@@ -219,7 +246,7 @@ func _MapSet(args []interface{}, input interface{}, udn_data map[string]interfac
 	SetChildResult(cur_udn_data, last_argument, input)
 }
 
-func MapGet(args []interface{}, udn_data map[string]interface{}) interface{} {
+func MapGet(args []interface{}, udn_data interface{}) interface{} {
 	// If we were given a single dotted string, expand it into our arg array
 	args = UseArgArrayOrFirstArgString(args)
 
@@ -236,12 +263,12 @@ func MapGet(args []interface{}, udn_data map[string]interface{}) interface{} {
 	return result
 }
 
-func MapSet(args []interface{}, input interface{}, udn_data map[string]interface{}) interface{} {
+func MapSet(args []interface{}, input interface{}, udn_data interface{}) interface{} {
 	// Determine what our args should be, based on whether the data is available for getting already, allow explicit to override depth-search
 	first_args := UseArgArrayOrFirstArgString(args)
 	result := _MapGet(first_args, udn_data)
 	if result == nil {
-		// If we didnt find this value in it's explicit (dotted) string location, then expand the dots
+		// If we didn't find this value in it's explicit (dotted) string location, then expand the dots
 		args = GetArgsFromArgsOrStrings(args)
 	} else {
 		args = first_args
@@ -251,6 +278,25 @@ func MapSet(args []interface{}, input interface{}, udn_data map[string]interface
 
 	// Input is a pass-through
 	return input
+}
+
+func MapIndexSet(args []interface{}, input interface{}, udn_data interface{}) interface{} {
+	// Same as func MapSet but udn_data is returned rather than input
+
+	// Determine what our args should be, based on whether the data is available for getting already, allow explicit to override depth-search
+	first_args := UseArgArrayOrFirstArgString(args)
+	result := _MapGet(first_args, udn_data)
+	if result == nil {
+		// If we didn't find this value in it's explicit (dotted) string location, then expand the dots
+		args = GetArgsFromArgsOrStrings(args)
+	} else {
+		args = first_args
+	}
+
+	_MapSet(args, input, udn_data)
+
+	// Return the updated udn_data
+	return udn_data
 }
 
 // Parse a UDN string and return a hierarchy under UdnPart

@@ -118,6 +118,8 @@ func InitUdn() {
 		"__end_iterate":  nil,
 		"__get":          UDN_Get,
 		"__set":          UDN_Set,
+		"__get_index": 	  UDN_GetIndex, // Get data using input rather than args (otherwise same as __get)
+		"__set_index": 	  UDN_SetIndex, // Set data like __set but does not the result is passed to output and not stored
 		"__get_first":    UDN_GetFirst, // Takes N strings, which are dotted for udn_data accessing.  The first value that isnt nil is returned.  nil is returned if they all are
 		"__get_temp":     UDN_GetTemp,  // Function stack based temp storage
 		"__set_temp":     UDN_SetTemp,  // Function stack based temp storage
@@ -154,6 +156,7 @@ func InitUdn() {
 
 		"__array_append": UDN_ArrayAppend, // Appends the input into the specified target location (args)
 
+		"__array_slice": UDN_ArraySlice, // Slices an input array based on the start and end index
 		"__array_divide":    UDN_ArrayDivide,   //TODO(g): Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
 		"__array_map_remap": UDN_ArrayMapRemap, //TODO(g): Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
 
@@ -181,7 +184,6 @@ func InitUdn() {
 		"__split":     UDN_StringSplit, // Split a string
 		"__lower":     UDN_StringLower, // Lower case a string
 		"__upper":     UDN_StringUpper, // Upper case a string
-		"__get_index": UDN_GetIndex,    // Get data from an index
 
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
@@ -284,12 +286,14 @@ func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data
 			}
 		}
 
-		// Remove the latest function stack, that we just put on
-		udn_data["__function_stack"] = udn_data["__function_stack"].([]map[string]interface{})[0:len(udn_data["__function_stack"].([]map[string]interface{}))]
+		// Remove the udn_data["__temp_UUID"] data, so it doesn't just pollute the udn_data space
+		if udn_data["__temp"] != nil {
+			delete(udn_data["__temp"].(map[string]interface{}), new_function_stack["uuid"].(string))
+		}
 
-		//TODO(g): Remove the udn_data["__temp_UUID"] data, so it doesnt just polluate up the udn_data space?  Once we have returned, we dont need it anymore...
-		//CleanUdnTempSpace(new_function_stack["uuid"])
-		//
+		// Remove the latest function stack, that we just put on
+		udn_data["__function_stack"] = udn_data["__function_stack"].([]map[string]interface{})[0:len(udn_data["__function_stack"].([]map[string]interface{}))-1]
+
 	} else {
 		fmt.Print("UDN Execution Group: None\n\n")
 	}

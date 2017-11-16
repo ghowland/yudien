@@ -1084,6 +1084,100 @@ func UDN_Execute(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
+func UDN_ArraySlice(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// UdnLog(udn_schema, "Slice: %v\n", SnippetData(args, 80))
+
+	result := UdnResult{}
+
+	start_index := 0
+	end_index := 0
+	args_len := len(args)
+	input_len := 0
+
+	// Find len of input array
+	switch input.(type){
+	case []string:
+		input_len = len(input.([]string))
+	case []interface{}:
+		input_len = len(input.([]interface{}))
+	case []map[string]interface{}:
+		input_len = len(input.([]map[string]interface{}))
+	default: // Cannot recognize input array type. Return input
+		result.Result = input
+		return result
+	}
+
+	// Check that start and end indices are present & given in int format
+	if args_len == 0 { // No index given, return input
+		result.Result = input
+		return result
+	} else if args_len == 1 { // Only start index given. Assume end_index is at end of array
+		start_int, err := strconv.Atoi(args[0].(string))
+
+		if err == nil{
+			start_index = start_int
+			end_index = input_len
+		} else {
+			result.Result = input
+			return result
+		}
+	} else { // Both start and end indices are given
+		start_int, err1 := strconv.Atoi(args[0].(string))
+		end_int, err2 := strconv.Atoi(args[1].(string))
+
+		if err1 == nil && err2 == nil {
+			start_index = start_int
+			end_index = end_int
+		} else {
+			result.Result = input
+			return result
+		}
+	}
+
+	// Make sure that the start & end index are correct - Order of these error checks matter
+	// Implement negative indexing (not default in Go)
+	if start_index < 0 {
+		start_index = input_len + start_index + 1 // -1 is the last element (start at -1 and not -0)
+	}
+	if end_index < 0 {
+		end_index = input_len + end_index + 1
+	}
+
+	// Check for out of bounds - force the index to be in range
+	if start_index > input_len {
+		start_index = input_len
+	}
+	if start_index < 0 { // If start_index is still < 0 after negative adjustment, then it is out of bounds
+		start_index = 0
+	}
+	if end_index > input_len {
+		end_index = input_len
+	}
+	if end_index < 0 {
+		end_index = 0
+	}
+
+	// Check that end index is not before start index (index error)
+	if end_index < start_index { // Return empty array
+		start_index = 0
+		end_index = 0
+	}
+
+	// Finally, return the slice of array
+	switch input.(type){
+	case []string:
+		result.Result = input.([]string)[start_index:end_index]
+	case []interface{}:
+		result.Result = input.([]interface{})[start_index:end_index]
+	case []map[string]interface{}:
+		result.Result = input.([]map[string]interface{})[start_index:end_index]
+	default: // Cannot recognize input array type. Return input
+		result.Result = input
+	}
+
+	return result
+}
+
 func UDN_ArrayAppend(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//UdnLog(udn_schema, "Array Append: %v\n", args)
 
@@ -1304,38 +1398,6 @@ func UDN_JsonEncode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	return result
 }
 
-func UDN_GetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLog(udn_schema, "Get Index: %v\n", args)
-
-	result := UdnResult{}
-
-	index := GetResult(args[0], type_string).(string)
-
-	actual_input := input
-	if len(args) > 1 {
-		actual_input = args[1]
-	}
-
-	switch actual_input.(type) {
-	case []string:
-		index_int := GetResult(index, type_int).(int64)
-		result.Result = actual_input.([]string)[index_int]
-	case []interface{}:
-		index_int := GetResult(index, type_int).(int64)
-		result.Result = actual_input.([]interface{})[index_int]
-	case []map[string]interface{}:
-		index_int := GetResult(index, type_int).(int64)
-		result.Result = actual_input.([]map[string]interface{})[index_int]
-	case map[string]interface{}:
-		result.Result = actual_input.(map[string]interface{})[index]
-	default:
-		result.Result = actual_input
-	}
-
-
-	return result
-}
-
 func UDN_DataGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "Data Get: %v\n", args)
 
@@ -1552,13 +1614,12 @@ func UDN_GetFirst(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnP
 }
 
 func UDN_Get(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLog(udn_schema, "Get: %v\n", SnippetData(args, 80))
+	//UdnLog(udn_schema, "Get: %v\n", SnippetData(args, 80))
 
 	result := UdnResult{}
 	result.Result = MapGet(args, udn_data)
 
-	UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
-	//UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), result.Result)
+	//UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
 
 	return result
 }
@@ -1568,6 +1629,43 @@ func UDN_Set(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, 
 
 	result := UdnResult{}
 	result.Result = MapSet(args, input, udn_data)
+
+	//UdnLog(udn_schema, "Set: %v  Result: %s\n\n", SnippetData(args, 80), SnippetData(result.Result, 80))
+
+	return result
+}
+
+func UDN_GetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	//UdnLog(udn_schema, "Get Index: %v\n", SnippetData(args, 80))
+
+	result := UdnResult{}
+
+	if len(args) > 0 {
+		result.Result = MapGet(args, input)
+	} else {
+		result.Result = input
+	}
+
+	//UdnLog(udn_schema, "Get Index: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
+
+	return result
+}
+
+func UDN_SetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	//UdnLog(udn_schema, "Set: %v   Input: %s\n", SnippetData(args, 80), SnippetData(input, 40))
+
+	result := UdnResult{}
+
+	args_len := len(args)
+
+	if args_len >= 2 {
+		// args[args_len - 1] is the new value to update the input while args[0:args_len - 1] represent the target path
+		result.Result = MapIndexSet(args[0:args_len - 1], args[args_len - 1], input)
+	} else if args_len == 1 { // Return the only argument
+		result.Result = args[0]
+	} else { // Pass through input if no args passed
+		result.Result = input
+	}
 
 	//UdnLog(udn_schema, "Set: %v  Result: %s\n\n", SnippetData(args, 80), SnippetData(result.Result, 80))
 
