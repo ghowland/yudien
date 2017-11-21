@@ -1384,8 +1384,8 @@ Splits the array based on the start and end index (args)
 
 **Args:**
 
-  0. Int :: Start index (can be negative)
-  1. Int :: End index (can be positive) - if end index not provided then end index is assumed to be end of array
+  0. Int :: Start index (can be positive or negative)
+  1. Int :: End index (can be positive or negative) - if end index not provided then end index is assumed to be end of array
   
 Note: for positive indices the end index is non-inclusive. For negative indices the start index is non inclusive. Also, for positive indices the first element of the array is at 0. For negative indices the last element is at -1.
 
