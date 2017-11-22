@@ -167,7 +167,8 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 				panic(err)
 			}
 		default:
-			record_id = GetResult(record["_id"], type_int).(int64)
+			// record_id needs to be int64 as default database type is int64
+			record_id = int64(GetResult(record["_id"], type_int).(int))
 		}
 
 		options := make(map[string]interface{})

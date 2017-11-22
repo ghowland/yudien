@@ -136,7 +136,15 @@ func GetResult(input interface{}, type_value int) interface{} {
 				}
 				return concat
 
-			} else if strings.HasPrefix(type_str, "[]") {
+			} else if type_str == "[]map[string]interface {}"{
+				// In this case, we are assuming that the input is a JSON representation. Thus, we will translate it
+				// to a JSON string and then return that JSON string
+				fmt.Printf("GetResult: Given []map[string]interface{}:  Translate it to a JSON string. \n")
+
+				json_output, _ := json.MarshalIndent(input, "", "  ")
+				return string(json_output)
+
+			} else if strings.HasPrefix(type_str, "[]") { // []interface{}
 				fmt.Printf("GetResult: Will attempt to coerce to string from []: %s\n", SnippetData(input, 60))
 				concat := ""
 				all_strings := true
