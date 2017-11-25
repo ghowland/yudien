@@ -1373,7 +1373,7 @@ func UDN_RenderDataWidgetInstance(db *sql.DB, udn_schema map[string]interface{},
 }
 
 func UDN_JsonDecode(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLog(udn_schema, "JSON Decode: %v\n", args)
+	UdnLog(udn_schema, "JSON Decode: %v   Input: %v\n", args, SnippetData(input, 300))
 
 	// Use the argument instead of input, if it exists
 	if len(args) != 0 {
@@ -1626,7 +1626,7 @@ func UDN_TestDifferent(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 }
 
 func UDN_GetFirst(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLog(udn_schema, "Get First: %v\n", SnippetData(args, 300))
+	UdnLog(udn_schema, "Get First: %s\n", SnippetData(args, 300))
 
 	result := UdnResult{}
 
@@ -1657,7 +1657,7 @@ func UDN_GetFirst(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnP
 
 			// If this wasnt nil, quit
 			if result.Result != nil {
-				UdnLog(udn_schema, "Get First: %v   Found: %v\n", SnippetData(args, 300), arg_str)
+				UdnLog(udn_schema, "Get First: %s   Found: %s\n", SnippetData(args, 300), arg_str)
 			}
 		}
 
@@ -1668,7 +1668,7 @@ func UDN_GetFirst(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnP
 	}
 
 	//UdnLog(udn_schema, "Get: %v   Result: %v\n", SnippetData(args, 80), SnippetData(result.Result, 80))
-	UdnLog(udn_schema, "Get First: %v   Result: %v\n", SnippetData(args, 300), result.Result)
+	UdnLog(udn_schema, "Get First: %s   Result: %v\n", SnippetData(args, 300), result.Result)
 
 	return result
 }

@@ -422,7 +422,7 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 
 		UdnLog(udn_schema, "\n------- END EXECUTION: -------\n\n")
 
-		UdnLog(udn_schema, "------- RESULT: %v\n\n", SnippetData(udn_command_value, 300))
+		UdnLog(udn_schema, "------- RESULT: %v\n\n", SnippetData(udn_command_value, 1600))
 	}
 
 	return udn_command_value

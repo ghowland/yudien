@@ -57,45 +57,45 @@ func GetResult(input interface{}, type_value int) interface{} {
 			}
 			return result
 		case int:
-			return input
+			return int64(input.(int))
 		case int8:
-			return input
+			return int64(input.(int8))
 		case int16:
-			return input
+			return int64(input.(int16))
 		case int32:
-			return input
+			return int64(input.(int32))
 		case int64:
 			return input
 		case uint:
-			return input
+			return int64(input.(uint))
 		case uint8:
-			return input
+			return int64(input.(uint8))
 		case uint16:
-			return input
+			return int64(input.(uint16))
 		case uint32:
-			return input
+			return int64(input.(uint32))
 		case uint64:
-			return input
+			return int64(input.(uint64))
 		case float64:
-			return int(input.(float64))
+			return int64(input.(float64))
 		case float32:
-			return int(input.(float32))
+			return int64(input.(float32))
 		default:
 			fmt.Printf("\nGetResult: int: default: %v (%T)\n\n", input, input)
-			return 0
+			return int64(0)
 		}
 	case type_float:
 		switch input.(type) {
 		case string:
 			result, err := strconv.ParseFloat(input.(string), 64)
 			if err != nil {
-				return nil
+				return float64(0)
 			}
 			return result
 		case float64:
 			return input
 		case float32:
-			return input
+			return float64(input.(float32))
 		case int:
 			return float64(input.(int))
 		case int8:
@@ -117,7 +117,7 @@ func GetResult(input interface{}, type_value int) interface{} {
 		case uint64:
 			return float64(input.(uint64))
 		default:
-			return nil
+			return float64(0)
 		}
 	case type_string:
 		switch input.(type) {
