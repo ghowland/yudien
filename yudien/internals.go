@@ -110,15 +110,25 @@ func GetChildResult(parent interface{}, child interface{}) DynamicResult {
 		case []string:
 			parent_array := parent.([]string)
 			index := GetResult(child, type_int).(int64)
-			result.Result = parent_array[index]
+
+			// Do not crash if index is out of bounds
+			if index < int64(len(parent_array)) && index >= 0 {
+				result.Result = parent_array[index]
+			}
 		case []interface{}:
 			parent_array := parent.([]interface{})
 			index := GetResult(child, type_int).(int64)
-			result.Result = parent_array[index]
+
+			if index < int64(len(parent_array)) && index >= 0 {
+				result.Result = parent_array[index]
+			}
 		case []map[string]interface{}:
 			parent_array := parent.([]map[string]interface{})
 			index := GetResult(child, type_int).(int64)
-			result.Result = parent_array[index]
+
+			if index < int64(len(parent_array)) && index >= 0 {
+				result.Result = parent_array[index]
+			}
 		default:
 			// Array type not recognized - return parent for now
 			result.Result = parent
@@ -190,15 +200,22 @@ func SetChildResult(parent interface{}, child interface{}, value interface{}) {
 		case []string:
 			parent_array := parent.([]string)
 			index := GetResult(child, type_int).(int64)
-			parent_array[index] = value.(string)
+			// Do not crash if index is out of bounds
+			if index < int64(len(parent_array)) && index >= 0 {
+				parent_array[index] = value.(string)
+			}
 		case []interface{}:
 			parent_array := parent.([]interface{})
 			index := GetResult(child, type_int).(int64)
-			parent_array[index] = value
+			if index < int64(len(parent_array)) && index >= 0 {
+				parent_array[index] = value
+			}
 		case []map[string]interface{}:
 			parent_array := parent.([]map[string]interface{})
 			index := GetResult(child, type_int).(int64)
-			parent_array[index] = value.(map[string]interface{})
+			if index < int64(len(parent_array)) && index >= 0 {
+				parent_array[index] = value.(map[string]interface{})
+			}
 		default:
 			// type is not recognized - do nothing for now
 		}
