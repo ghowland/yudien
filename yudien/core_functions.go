@@ -627,7 +627,9 @@ func UDN_StringTemplateFromValueShort(db *sql.DB, udn_schema map[string]interfac
 
 	template_str := GetResult(args[0], type_string).(string)
 
-	UdnLog(udn_schema, "Short Template From Value: Template String: %s Template Input: %v\n\n", SnippetData(actual_input, 60), SnippetData(template_str, 60))
+	//UdnLog(udn_schema, "Short Template From Value: Template String: %s Template Input: %v\n\n", SnippetData(actual_input, 60), SnippetData(template_str, 60))
+	UdnLog(udn_schema, "Short Template From Value: Template Input: %s\n\n", JsonDump(actual_input))
+	UdnLog(udn_schema, "Short Template From Value: Incoming Template String: %s\n\n", template_str)
 
 	// Use the actual_input, which may be input or arg_1
 	input_template_map := GetResult(actual_input, type_map).(map[string]interface{})
@@ -636,6 +638,7 @@ func UDN_StringTemplateFromValueShort(db *sql.DB, udn_schema map[string]interfac
 		//fmt.Printf("Key: %v   Value: %v\n", key, value)
 		key_replace := fmt.Sprintf("{{{%s}}}", key)
 		value_str := GetResult(value, type_string).(string)
+		UdnLog(udn_schema, "Short Template From Value: Value String: %s == '%s'\n\n", key, value_str)
 		template_str = strings.Replace(template_str, key_replace, value_str, -1)
 	}
 
@@ -655,9 +658,11 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 	actual_input := input
 	if len(args) >= 2 {
 		actual_input = args[1]
+		UdnLog(udn_schema, "String Template From Value: Template Input: Input from Arg 1: %v\n\n", SnippetData(actual_input, 60))
 	}
 
 	actual_input = GetResult(actual_input, type_map)
+	UdnLog(udn_schema, "String Template From Value: Template Input: Post Conversion Input: %v\n\n", SnippetData(actual_input, 60))
 
 	/*
 		// If this is an array, convert it to a string, so it is a concatenated string, and then can be properly turned into a map.
@@ -773,7 +778,7 @@ func UDN_MapStringFormat(db *sql.DB, udn_schema map[string]interface{}, udn_star
 		offset := count * 2
 
 		set_key := GetResult(args[offset+0], type_string).(string)
-		format_str := GetResult(args[offset+1], type_string_force).(string)
+		format_str := GetResult(args[offset+1], type_string).(string)
 
 		UdnLog(udn_schema, "Format: %s  Format String: %s  Input: %v\n", set_key, SnippetData(format_str, 60), SnippetData(input, 60))
 
@@ -1538,7 +1543,7 @@ func UDN_MapKeySet(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 		offset := count * 2
 
 		set_key := GetResult(args[offset+0], type_string).(string)
-		value_str := GetResult(args[offset+1], type_string_force).(string)
+		value_str := GetResult(args[offset+1], type_string).(string)
 
 		UdnLog(udn_schema, "Map Key Set: %s  Value String: %s  Input: %v\n", set_key, SnippetData(value_str, 60), SnippetData(input, 60))
 
@@ -1572,8 +1577,8 @@ func UDN_MapCopy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 func UDN_CompareEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "Compare: Equal: %v\n", args)
 
-	arg0 := GetResult(args[0], type_string_force).(string)
-	arg1 := GetResult(args[1], type_string_force).(string)
+	arg0 := GetResult(args[0], type_string).(string)
+	arg1 := GetResult(args[1], type_string).(string)
 
 	value := 1
 	if arg0 != arg1 {
@@ -1591,8 +1596,8 @@ func UDN_CompareEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 func UDN_CompareNotEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "Compare: Equal: %v\n", args)
 
-	arg0 := GetResult(args[0], type_string_force).(string)
-	arg1 := GetResult(args[1], type_string_force).(string)
+	arg0 := GetResult(args[0], type_string).(string)
+	arg1 := GetResult(args[1], type_string).(string)
 
 	value := 1
 	if arg0 == arg1 {

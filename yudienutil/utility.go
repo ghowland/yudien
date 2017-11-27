@@ -28,7 +28,6 @@ const (
 	type_int          = iota
 	type_float        = iota
 	type_string       = iota
-	type_string_force = iota // This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
 	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
 	type_map          = iota // map[string]interface{}
 )
@@ -37,6 +36,8 @@ var Debug_Udn bool
 var Debug_Udn_Api bool
 
 func GetResult(input interface{}, type_value int) interface{} {
+	//fmt.Printf("GetResult: %d: %s\n", type_value, SnippetData(input, 60))
+
 	type_str := fmt.Sprintf("%T", input)
 
 	// Unwrap UdnResult, if it is wrapped
@@ -128,6 +129,17 @@ func GetResult(input interface{}, type_value int) interface{} {
 				return ""
 			}
 
+			json, err := JsonDumpIfValid(input)
+			json = strings.TrimSpace(json)
+
+
+			if err == nil {
+				return json
+			} else {
+				return fmt.Sprintf("%v", input)
+			}
+
+			/*
 			// If this is already an array, return it as-is
 			if strings.HasPrefix(type_str, "[]string") {
 				concat := ""
@@ -169,17 +181,7 @@ func GetResult(input interface{}, type_value int) interface{} {
 
 			//NOTE(g): Use type_string_force if you want to coerce this into a string, because this destroys too much data I think.  Testing this as 2 things anyways, easy to fold back into 1 if it doesnt work out.
 			return input
-		}
-	case type_string_force:
-		switch input.(type) {
-		case string:
-			return input
-		default:
-			if input == nil {
-				return ""
-			}
-
-			return fmt.Sprintf("%v", input)
+			*/
 		}
 	case type_map:
 		//fmt.Printf("GetResult: Map: %s\n", type_str)
@@ -477,17 +479,26 @@ func MapCopy(input map[string]interface{}) map[string]interface{} {
 	return new_map
 }
 
-func JsonDump(value interface{}) string {
+func JsonDumpIfValid(value interface{}) (string, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
 	err := encoder.Encode(value)
 	if err != nil {
+		return "", err
+	}
+
+	return buffer.String(), nil
+}
+
+func JsonDump(value interface{}) string {
+	json, err := JsonDumpIfValid(value)
+	if err != nil {
 		panic(err)
 	}
 
-	return buffer.String()
+	return json
 }
 
 func MapListToDict(map_array []map[string]interface{}, key string) map[string]interface{} {

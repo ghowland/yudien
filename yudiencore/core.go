@@ -21,7 +21,6 @@ const (
 	type_int          = iota
 	type_float        = iota
 	type_string       = iota
-	type_string_force = iota // This forces it to a string, even if it will be ugly, will print the type of the non-string data too.  Testing this to see if splitting these into 2 yields better results.
 	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
 	type_map          = iota // map[string]interface{}
 )
