@@ -1084,7 +1084,17 @@ func UDN_Execute(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	result := UdnResult{}
 	//result.Result = ProcessUDN(db, udn_schema, udn_source, udn_target, udn_data)
 
-	result.Result = ProcessSingleUDNTarget(db, udn_schema, udn_target, input, udn_data)
+	// Extract the JSON into a list of list of lists (2), which gives our execution blocks, and UDN pairs (Source/Target)
+	udn_execution_group := UdnExecutionGroup{}
+
+	// Decode the JSON data for the widget data
+	err := json.Unmarshal([]byte(udn_target), &udn_execution_group.Blocks)
+	if err != nil {
+		// Process the UDN as a single string, as it wasnt in the UDN array format
+		result.Result = ProcessSingleUDNTarget(db, udn_schema, udn_target, input, udn_data)
+	} else {
+		result.Result = ProcessSchemaUDNSet(db, udn_schema, udn_target, udn_data)
+	}
 
 	return result
 }
@@ -1978,6 +1988,26 @@ func UDN_NotNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 
 	result := UdnResult{}
 	result.Result = value
+
+	return result
+}
+
+func UDN_DebugGetAllUdnData(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	//TODO(g):SECURITY: This should have a security check, because it is a DEBUG style function, and could give away information the end user should not see, but is needed during processing, and is not exposed without this type of DEBUG function
+
+	debug_udn_data := make(map[string]interface{})
+
+	// Remove keys that arent useful for debugging
+	//TODO(g): Make ignoring these optional, as we may want some of them, or others.  Use a counting system, so higher number shows more, or something.  Lower shows more?  Something.
+	ignore_keys := []string {"base_widget", "__temp", "__function_stack", "user", "cookie", "header", "param"}
+	for k, v := range udn_data {
+		if !IsStringInArray(k, ignore_keys) {
+			debug_udn_data[k] = v
+		}
+	}
+
+	result := UdnResult{}
+	result.Result = debug_udn_data
 
 	return result
 }

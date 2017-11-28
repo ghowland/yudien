@@ -605,3 +605,13 @@ func NewTextTemplateMapItem() TextTemplateMap {
 type TextTemplateMap struct {
 	Map map[string]interface{}
 }
+
+func IsStringInArray(text string, arr []string) bool {
+	for _, v := range arr {
+		if text == v {
+			return true
+		}
+	}
+	return false
+}
+

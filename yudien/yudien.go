@@ -184,6 +184,8 @@ func InitUdn() {
 		"__lower":     UDN_StringLower, // Lower case a string
 		"__upper":     UDN_StringUpper, // Upper case a string
 
+		"__debug_get_all_data": UDN_DebugGetAllUdnData, // Templates the string passed in as arg_0
+
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
 		//"__ddd_get": UDN_DddGet,					// DDD Get.current.{}
@@ -422,6 +424,7 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 		UdnLog(udn_schema, "\n------- END EXECUTION: -------\n\n")
 
 		UdnLog(udn_schema, "------- RESULT: %v\n\n", SnippetData(udn_command_value, 1600))
+		fmt.Printf("------- RESULT: %v\n\n", JsonDump(udn_command_value))
 	}
 
 	return udn_command_value
