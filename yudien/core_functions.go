@@ -1570,6 +1570,8 @@ func UDN_MapKeySet(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 }
 
 func UDN_MapCopy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	//TODO(g): Do a JsonDump and JsonLoad on this instead of duplicating the first depth of keys.  It's fast enough and completely new memory.
+
 	UdnLog(udn_schema, "Map Copy: %v\n", args)
 
 	new_map := make(map[string]interface{})
