@@ -253,7 +253,7 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 		err := json.Unmarshal([]byte(temp_record["data_json"].(string)), &data_record)
 		if err != nil {
-			panic(err)
+			UdnError(udn_schema, "UDN_DddRender: Failed to parse JSON: %s", err)
 		}
 	}
 	//fmt.Printf("DDD Data Record: (%d): %s\n\n", temp_id, JsonDump(data_record))
@@ -711,9 +711,9 @@ func UDN_StringTemplateMultiWrap(db *sql.DB, udn_schema map[string]interface{}, 
 
 	// Ensure our arg count is correct
 	if len(args) < 2 {
-		panic("Wrong number of arguments.  Map Template takes N 2-tuples: set_key, map_data.  The first map_data may be skipped if there is only one set_key, input will be used.")
+		UdnError(udn_schema,"Wrong number of arguments.  Map Template takes N 2-tuples: set_key, map_data.  The first map_data may be skipped if there is only one set_key, input will be used.")
 	} else if len(args) > 3 || len(args)%2 != 1 {
-		panic("Wrong number of arguments.  Map Template takes N 2-tuples: set_key, map_data")
+		UdnError(udn_schema,"Wrong number of arguments.  Map Template takes N 2-tuples: set_key, map_data")
 	}
 
 	items := (len(args) - 1) / 2
@@ -769,7 +769,7 @@ func UDN_MapStringFormat(db *sql.DB, udn_schema map[string]interface{}, udn_star
 
 	// Ensure our arg count is correct
 	if len(args) < 2 || len(args)%2 != 0 {
-		panic("Wrong number of arguments.  Map Template takes N 2-tuples: set_key, format")
+		UdnError(udn_schema,"Wrong number of arguments.  Map Template takes N 2-tuples: set_key, format")
 	}
 
 	items := len(args) / 2
@@ -819,7 +819,7 @@ func UDN_MapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 
 	// Ensure our arg count is correct
 	if len(args) < 3 || len(args)%3 != 0 {
-		panic("Wrong number of arguments.  Map Template takes N 3-tuples: set_key, text, map")
+		UdnError(udn_schema,"Wrong number of arguments.  Map Template takes N 3-tuples: set_key, text, map")
 	}
 
 	items := len(args) / 3
@@ -1544,7 +1544,7 @@ func UDN_MapKeySet(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 	// Ensure our arg count is correct
 	if len(args) < 2 || len(args)%2 != 0 {
-		panic("Wrong number of arguments.  Map Template takes N 2-tuples: set_key, format")
+		UdnError(udn_schema,"Wrong number of arguments.  Map Template takes N 2-tuples: set_key, format")
 	}
 
 	items := len(args) / 2

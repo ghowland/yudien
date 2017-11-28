@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	. "github.com/ghowland/yudien/yudiencore"
 	. "github.com/ghowland/yudien/yudienutil"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node"
@@ -163,7 +164,8 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 		case string:
 			record_id, err = strconv.ParseInt(record["_id"].(string), 10, 32)
 			if err != nil {
-				panic(err)
+				UdnError(nil,"Record _id is not an integer: %s: %s", collection_name, record)
+				delete(record, "_id")
 			}
 		default:
 			record_id = GetResult(record["_id"], type_int).(int64)
@@ -287,12 +289,12 @@ func InitDataman(pgconnect string) {
 	var meta metadata.Meta
 	err = json.Unmarshal(schema_str, &meta)
 	if err != nil {
-		panic(err)
+		panic("Cannot parse JSON config data: " + err.Error())
 	}
 
 	if datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta); err == nil {
 		DatasourceInstance["opsdb"] = datasource
 	} else {
-		panic(err)
+		panic("Cannot open primary database connection: " + err.Error())
 	}
 }

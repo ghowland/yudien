@@ -4,6 +4,8 @@ import (
 	"container/list"
 	"fmt"
 	"strings"
+	"encoding/json"
+	"io/ioutil"
 )
 
 const (
@@ -24,6 +26,9 @@ const (
 	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
 	type_map          = iota // map[string]interface{}
 )
+
+var Debug_Udn bool
+var Debug_Udn_Api bool
 
 var PartTypeName map[int]string
 
@@ -147,7 +152,7 @@ func (udn_parent *UdnPart) AddFunction(value string) *UdnPart {
 			begin_block_part.BlockBegin = begin_block_part
 			begin_block_part.BlockEnd = &new_part
 		} else {
-			panic(fmt.Sprintf("ERROR: Incorrect grammar.  Missing open function for: %s\n", value))
+			UdnError(nil, "ERROR: Incorrect grammar.  Missing open function for: %s\n", value)
 		}
 	}
 
@@ -170,4 +175,172 @@ func (udn_parent *UdnPart) AddChild(part_type int, value string) *UdnPart {
 	udn_parent.Children.PushBack(&new_part)
 
 	return &new_part
+}
+
+
+
+func UdnDebugWriteHtml(udn_schema map[string]interface{}) string {
+	fmt.Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Write HTML -=-=-=-=-=-\n\n\n\n")
+
+	//TODO(g): Make this unique, time in milliseconds should be OK (and sequential), so we can have more than one.  Then deal with cleanup.  And make a sub directory...
+	output_path := "/tmp/udn_debug_log.html"
+
+	// Process any remaining HTML chunk as well
+	UdnDebugIncrementChunk(udn_schema)
+
+	err := ioutil.WriteFile(output_path, []byte(udn_schema["debug_output_html"].(string)), 0644)
+	if err != nil {
+		UdnError(nil, err.Error())
+	}
+
+	// Clear the schema info
+	//TODO(g): This only works for concurrency at the moment because I get the udn_schema every request, which is wasteful.  So work that out...
+	UdnDebugReset(udn_schema)
+
+	return output_path
+}
+
+func UdnDebugReset(udn_schema map[string]interface{}) {
+	fmt.Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Reset -=-=-=-=-=-\n\n\n\n")
+
+	udn_schema["error_log"] = ""
+
+	udn_schema["debug_log"] = ""
+	udn_schema["debug_log_count"] = 0
+	udn_schema["debug_html_chunk_count"] = 0
+	udn_schema["debug_html_chunk"] = ""
+	udn_schema["debug_output"] = ""
+	udn_schema["debug_output_html"] = `
+		<head>
+			<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+			</script>
+			<script>
+			function ToggleDisplay(element_id) {
+				var current_display = $('#'+element_id).css('display');
+				if (current_display == 'none') {
+					$('#'+element_id).css('display', 'block');
+					//alert('Setting ' + element_id + ' to BLOCK == Current: ' + current_display)
+				}
+				else {
+					$('#'+element_id).css('display', 'none');
+					//alert('Setting ' + element_id + ' to NONE == Current: ' + current_display)
+				}
+			}
+			</script>
+		</head>
+		`
+
+}
+
+func UdnDebugIncrementChunk(udn_schema map[string]interface{}) {
+	current := udn_schema["debug_html_chunk_count"].(int)
+	current++
+	udn_schema["debug_html_chunk_count"] = current
+
+	// Update the output with the current Debug Log (and clear it, as it's temporary).  This ensures anything previously undated, gets updated.
+	UdnDebugUpdate(udn_schema)
+
+	// Wrap anything we have put into our current HTML chunk, and write it to the HTML Output
+	if udn_schema["debug_html_chunk"] != "" {
+		// Render our HTML chunk in a hidden DIV, with a button to toggle visibility
+		html_output := fmt.Sprintf("<button onclick=\"ToggleDisplay('debug_chunk_%d')\">Statement %d</button><br><br><div id=\"debug_chunk_%d\" style=\"display: none\">%s</div>\n", current, current, current, udn_schema["debug_html_chunk"])
+
+		udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + html_output
+
+		// Clear the chunk
+		udn_schema["debug_html_chunk"] = ""
+	}
+}
+
+func UdnDebug(udn_schema map[string]interface{}, input interface{}, button_label string, message string) {
+	if Debug_Udn || udn_schema["udn_debug"] == true {
+		// Increment the number of times we have done this, so we have unique debug log sections
+		debug_log_count := udn_schema["debug_log_count"].(int)
+		debug_log_count++
+		udn_schema["debug_log_count"] = debug_log_count
+
+		// Update the output with the current Debug Log (and clear it, as it's temporary)
+		UdnDebugUpdate(udn_schema)
+		// Render our input, and current UDN Data as well
+		html_output := fmt.Sprintf("<pre>%s</pre><button onclick=\"ToggleDisplay('debug_state_%d')\">%s</button><br><br><div id=\"debug_state_%d\" style=\"display: none\">\n", HtmlClean(message), debug_log_count, button_label, debug_log_count)
+		udn_schema["debug_html_chunk"] = udn_schema["debug_html_chunk"].(string) + html_output
+
+		// Input
+		switch input.(type) {
+		case string:
+			udn_schema["debug_html_chunk"] = udn_schema["debug_html_chunk"].(string) + "<pre>" + HtmlClean(input.(string)) + "</pre>"
+		default:
+			input_output, _ := json.MarshalIndent(input, "", "  ")
+			//input_output := fmt.Sprintf("%v", input)	// Tried this to increase performance, this is not the bottleneck...
+			udn_schema["debug_html_chunk"] = udn_schema["debug_html_chunk"].(string) + "<pre>" + HtmlClean(string(input_output)) + "</pre>"
+		}
+
+		// Close the DIV tag
+		udn_schema["debug_html_chunk"] = udn_schema["debug_html_chunk"].(string) + "</div>"
+
+	}
+}
+
+func UdnDebugUpdate(udn_schema map[string]interface{}) {
+	debug_log_count := udn_schema["debug_log_count"].(int)
+
+	// If we have anything in our UDN Debug Log, lets put it into a DIV we can hide, and clear it out, so we collect them in pieces
+	if udn_schema["debug_log"] != "" {
+		// Append to our raw output
+		udn_schema["debug_output"] = udn_schema["debug_output"].(string) + udn_schema["debug_log"].(string)
+
+		// Append to our HTML output
+		html_output := fmt.Sprintf("<button onclick=\"ToggleDisplay('debug_log_%d')\">Debug</button><br><pre id=\"debug_log_%d\" style=\"display: none\">%s</pre>\n", debug_log_count, debug_log_count, HtmlClean(udn_schema["debug_log"].(string)))
+		udn_schema["debug_html_chunk"] = udn_schema["debug_html_chunk"].(string) + html_output
+
+		// Clear the debug log, as we have put it into the debug_output and debug_output_html
+		udn_schema["debug_log"] = ""
+	}
+}
+
+func UdnLog(udn_schema map[string]interface{}, format string, args ...interface{}) {
+	if (Debug_Udn || udn_schema["udn_debug"].(bool)) && udn_schema["allow_logging"].(bool) {
+		// Format the incoming Printf args, and print them
+		output := fmt.Sprintf(format, args...)
+
+		fmt.Print(output)
+
+		// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
+		udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
+	}
+}
+
+func UdnError(udn_schema map[string]interface{}, format string, args ...interface{}) {
+	// Format the incoming Printf args, and print them
+	output := fmt.Sprintf("ERROR: " + format, args...)
+
+	fmt.Print(output)
+
+	// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
+	if udn_schema != nil {
+		udn_schema["error_log"] = udn_schema["error_log"].(string) + output
+	}
+}
+
+func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interface{}) {
+	if udn_schema["allow_logging"].(bool) {
+		// Format the incoming Printf args, and print them
+		output := fmt.Sprintf(format, args...)
+		fmt.Print(output)
+
+		// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
+		udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
+		// Append to HTML as well, so it shows up.  This is a convenience function for this reason.  Headers and stuff.
+		udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + "<pre>" + HtmlClean(output) + "</pre>"
+	}
+}
+
+
+func HtmlClean(html string) string {
+	html = strings.Replace(html, "<", "&lt;", -1)
+	html = strings.Replace(html, ">", "&gt;", -1)
+	html = strings.Replace(html, "&", "&amp;", -1)
+	html = strings.Replace(html, " ", "&nbsp;", -1)
+
+	return html
 }

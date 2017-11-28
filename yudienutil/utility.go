@@ -32,9 +32,6 @@ const (
 	type_map          = iota // map[string]interface{}
 )
 
-var Debug_Udn bool
-var Debug_Udn_Api bool
-
 func GetResult(input interface{}, type_value int) interface{} {
 	//fmt.Printf("GetResult: %d: %s\n", type_value, SnippetData(input, 60))
 
@@ -313,15 +310,6 @@ func AppendArray(slice []interface{}, data ...interface{}) []interface{} {
 	return slice
 }
 
-func HtmlClean(html string) string {
-	html = strings.Replace(html, "<", "&lt;", -1)
-	html = strings.Replace(html, ">", "&gt;", -1)
-	html = strings.Replace(html, "&", "&amp;", -1)
-	html = strings.Replace(html, " ", "&nbsp;", -1)
-
-	return html
-}
-
 func MapKeys(data map[string]interface{}) []string {
 	// Get the slice of keys
 	keys := make([]string, len(data))
@@ -436,7 +424,7 @@ func SprintMap(map_data map[string]interface{}) string {
 func PrettyPrint(data interface{}) string {
 	b, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		panic(err)
+		UdnError(nil, "PrettyPrint ERROR: " + err.Error() + "\n")
 	}
 
 	return string(b)
@@ -495,7 +483,8 @@ func JsonDumpIfValid(value interface{}) (string, error) {
 func JsonDump(value interface{}) string {
 	json, err := JsonDumpIfValid(value)
 	if err != nil {
-		panic(err)
+		UdnError(nil,"JsonDump ERROR: " + err.Error() + "\n")
+		json = fmt.Sprintf("\"%v\"", value)
 	}
 
 	return json
@@ -614,4 +603,3 @@ func IsStringInArray(text string, arr []string) bool {
 	}
 	return false
 }
-
