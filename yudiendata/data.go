@@ -223,7 +223,11 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 		fmt.Printf("Dataman SET: ERROR: %v\n", result.Error)
 	}
 
-	return result.Return[0]
+	if result.Return != nil {
+		return result.Return[0]
+	} else {
+		return nil
+	}
 }
 
 func DatamanFilter(collection_name string, filter map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
