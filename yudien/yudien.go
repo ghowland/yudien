@@ -83,6 +83,7 @@ type LdapConfig struct {
 
 type OpsdbConfig struct {
 	ConnectOptions string `json:"connect_opts"`
+	Database string `json:"database"`
 }
 
 var Opsdb *OpsdbConfig
@@ -93,7 +94,7 @@ func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
 	Ldap = ldap
 	Opsdb = opsdb
 
-	InitDataman(Opsdb.ConnectOptions)
+	InitDataman(Opsdb.ConnectOptions, Opsdb.Database)
 }
 
 func InitUdn() {

@@ -39,6 +39,8 @@ const (
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
 
+var DatabaseTarget string
+
 func GetSelectedDb(db_web *sql.DB, db *sql.DB, db_id int64) *sql.DB {
 	// Assume we are using the non-web DB
 	selected_db := db
@@ -107,7 +109,7 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 	fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
 	get_map := map[string]interface{}{
-		"db":             "opsdb",
+		"db":             DatabaseTarget,
 		"shard_instance": "public",
 		"collection":     collection_name,
 		//"_id":            record_id,
@@ -115,7 +117,7 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 		"join": options["join"],
 	}
 
-	//fmt.Printf("Dataman Get: %v\n\n", get_map)
+	fmt.Printf("Dataman Get: %v\n\n", get_map)
 
 	dataman_query := &query.Query{query.Get, get_map}
 
@@ -204,7 +206,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	dataman_query := &query.Query{
 		query.Set,
 		map[string]interface{}{
-			"db":             "opsdb",
+			"db":             DatabaseTarget,
 			"shard_instance": "public",
 			"collection":     collection_name,
 			"record":         record,
@@ -239,7 +241,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	}
 
 	filter_map := map[string]interface{}{
-		"db":             "opsdb",
+		"db":             DatabaseTarget,
 		"shard_instance": "public",
 		"collection":     collection_name,
 		"filter":         filter,
@@ -271,7 +273,7 @@ func SanitizeSQL(text string) string {
 	return text
 }
 
-func InitDataman(pgconnect string) {
+func InitDataman(pgconnect string, database string) {
 	config := storagenode.DatasourceInstanceConfig{
 		StorageNodeType: "postgres",
 		StorageConfig: map[string]interface{}{
@@ -279,9 +281,16 @@ func InitDataman(pgconnect string) {
 		},
 	}
 
-	schema_str, err := ioutil.ReadFile("./data/schema.json")
+	DatabaseTarget = database
+
+	configfile := "./data/schema.json"
+	schema_str, err := ioutil.ReadFile(configfile)
 	if err != nil {
-		log.Panic(err)
+		configfile = "/etc/web6/schema.json"
+		schema_str, err = ioutil.ReadFile(configfile)
+		if err != nil {
+			panic(fmt.Sprintf("Load schema configuration data: %s: %s", configfile, err.Error()))
+		}
 	}
 
 	//fmt.Printf("Schema STR: %s\n\n", schema_str)
