@@ -1526,6 +1526,28 @@ func UDN_DataFilter(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	return result
 }
 
+func UDN_DataFilterFull(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Updated version of DataFilter. Filter is a JSON following the specs detailed in the docs of Dataman
+	// DataFilter will work fine with one constraint but not multiple ones
+	UdnLog(udn_schema, "Data Filter: %v\n", args)
+
+	collection_name := GetResult(args[0], type_string).(string)
+	filter := GetResult(args[1], type_string).(string)
+
+	// Optionally, options
+	options := make(map[string]interface{})
+	if len(args) >= 3 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	result_list := DatamanFilterFull(collection_name, filter, options)
+
+	result := UdnResult{}
+	result.Result = result_list
+
+	return result
+}
+
 func UDN_MapKeyDelete(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "Map Key Delete: %v\n", args)
 
