@@ -225,7 +225,11 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 		fmt.Printf("Dataman SET: ERROR: %v\n", result.Error)
 	}
 
-	return result.Return[0]
+	if result.Return != nil {
+		return result.Return[0]
+	} else {
+		return nil
+	}
 }
 
 func DatamanFilter(collection_name string, filter map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
@@ -253,6 +257,47 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	fmt.Printf("Dataman Filter: %v\n\n", filter_map)
 	fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
 	fmt.Printf("Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
+
+	dataman_query := &query.Query{query.Filter, filter_map}
+
+	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
+
+	if result.Error != "" {
+		fmt.Printf("Dataman ERROR: %v\n", result.Error)
+	} else {
+		fmt.Printf("Dataman FILTER: %v\n", result.Return)
+	}
+
+	return result.Return
+}
+
+func DatamanFilterFull(collection_name string, filter_json string, options map[string]interface{}) []map[string]interface{} {
+	// Contains updated functionality of DatamanFilter where multiple constraints can be used as per dataman specs
+
+	fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter_json, options["join"])
+	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
+
+	var filter interface{}
+
+	err := json.Unmarshal([]byte(filter_json), &filter)
+
+	if err != nil {
+		filter = nil // set filter to nil if JSON string cannot be parsed
+	}
+
+	filter_map := map[string]interface{}{
+		"db":             "opsdb",
+		"shard_instance": "public",
+		"collection":     collection_name,
+		"filter":         filter,
+		"join":           options["join"],
+		"sort":           options["sort"],
+		//"sort_reverse":	  []bool{true},
+	}
+
+	fmt.Printf("Dataman Filter: %v\n\n", filter_map)
+	fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
+
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
