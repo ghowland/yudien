@@ -1351,11 +1351,11 @@ Appends the input into the specified target location (args)
 
 **Go:** UDN_ArrayAppend
 
-**Input:** Array
+**Input:** Item to append into the array
 
 **Args:**
 
-  0. Any :: Item to append into the array
+  0. Any :: Target array name
 
 **Output:** Array
 
