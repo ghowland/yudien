@@ -1362,7 +1362,8 @@ Appends the input into the specified target location (args)
 **Example:**
 
 ```
-__input.[1,2,3].__array_append.4
+__input.[1,2,3].__set.test
+__input.4.__array_append.test
 ```
 
 **Result:**
