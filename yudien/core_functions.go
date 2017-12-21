@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"bytes"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -880,6 +881,26 @@ func UDN_StringClear(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	return result
 }
 
+func UDN_StringReplace(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "String Replace: %v   Input: %s\n", args, SnippetData(input, 60))
+
+	input_string := GetResult(input, type_string).(string)
+
+	// arg_0 is always a string that needs to be broken up into a list, so that we can pass it as args to Set
+	//arg_0 := args.Front().Value.(*UdnResult).Result.(string)
+	arg_0 := GetResult(args[0], type_string).(string)
+	arg_1 := GetResult(args[1], type_string).(string)
+
+	// Create a list of UdnResults, so we can pass them as args to the Set command
+	result_string := strings.Replace(input_string, arg_0, arg_1, -1)
+
+	// Clear
+	result := UdnResult{}
+	result.Result = result_string
+
+	return result
+}
+
 func UDN_StringConcat(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "String Concat: %v\n", args)
 
@@ -1372,6 +1393,25 @@ func UDN_JsonEncode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	return result
 }
 
+func UDN_JsonEncodeData(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "JSON Encode: %v\n", args)
+
+	// Use the argument instead of input, if it exists
+	if len(args) != 0 {
+		input = args[0]
+	}
+
+	var buffer bytes.Buffer
+	body, _ := json.Marshal(input)
+	buffer.Write(body)
+
+	result := UdnResult{}
+	result.Result = buffer.String()
+
+	UdnLog(udn_schema, "JSON Encode: Result: %v\n", result.Result)
+
+	return result
+}
 func UDN_GetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//UdnLog(udn_schema, "Get Index: %v\n", SnippetData(args, 80))
 
@@ -1816,7 +1856,7 @@ func UDN_IfCondition(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	for udn_current != nil && (embedded_if_count == 0 && udn_current.Value != "__end_if") && udn_current.NextUdnPart != nil {
 		udn_current = udn_current.NextUdnPart
 
-		UdnLog(udn_schema, "Walking IF block: Current: %s   Current Input: %v\n", udn_current.Value, current_input)
+		UdnLog(udn_schema, "Walking IF block: Current: %s   Current Input: %s\n", udn_current.Value, SnippetData(current_input, 80))
 
 		// If we are not executing the THEN block, and we encounter an __if statement, keep track of depth
 		if execute_then_block == false && outside_of_then_block == false && udn_current.Value == "__if" {

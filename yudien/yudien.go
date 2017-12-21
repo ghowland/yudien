@@ -145,6 +145,7 @@ func InitUdn() {
 
 		"__string_append": UDN_StringAppend,
 		"__string_clear":  UDN_StringClear, // Initialize a string to empty string, so we can append to it again
+		"__string_replace":  UDN_StringReplace, // Initialize a string to empty string, so we can append to it again
 		"__concat":        UDN_StringConcat,
 		"__input":         UDN_Input,          //TODO(g): This takes any input as the first arg, and then passes it along, so we can type in new input to go down the pipeline...
 		"__input_get":     UDN_InputGet,       // Gets information from the input, accessing it like __get
@@ -168,6 +169,7 @@ func InitUdn() {
 
 		"__json_decode": UDN_JsonDecode, // Decode JSON
 		"__json_encode": UDN_JsonEncode, // Encode JSON
+		"__json_encode_data": UDN_JsonEncodeData, // Encode JSON - Format as data.  No indenting, etc.
 
 		"__data_get":    UDN_DataGet,    // Dataman Get
 		"__data_set":    UDN_DataSet,    // Dataman Set
@@ -409,7 +411,7 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 
 	// Walk through each UDN string in the list - the output of one UDN string is piped onto the input of the next
 	for i := 0; i < len(udn_value_list); i++ {
-		UdnLog(udn_schema, "\n\nProcess UDN:  %s   \n\n", udn_value_list[i])
+		//UdnLog(udn_schema, "\n\nProcess UDN:  %s   \n\n", udn_value_list[i])
 		udn_command := ParseUdnString(db, udn_schema, udn_value_list[i])
 
 		// UdnLog(udn_schema, "\n-------DESCRIPTION: -------\n\n%s", DescribeUdnPart(udn_command))
@@ -424,7 +426,7 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 		UdnLog(udn_schema, "\n------- END EXECUTION: -------\n\n")
 
 		UdnLog(udn_schema, "------- RESULT: %v\n\n", SnippetData(udn_command_value, 1600))
-		fmt.Printf("------- RESULT: %v\n\n", JsonDump(udn_command_value))
+		//fmt.Printf("------- RESULT: %v\n\n", JsonDump(udn_command_value))
 	}
 
 	return udn_command_value

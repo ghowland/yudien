@@ -347,15 +347,15 @@ func ParseUdnString(db *sql.DB, udn_schema map[string]interface{}, udn_value_sou
 	//
 	udn_start := CreateUdnPartsFromSplit_Initial(db, udn_schema, next_split)
 
-	//output := DescribeUdnPart(&udn_start)
-	//UdnLog(udn_schema, "\n===== 0 - Description of UDN Part:\n\n%s\n===== 0 - END\n", output)
+	////output := DescribeUdnPart(&udn_start)
+	////UdnLog(udn_schema, "\n===== 0 - Description of UDN Part:\n\n%s\n===== 0 - END\n", output)
 
 	// Put it into a structure now -- UdnPart
 	//
 	FinalParseProcessUdnParts(db, udn_schema, &udn_start)
 
-	output := DescribeUdnPart(&udn_start)
-	UdnLog(udn_schema, "\n===== 1 - Description of UDN Part:\n\n%s\n===== 1 - END\n", output)
+	//output := DescribeUdnPart(&udn_start)
+	//UdnLog(udn_schema, "\n===== 1 - Description of UDN Part:\n\n%s\n===== 1 - END\n", output)
 
 	return &udn_start
 }
@@ -559,7 +559,7 @@ func CreateUdnPartsFromSplit_Initial(db *sql.DB, udn_schema map[string]interface
 
 	is_open_quote := false
 
-	UdnLog(udn_schema, "Create UDN Parts: Initial: %v\n\n", source_array)
+	//UdnLog(udn_schema, "Create UDN Parts: Initial: %v\n\n", source_array)
 
 	// Traverse into the data, and start storing everything
 	for _, cur_item := range source_array {
