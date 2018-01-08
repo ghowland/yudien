@@ -121,6 +121,7 @@ func InitUdn() {
 		"__set_index": 	  UDN_SetIndex, // Set data like __set but does not the result is passed to output and not stored
 		"__get_first":    UDN_GetFirst, // Takes N strings, which are dotted for udn_data accessing.  The first value that isnt nil is returned.  nil is returned if they all are
 		"__get_temp":     UDN_GetTemp,  // Function stack based temp storage
+		"__get_temp_key": UDN_GetTempKey, // Get the uuid of the current stack frame for temp variables
 		"__set_temp":     UDN_SetTemp,  // Function stack based temp storage
 		//"__temp_clear":          UDN_ClearTemp,
 		//"__watch": UDN_WatchSyncronization,
@@ -189,6 +190,10 @@ func InitUdn() {
 
 		"__debug_get_all_data": UDN_DebugGetAllUdnData, // Templates the string passed in as arg_0
 
+		"__string_to_time": UDN_StringToTime, // Converts a string to Time.time object if possible (format is "2006-01-02T15:04:05")
+		"__time_to_epoch": UDN_TimeToEpoch, // Converts a Time.time object to unix time in seconds
+		"__time_to_epoch_ms": UDN_TimeToEpochMs, // Converts a Time.time object to unix time in milliseconds
+
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
 		//"__ddd_get": UDN_DddGet,					// DDD Get.current.{}
@@ -197,13 +202,10 @@ func InitUdn() {
 
 		//"__increment": UDN_Increment,				// Increment value
 		//"__decrement": UDN_Decrement,				// Decrement value
-		//"__split": UDN_StringSplit,				// Split a string into an array on a separator string
 		//"__join": UDN_StringJoin,					// Join an array into a string on a separator string
 		//"__render_page": UDN_RenderPage,			// Render a page, and return it's widgets so they can be dynamically updated
 
 		// New
-
-		//"__array_append": UDN_ArrayAppend,			//TODO(g): Appends a element onto an array.  This can be used to stage static content so its not HUGE on one line too...
 
 		//"__map_update_prefix": UDN_MapUpdatePrefix,			//TODO(g): Merge a the specified map into the input map, with a prefix, so we can do things like push the schema into the row map, giving us access to the field names and such
 		//"__map_clear": UDN_MapClear,			//TODO(g): Clears everything in a map "bucket", like: __map_clear.'temp'
@@ -213,15 +215,11 @@ func InitUdn() {
 		//"__pluralize": UDN_StringPluralize,			//TODO(g): This pluralizes words, or tries to at least
 		//"__starts_with": UDN_StringStartsWith,			//TODO(g): Returns bool if a string starts with the specified arg[0] string
 		//"__ends_with": UDN_StringEndsWith,			//TODO(g): Returns bool if a string starts with the specified arg[0] string
-		//"__split": UDN_StringSplit,			//TODO(g): Split a string on a value, with a maximum number of splits, and the slice of which to use, with a join as optional value.   The args go:  0) separate to split on,  2)  maximum number of times to split (0=no limit), 3) location to write the split out data (ex: `temp.action.fieldname`) , 3) index of the split to pull out (ex: -1, 0, 1, for the last, first or second)  4) optional: the end of the index to split on, which creates an array of items  5) optional: the join value to join multiple splits on (ex: `_`, which would create a string like:  `second_third_forth` out of a [1,4] slice)
 		//"__get_session_data": UDN_SessionDataGet,			//TODO(g): Get something from a safe space in session data (cannot conflict with internal data)
 		//"__set_session_data": UDN_SessionDataGet,			//TODO(g): Set something from a safe space in session data (cannot conflict with internal data)
 		//"__continue": UDN_IterateContinue,		// Skip to next iteration
 		// -- Dont think I need this -- //"__break": UDN_IterateBreak,				//TODO(g): Break this iteration, we are done.  Is this needed?  Im not sure its needed, and it might suck
 
-		// Allows safe concurrency operations...
-		//"__set_temp": UDN_Set_Temp,		// Sets a temporary variable.  Is safe for this sequence, and cannot conflict with our UDN setting the same names as temp vars in other threads
-		//"__get_temp": UDN_Set_Temp,		// Gets a temporary variable.  Is safe for this sequence, and cannot conflict with our UDN setting the same names as temp vars in other threads
 	}
 
 	PartTypeName = map[int]string{

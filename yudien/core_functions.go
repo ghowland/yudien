@@ -1,6 +1,7 @@
 package yudien
 
 import (
+	"bytes"
 	"container/list"
 	"database/sql"
 	"encoding/json"
@@ -15,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
-	"bytes"
+	"time"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -1741,6 +1742,42 @@ func UDN_GetTemp(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
+func UDN_GetTempKey(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	function_stack := udn_data["__function_stack"].([]map[string]interface{})
+	function_stack_item := function_stack[len(function_stack)-1]
+	function_uuid := function_stack_item["uuid"].(string)
+	UdnLog(udn_schema, "Get Temp Key: %s: %v\n", function_uuid, SnippetData(args, 80))
+
+	// Ensure temp exists
+	if udn_data["__temp"] == nil {
+		udn_data["__temp"] = make(map[string]interface{})
+	}
+
+	// Ensure this Function Temp exists
+	if udn_data["__temp"].(map[string]interface{})[function_uuid] == nil {
+		udn_data["__temp"].(map[string]interface{})[function_uuid] = make(map[string]interface{})
+	}
+
+	// concatenate all the arguments to return the final temp variable string
+	var buffer bytes.Buffer
+
+	buffer.WriteString("__temp.")
+	buffer.WriteString(function_uuid)
+
+	for _, arg := range args{
+		buffer.WriteString(".")
+		buffer.WriteString(arg.(string))
+	}
+
+	temp_string := buffer.String()
+
+	// return the string that will allow direct access to the temp variable (including the function uuid)
+	result := UdnResult{}
+	result.Result = temp_string
+
+	return result
+}
+
 func UDN_SetTemp(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	function_stack := udn_data["__function_stack"].([]map[string]interface{})
 	function_stack_item := function_stack[len(function_stack)-1]
@@ -1993,6 +2030,51 @@ func UDN_NotNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 
 	result := UdnResult{}
 	result.Result = value
+
+	return result
+}
+
+func UDN_StringToTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "String to Time: %v\n", SnippetData(input, 60))
+
+	layout := "2006-01-02T15:04:05"
+	parsed_time, err := time.Parse(layout, input.(string))
+	result := UdnResult{}
+
+	// return Time.time object is conversion is successful
+	if err == nil {
+		result.Result = parsed_time
+	}
+
+	return result
+}
+
+func UDN_TimeToEpoch(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "time.Time to unix time in seconds: %v\n", SnippetData(input, 60))
+
+	result := UdnResult{}
+
+	// input is a Time.time object
+	switch input.(type) {
+	case time.Time:
+		result.Result = int64(input.(time.Time).Unix())
+	default: // Do nothing if input is not a Time.time object
+	}
+
+	return result
+}
+
+func UDN_TimeToEpochMs(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "time.Time to unix time in milliseconds: %v\n", SnippetData(input, 60))
+
+	result := UdnResult{}
+
+	// input is a Time.time object
+	switch input.(type) {
+	case time.Time:
+		result.Result = int64(input.(time.Time).UnixNano()) / int64(time.Millisecond)
+	default: // Do nothing if input is not a Time.time object
+	}
 
 	return result
 }
