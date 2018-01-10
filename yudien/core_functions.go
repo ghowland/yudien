@@ -1406,6 +1406,7 @@ func UDN_JsonEncodeData(db *sql.DB, udn_schema map[string]interface{}, udn_start
 
 	return result
 }
+
 func UDN_GetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//UdnLog(udn_schema, "Get Index: %v\n", SnippetData(args, 80))
 
@@ -2037,13 +2038,39 @@ func UDN_NotNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 func UDN_StringToTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "String to Time: %v\n", SnippetData(input, 60))
 
-	layout := "2006-01-02T15:04:05"
-	parsed_time, err := time.Parse(layout, input.(string))
+	time_string := ""
+	switch input.(type) {
+	case string:
+		time_string = input.(string)
+	}
+
+	layout := "2006-01-02 15:04:05"
+	parsed_time, err := time.Parse(layout, time_string)
 	result := UdnResult{}
 
 	// return Time.time object is conversion is successful
 	if err == nil {
 		result.Result = parsed_time
+	}
+
+	if err != nil {
+		// try another layout if previous one does not work
+		layout2 := "2006-01-02T15:04:05"
+		parsed_time, err := time.Parse(layout2, time_string)
+
+		if err == nil {
+			result.Result = parsed_time
+		}
+	}
+
+	if err != nil {
+		// try another layout if previous one does not work
+		layout3 := "2006-01-02T15:04:05.000Z"
+		parsed_time, err := time.Parse(layout3, time_string)
+
+		if err == nil {
+			result.Result = parsed_time
+		}
 	}
 
 	return result
@@ -2076,6 +2103,78 @@ func UDN_TimeToEpochMs(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	default: // Do nothing if input is not a Time.time object
 	}
 
+	return result
+}
+
+func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "Group by: %v\n", SnippetData(input, 60))
+
+	// arg[0] = method to group on
+	// arg[1] = source of data
+	// arg[2] = aggregated field (ex: cost, total, etc.)
+	// arg[3] = field to group on
+	// ex: __group_by.method.data_location.field1.field2.field3...
+
+	// source of data should be a list of maps
+	// ex: [{order_id: 101, category: monitor, cost: 80},
+	//      {order_id: 102, category: monitor, cost: 82},
+	//      {order_id: 103, category: laptop, cost: 100}]
+	// __group_by.sum.data_above.category yields:
+	// [{category: monitor, cost: 162},
+	//  {category: laptop, cost: 100}]
+
+
+	result := UdnResult{}
+
+	if len(args) < 4 {
+		return result // Nothing to group by
+	}
+
+	method := strings.ToLower(args[0].(string))
+	source_data := args[1].([]map[string]interface{})
+	aggregate_field := args[2].(string)
+	field := args[3].(string) // TODO: Make field variadic - Implement grouping on multiple fields - currently only supports grouping on one field  (when there is use case)
+
+	result_list := make([]map[string]interface{}, 0) // stores result array
+	result_map := make(map[string]interface{}) // stores all seen keys
+
+	// Certain default methods will be implemented - rest found in an entry in opsdb udn_stored_functions table (TODO)
+	// TODO: Need to add entry in udn_stored_functions table to handle such new functions (ex: group_by_bettersum)
+	// TODO: Other default group by functions such as min, max, avg, count (when there is use case)
+	switch method {
+	case "sum":
+		for _, element := range source_data {
+			// convert element[aggregate_field] to int64 if necessary
+			// TODO: add float support if there is use-case for the sum function - default is int
+			aggregate_value := int64(0)
+
+			switch element[aggregate_field].(type){
+			case string:
+				aggregate_value, _ = strconv.ParseInt(element[aggregate_field].(string), 10, 64)
+
+			case int64:
+				aggregate_value = element[aggregate_field].(int64)
+			}
+
+			// check for new keys based on the group by field
+			if _, key_exists := result_map[element[field].(string)]; !key_exists {
+				// create new key to group on
+				new_key_map := make(map[string]interface{})
+				new_key_map[field] = element[field].(string)
+				new_key_map[aggregate_field] = aggregate_value
+
+				result_list = append(result_list, new_key_map)
+				result_map[element[field].(string)] = int64(len(result_list) - 1) // store index of the result in the seen key map
+			} else { // key exists - add sum to existing value
+				index := result_map[element[field].(string)].(int64)
+
+				result_list[index][aggregate_field] = result_list[index][aggregate_field].(int64) + aggregate_value
+			}
+		}
+	default: // Not found - look in udn_stored_functions table (TODO)
+	}
+
+	result.Result = result_list
 	return result
 }
 
