@@ -1503,7 +1503,8 @@ func UDN_DataFilterFull(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	UdnLog(udn_schema, "Data Filter: %v\n", args)
 
 	collection_name := GetResult(args[0], type_string).(string)
-	filter := GetResult(args[1], type_string).(string)
+
+	filter := args[1] // filter could be either map[string]interface{} for single filters or []interface{} for multifilters
 
 	// Optionally, options
 	options := make(map[string]interface{})
@@ -2133,19 +2134,19 @@ func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	method := strings.ToLower(args[0].(string))
 	source_data := args[1].([]map[string]interface{})
 	aggregate_field := args[2].(string)
-	field := args[3].(string) // TODO: Make field variadic - Implement grouping on multiple fields - currently only supports grouping on one field  (when there is use case)
+	field := args[3].(string) //TODO(z): Make field variadic - Implement grouping on multiple fields - currently only supports grouping on one field  (when there is use case)
 
 	result_list := make([]map[string]interface{}, 0) // stores result array
 	result_map := make(map[string]interface{}) // stores all seen keys
 
 	// Certain default methods will be implemented - rest found in an entry in opsdb udn_stored_functions table (TODO)
-	// TODO: Need to add entry in udn_stored_functions table to handle such new functions (ex: group_by_bettersum)
-	// TODO: Other default group by functions such as min, max, avg, count (when there is use case)
+	//TODO(z): Need to add entry in udn_stored_functions table to handle such new functions (ex: group_by_bettersum)
+	//TODO(z): Other default group by functions such as min, max, avg, count (when there is use case)
 	switch method {
 	case "sum":
 		for _, element := range source_data {
 			// convert element[aggregate_field] to int64 if necessary
-			// TODO: add float support if there is use-case for the sum function - default is int
+			//TODO(z): add float support if there is use-case for the sum function - default is int
 			aggregate_value := int64(0)
 
 			switch element[aggregate_field].(type){

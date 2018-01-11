@@ -271,19 +271,18 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	return result.Return
 }
 
-func DatamanFilterFull(collection_name string, filter_json string, options map[string]interface{}) []map[string]interface{} {
+func DatamanFilterFull(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
 	// Contains updated functionality of DatamanFilter where multiple constraints can be used as per dataman specs
 
-	fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter_json, options["join"])
+	// filter should be a map[string]interface{} for single filters and []interface{} for multi-filters
+	// dataman handles all cases so it is fine for filter to be interface{}
+	// ex: single filter:
+	//     {field1=value1}  (type: map[string]interface{})
+	// ex: multi filter:
+	//     [{field1=value1}, "AND", {field2=value2}] (type: []interface{})
+	//     [{field1=value1}, "AND", [{field2=value2}, "AND", {field3=value3}]]
+	fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
-
-	var filter interface{}
-
-	err := json.Unmarshal([]byte(filter_json), &filter)
-
-	if err != nil {
-		filter = nil // set filter to nil if JSON string cannot be parsed
-	}
 
 	filter_map := map[string]interface{}{
 		"db":             "opsdb",
