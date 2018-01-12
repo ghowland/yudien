@@ -2179,6 +2179,122 @@ func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
+func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "Group by: %v\n", SnippetData(input, 60))
+
+	// This function will encompass all math related functions for UDN
+	// arg[0] = function
+	// arg[1...n] = operands
+	// ex: __math.divide.operand1.operand2
+
+	result := UdnResult{}
+
+	if len(args) < 1 {
+		return result // Function not specified
+	}
+
+	all_integer := true // Flag used to determine whether we should do an integer operation
+	function := strings.ToLower(args[0].(string))
+	operands := args[1:]
+	num_of_operands := len(operands)
+
+	// Make a first pass through each operand to check if all operands are integers (for integer arithmetic)
+	for _, operand := range operands {
+		switch operand.(type) {
+		case int, int32, int64:
+		default:
+			all_integer = false
+		}
+	}
+
+	// Second pass - go through each operand and check for type and do conversions when necessary
+	for index, operand := range operands {
+		switch operand.(type) {
+		case int64: // int64 is default
+			if !all_integer {
+				operands[index] = float64(operand.(int64))
+			}
+		case int:
+			if all_integer {
+				operands[index] = int64(operand.(int))
+			} else {
+				operands[index] = float64(operand.(int))
+			}
+		case int32:
+			if all_integer {
+				operands[index] = int64(operand.(int32))
+			} else {
+				operands[index] = float64(operand.(int32))
+			}
+		case float64: // float64 is default
+		case float32:
+			operands[index] = float64(operand.(float32))
+		case string: // try to convert from string to int64 first, then float64
+			operand_int, err := strconv.ParseInt(operand.(string), 10, 64)
+
+			if err == nil && all_integer {
+				operands[index] = operand_int
+			} else { // try to convert to float64
+				operand_float, err := strconv.ParseFloat(operand.(string), 64)
+
+				if err == nil {
+					operands[index] = operand_float
+				} else {
+					return result // invalid operand - return nil
+				}
+			}
+		default:
+			// One of the operands is not a valid int/float, thus stop function and return nil
+			return result
+		}
+	}
+
+	//TODO(z): implement more arithmetic functions as needed when there is use case
+	switch function {
+	case "+", "add": // TODO(z): make operations variadic when applicable
+		if num_of_operands < 2 {
+			return result
+		}
+		if all_integer {
+			result.Result = operands[0].(int64) + operands[1].(int64)
+		} else {
+			result.Result = operands[0].(float64) + operands[1].(float64)
+		}
+	case "-", "subtract":
+		if num_of_operands < 2 {
+			return result
+		}
+		if all_integer {
+			result.Result = operands[0].(int64) - operands[1].(int64)
+		} else {
+			result.Result = operands[0].(float64) - operands[1].(float64)
+		}
+	case "*", "multiply":
+		if num_of_operands < 2 {
+			return result
+		}
+		if all_integer {
+			result.Result = operands[0].(int64) * operands[1].(int64)
+		} else {
+			result.Result = operands[0].(float64) * operands[1].(float64)
+		}
+	case "/", "divide": // returns float - not integer division by default
+		if num_of_operands < 2 {
+			return result
+		}
+		if all_integer {
+			result.Result = float64(operands[0].(int64)) / float64(operands[1].(int64))
+		} else {
+			result.Result = operands[0].(float64) / operands[1].(float64)
+		}
+	default:
+		result.Result = 0
+	}
+
+
+	return result
+}
+
 func UDN_DebugGetAllUdnData(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//TODO(g):SECURITY: This should have a security check, because it is a DEBUG style function, and could give away information the end user should not see, but is needed during processing, and is not exposed without this type of DEBUG function
 

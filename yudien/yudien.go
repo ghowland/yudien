@@ -194,6 +194,7 @@ func InitUdn() {
 		"__time_to_epoch": UDN_TimeToEpoch, // Converts a Time.time object to unix time in seconds
 		"__time_to_epoch_ms": UDN_TimeToEpochMs, // Converts a Time.time object to unix time in milliseconds
 		"__group_by": UDN_GroupBy, // Given a list of maps, group by some value based on that grouping
+		"__math": UDN_Math,
 
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
