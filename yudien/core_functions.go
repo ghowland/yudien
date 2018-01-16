@@ -1603,7 +1603,9 @@ func UDN_CompareEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 		value = 0
 	}
 
-	fmt.Printf("Compare: Equal: '%s' == '%s' : %d\n", arg0, arg1, value)
+	if Debug_Udn {
+		fmt.Printf("Compare: Equal: '%s' == '%s' : %d\n", arg0, arg1, value)
+	}
 
 	result := UdnResult{}
 	result.Result = value
@@ -1622,7 +1624,9 @@ func UDN_CompareNotEqual(db *sql.DB, udn_schema map[string]interface{}, udn_star
 		value = 0
 	}
 
-	fmt.Printf("Compare: Not Equal: '%s' != '%s' : %d\n", arg0, arg1, value)
+	if Debug_Udn {
+		fmt.Printf("Compare: Not Equal: '%s' != '%s' : %d\n", arg0, arg1, value)
+	}
 
 	result := UdnResult{}
 	result.Result = value
@@ -2131,8 +2135,20 @@ func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 		return result // Nothing to group by
 	}
 
+	var source_data []map[string]interface{}
+
+	switch args[1].(type){
+	case []interface{}:
+		source_data = make([]map[string]interface{}, len(args[1].([]interface{})))
+
+		for index, element := range args[1].([]interface{}) {
+			source_data[index] = element.(map[string]interface{})
+		}
+	case []map[string]interface{}:
+		source_data = args[1].([]map[string]interface{})
+	}
+
 	method := strings.ToLower(args[0].(string))
-	source_data := args[1].([]map[string]interface{})
 	aggregate_field := args[2].(string)
 	field := args[3].(string) //TODO(z): Make field variadic - Implement grouping on multiple fields - currently only supports grouping on one field  (when there is use case)
 
@@ -2152,10 +2168,12 @@ func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 			switch element[aggregate_field].(type){
 			case string:
 				aggregate_value, _ = strconv.ParseInt(element[aggregate_field].(string), 10, 64)
-
 			case int64:
 				aggregate_value = element[aggregate_field].(int64)
+			case float64:
+				aggregate_value = int64(element[aggregate_field].(float64))
 			}
+
 
 			// check for new keys based on the group by field
 			if _, key_exists := result_map[element[field].(string)]; !key_exists {
@@ -2251,6 +2269,15 @@ func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 
 	//TODO(z): implement more arithmetic functions as needed when there is use case
 	switch function {
+	case "input": // __input function for integer or float
+		if num_of_operands < 1 {
+			return result
+		}
+		if all_integer {
+			result.Result = operands[0].(int64)
+		} else {
+			result.Result = operands[0].(float64)
+		}
 	case "+", "add": // TODO(z): make operations variadic when applicable
 		if num_of_operands < 2 {
 			return result
