@@ -98,8 +98,8 @@ func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
 }
 
 func InitUdn() {
-	Debug_Udn_Api = false
-	Debug_Udn = true
+	Debug_Udn_Api = true
+	Debug_Udn = false
 
 	UdnFunctions = map[string]UdnFunc{
 		"__comment":      UDN_Comment,
@@ -415,7 +415,7 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 		//UdnLog(udn_schema, "\n\nProcess UDN:  %s   \n\n", udn_value_list[i])
 		udn_command := ParseUdnString(db, udn_schema, udn_value_list[i])
 
-		// UdnLog(udn_schema, "\n-------DESCRIPTION: -------\n\n%s", DescribeUdnPart(udn_command))
+		 //UdnLog(udn_schema, "\n-------DESCRIPTION: -------\n\n%s", DescribeUdnPart(udn_command))
 
 		UdnDebugIncrementChunk(udn_schema)
 		UdnLogHtml(udn_schema, "------- UDN: COMMAND -------\n%s\n", udn_value_list[i])

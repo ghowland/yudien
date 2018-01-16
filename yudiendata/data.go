@@ -106,7 +106,7 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 }
 
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
-	fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
+	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
 	get_map := map[string]interface{}{
 		"db":             DatabaseTarget,
@@ -117,7 +117,7 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 		"join": options["join"],
 	}
 
-	fmt.Printf("Dataman Get: %v\n\n", get_map)
+	//fmt.Printf("Dataman Get: %v\n\n", get_map)
 
 	dataman_query := &query.Query{query.Get, get_map}
 
@@ -138,10 +138,10 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 
 	// Remove the _id field, if it is nil.  This means it should be new/insert
 	if record["_id"] == nil || record["_id"] == "<nil>" || record["_id"] == "\u003cnil\u003e" || record["_id"] == "" {
-		fmt.Printf("DatamanSet: Removing _id key: %s\n", record["_id"])
+		//fmt.Printf("DatamanSet: Removing _id key: %s\n", record["_id"])
 		delete(record, "_id")
 	} else {
-		fmt.Printf("DatamanSet: Not Removing _id: %s\n", record["_id"])
+		//fmt.Printf("DatamanSet: Not Removing _id: %s\n", record["_id"])
 	}
 
 	// Fix data manually, for now
@@ -205,7 +205,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	// Form the Dataman query
 	dataman_query := &query.Query{
 		query.Set,
-		map[string]interface{}{
+		map[string]interface{} {
 			"db":             DatabaseTarget,
 			"shard_instance": "public",
 			"collection":     collection_name,
@@ -214,7 +214,8 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	}
 
 	//fmt.Printf("Dataman SET: Record: %v\n", record)
-	fmt.Printf("Dataman SET: Record: JSON: %v\n", JsonDump(record))
+	//fmt.Printf("Dataman SET: Record: JSON: %v\n", JsonDump(record))
+	//fmt.Printf("Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
 
 	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
 
@@ -234,15 +235,20 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 
 func DatamanFilter(collection_name string, filter map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
 
-	fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
+	//fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
+
+	filter = MapCopy(filter)
 
 	for k, v := range filter {
 		switch v.(type) {
 		case string:
 			filter[k] = []string{"=", v.(string)}
+		case int64:
+			filter[k] = []string{"=", fmt.Sprintf("%d", v)}
 		}
 	}
+
 
 	filter_map := map[string]interface{}{
 		"db":             DatabaseTarget,
@@ -254,9 +260,9 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 		//"sort_reverse":	  []bool{true},
 	}
 
-	fmt.Printf("Dataman Filter: %v\n\n", filter_map)
-	fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
-	fmt.Printf("Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
+	//fmt.Printf("Dataman Filter: %s\n\n", JsonDump(filter_map))
+	//fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
+	//fmt.Printf("Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
@@ -265,7 +271,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	if result.Error != "" {
 		fmt.Printf("Dataman ERROR: %v\n", result.Error)
 	} else {
-		fmt.Printf("Dataman FILTER: %v\n", result.Return)
+		//fmt.Printf("Dataman FILTER: %v\n", result.Return)
 	}
 
 	return result.Return

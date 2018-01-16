@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"io/ioutil"
 )
 
 const (
@@ -457,6 +458,13 @@ func ReadPathData(path string) string {
 	return ""
 }
 
+func WritePathData(path string, text string) {
+	err := ioutil.WriteFile(path, []byte(text), 0644)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func MapCopy(input map[string]interface{}) map[string]interface{} {
 	new_map := make(map[string]interface{})
 
@@ -488,6 +496,14 @@ func JsonDump(value interface{}) string {
 	}
 
 	return json
+}
+
+func JsonLoadMap(text string) (map[string]interface{}, error) {
+	new_map := make(map[string]interface{})
+
+	err := json.Unmarshal([]byte(text), &new_map)
+
+	return new_map, err
 }
 
 func MapListToDict(map_array []map[string]interface{}, key string) map[string]interface{} {
