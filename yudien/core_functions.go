@@ -2157,8 +2157,25 @@ func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 
 	// Certain default methods will be implemented - rest found in an entry in opsdb udn_stored_functions table (TODO)
 	//TODO(z): Need to add entry in udn_stored_functions table to handle such new functions (ex: group_by_bettersum)
-	//TODO(z): Other default group by functions such as min, max, avg, count (when there is use case)
+	//TODO(z): Other default group by functions such as min, max, avg (when there is use case)
 	switch method {
+	case "count":
+		for _, element := range source_data {
+			// check for new keys based on the group by field
+			if _, key_exists := result_map[element[field].(string)]; !key_exists {
+				// create new key to group on
+				new_key_map := make(map[string]interface{})
+				new_key_map[field] = element[field].(string)
+				new_key_map[aggregate_field] = int64(1)
+
+				result_list = append(result_list, new_key_map)
+				result_map[element[field].(string)] = int64(len(result_list) - 1) // store index of the result in the seen key map
+			} else { // key exists - add sum to existing value
+				index := result_map[element[field].(string)].(int64)
+
+				result_list[index][aggregate_field] = result_list[index][aggregate_field].(int64) + int64(1)
+			}
+		}
 	case "sum":
 		for _, element := range source_data {
 			// convert element[aggregate_field] to int64 if necessary
