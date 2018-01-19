@@ -383,7 +383,11 @@ func FinalParseProcessUdnParts(db *sql.DB, udn_schema map[string]interface{}, pa
 				next_child_is_assignment = false
 				next_child_is_value = true
 			} else if next_child_is_value == false {
-				map_key_split := strings.Split(cur_child.Value, "=")
+				// Treat "=" same as ":" for map conversion; do a replace & split
+				//TODO(z): After changing all "=" to ":" in database, remove the replace and only allow ":"
+				// map_key_split := strings.Split(cur_child.Value, "=")
+				new_str := strings.Replace(cur_child.Value, "=", ":", -1)
+				map_key_split := strings.Split(new_str, ":")
 
 				// Create the map key part
 				map_key_part := NewUdnPart()
