@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"io/ioutil"
+	"github.com/mitchellh/copystructure"
 )
 
 const (
@@ -618,4 +619,19 @@ func IsStringInArray(text string, arr []string) bool {
 		}
 	}
 	return false
+}
+
+func DeepCopy(v interface{}) interface{} {
+    // copystructure won't take a nil, so early return
+    if v == nil {
+        return nil
+    }
+    // might save a few cycles if we test for unmutable types
+    // and return early?
+    v_copy, err := copystructure.Copy(v)
+    if err != nil {
+        fmt.Print(err)
+        return v
+    }
+    return v_copy
 }
