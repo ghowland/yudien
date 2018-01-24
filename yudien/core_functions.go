@@ -1809,6 +1809,24 @@ func UDN_SetTemp(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
+func UDN_SetHttpResponseCode(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "Set HTTP code: %v\n", SnippetData(args, 80))
+
+	// args[0] - desired http code to be set
+	if len(args) > 0 {
+		http_response_code, err := strconv.Atoi(args[0].(string))
+		if err == nil {
+			udn_data["http_response_code"] = http_response_code
+		}
+	}
+
+	// result is passed through
+	result := UdnResult{}
+	result.Result = input
+
+	return result
+}
+
 func UDN_Iterate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// Will loop over all UdnParts until it finds __end_iterate.  It expects input to hold a list.List, which use to iterate and execute the UdnPart blocks
 	// It will set a variable that will be accessable by the "__get.current.ARG0"
