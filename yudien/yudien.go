@@ -186,6 +186,7 @@ func InitUdn() {
 		"__split":     UDN_StringSplit, // Split a string
 		"__lower":     UDN_StringLower, // Lower case a string
 		"__upper":     UDN_StringUpper, // Upper case a string
+		"__join" :     UDN_StringJoin,  // Join an array into a string on a separator string
 
 		"__debug_get_all_data": UDN_DebugGetAllUdnData, // Templates the string passed in as arg_0
 
@@ -198,7 +199,6 @@ func InitUdn() {
 		//"__increment": UDN_Increment,				// Increment value
 		//"__decrement": UDN_Decrement,				// Decrement value
 		//"__split": UDN_StringSplit,				// Split a string into an array on a separator string
-		//"__join": UDN_StringJoin,					// Join an array into a string on a separator string
 		//"__render_page": UDN_RenderPage,			// Render a page, and return it's widgets so they can be dynamically updated
 
 		// New
