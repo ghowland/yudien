@@ -81,12 +81,6 @@ type LdapConfig struct {
 	GroupSearch string `json:"group_search"`
 }
 
-type OpsdbConfig struct {
-	ConnectOptions string `json:"connect_opts"`
-	Database string `json:"database"`
-}
-
-var Opsdb *OpsdbConfig
 var Ldap *LdapConfig
 
 func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {

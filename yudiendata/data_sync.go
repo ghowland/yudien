@@ -211,7 +211,7 @@ func Import_Database(name string, data map[string]interface{}) map[string]interf
 }
 
 func Import_Collection(database map[string]interface{}, name string, data map[string]interface{}) map[string]interface{} {
-	fmt.Printf("      Import: Collection: %s\n", name)
+	fmt.Printf("      Import: Collection: %s   DB: %v\n", name, database)
 	//fmt.Printf("Import: Collection: DATA: %s\n", JsonDump(data))
 
 	options_map := make(map[string]interface{})

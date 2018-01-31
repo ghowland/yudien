@@ -37,7 +37,16 @@ const (
 	type_map          = iota // map[string]interface{}
 )
 
+type OpsdbConfig struct {
+	ConnectOptions string `json:"connect_opts"`
+	Database string `json:"database"`
+}
+
+var Opsdb *OpsdbConfig
+
+
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
+var DatasourceConfig = map[string]*storagenode.DatasourceInstanceConfig{}
 
 var DatabaseTarget string
 
@@ -318,6 +327,143 @@ func DatamanFilterFull(collection_name string, filter_json string, options map[s
 	return result.Return
 }
 
+
+func DatamanEnsureDatabases(pgconnect string, database string, current_path string, new_path string) {
+
+	fmt.Printf("Starting ensure DB processs...\n")
+
+	config := storagenode.DatasourceInstanceConfig{
+		StorageNodeType: "postgres",
+		StorageConfig: map[string]interface{}{
+			"pg_string": pgconnect,
+		},
+	}
+
+	DatabaseTarget = database
+
+	configfile := "./data/schema.json"
+	schema_str, err := ioutil.ReadFile(configfile)
+	if err != nil {
+		configfile = "/etc/web6/schema.json"
+		schema_str, err = ioutil.ReadFile(configfile)
+		if err != nil {
+			panic(fmt.Sprintf("Load schema configuration data: %s: %s", configfile, err.Error()))
+		}
+	}
+
+	//fmt.Printf("Schema STR: %s\n\n", schema_str)
+
+	var meta metadata.Meta
+	err = json.Unmarshal(schema_str, &meta)
+	if err != nil {
+		panic("Cannot parse JSON config data: " + err.Error())
+	}
+
+	fmt.Printf("Creating new data source instances...\n")
+
+
+	//if datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta); err == nil {
+	if datasource, err := storagenode.NewDatasourceInstanceDefault(&config); err == nil {
+		DatasourceInstance["opsdb"] = datasource
+		DatasourceConfig["opsdb"] = &config
+	} else {
+		panic("Cannot open primary database connection: " + err.Error())
+	}
+
+
+	//DatasourceInstance["opsdb"] = datasource
+	//DatasourceConfig["opsdb"] = &config
+
+/*
+	// Create a metaStore so we can mutate this DB schema
+	metaStore, err := storagenode.NewMetadataStore(DatasourceConfig["opsdb"])
+	if err != nil {
+		panic(err)
+	}
+
+	// To prep the current configuration, scans current schema
+	DatasourceInstance["opsdb"], err = storagenode.NewDatasourceInstance(DatasourceConfig["opsdb"], metaStore)
+	if err != nil {
+		panic(err)
+	}
+*/
+
+	fmt.Printf("Importing current database info...\n")
+
+
+	// Load meta
+	meta2 := &metadata.Meta{}
+	metaBytes, err := ioutil.ReadFile(current_path)
+	if err != nil {
+		panic(fmt.Sprintf("Error loading schema: %v", err))
+	}
+	err = json.Unmarshal([]byte(metaBytes), meta2)
+	if err != nil {
+		panic(fmt.Sprintf("Error loading meta: %v", err))
+	}
+
+	fmt.Printf("Creating the current DB as ensure...\n")
+
+	for _, db := range meta.Databases {
+		//name := db.Name	//TODO(g): Make the names dynamic, with the DBs too, need to make it all line up
+		fmt.Printf("Ensuring DB: %s\n", db.Name)
+		err := DatasourceInstance["opsdb"].MutableMetaStore.EnsureExistsDatabase(context.Background(), db)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	fmt.Printf("Creating the NEW DB as ensure...\n")
+
+	// Load meta
+	meta2 = &metadata.Meta{}
+	metaBytes, err = ioutil.ReadFile(new_path)
+	if err != nil {
+		panic(fmt.Sprintf("Error loading schema: %v", err))
+	}
+	err = json.Unmarshal([]byte(metaBytes), meta2)
+	if err != nil {
+		panic(fmt.Sprintf("Error loading meta: %v", err))
+	}
+
+	for _, db := range meta.Databases {
+		//name := db.Name	//TODO(g): Make the names dynamic, with the DBs too, need to make it all line up
+		fmt.Printf("Ensuring DB: %s\n", db.Name)
+		err := DatasourceInstance["opsdb"].EnsureExistsDatabase(context.Background(), db)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	fmt.Printf("Finished Creating the NEW DB as ensure...\n")
+
+	/*
+Geoffs-MacBook-Pro:web6.0 geoff$ cat ../../jacksontj/dataman/src//client/example_usage/datasourceinstance.yaml
+
+storage_type: postgres
+storage_config:
+  pg_string: user=postgres password=password sslmode=disable
+	 */
+
+/*
+	// Create the meta store
+	metaStore, err := NewMetadataStore(config)
+	if err != nil {
+		return nil, err
+	}
+	return NewDatasourceInstance(config, metaStore)
+
+	for _, db := range OLD_DBs {
+		if err := metaStore.EnsureExistsDatabase(context.Background(), db); err != nil {
+			panic(err)
+		}
+	}
+*/
+}
+
+//func (s *DatasourceInstance) EnsureExistsDatabase(ctx context.Context, db *metadata.Database) error {
+
+
 func SanitizeSQL(text string) string {
 	text = strings.Replace(text, "'", "''", -1)
 
@@ -352,9 +498,14 @@ func InitDataman(pgconnect string, database string) {
 		panic("Cannot parse JSON config data: " + err.Error())
 	}
 
+
+
 	if datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta); err == nil {
+	//if datasource, err := storagenode.NewDatasourceInstanceDefault(&config); err == nil {
 		DatasourceInstance["opsdb"] = datasource
+		DatasourceConfig["opsdb"] = &config
 	} else {
 		panic("Cannot open primary database connection: " + err.Error())
 	}
 }
+
