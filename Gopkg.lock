@@ -45,6 +45,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/mitchellh/copystructure"
+  packages = ["."]
+  revision = "d23ffcb85de31694d6ccaa23ccb4a03e55c1303f"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mitchellh/reflectwalk"
+  packages = ["."]
+  revision = "63d60e9d0dbc60cf9164e6510889b0db6683d98c"
+
+[[projects]]
+  branch = "master"
   name = "github.com/nu7hatch/gouuid"
   packages = ["."]
   revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
@@ -100,6 +112,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b3e15ee4330793add3675ad5bf7f78a84d64fc33ac14c8bbe9f0145b9aea89f4"
+  inputs-digest = "8e88d3467096fd505aeb00bebe72f0dde2ef74fe9f1c88da41f1b0b18e556fe0"
   solver-name = "gps-cdcl"
   solver-version = 1

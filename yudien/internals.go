@@ -228,7 +228,7 @@ func SetChildResult(parent interface{}, child interface{}, value interface{}) {
 		parent_map := parent.(map[string]interface{})
 
 		// Set the value
-		parent_map[child_str] = value
+		parent_map[child_str] = DeepCopy(value)
 	}
 }
 
