@@ -932,6 +932,21 @@ func UDN_StringSplit(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	return result
 }
 
+func UDN_StringJoin(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "String Join: %v\n", args)
+
+	separator := GetResult(args[0], type_string).(string)
+
+	result := UdnResult{}
+	if input_str_array, ok := input.([] string); ok {
+		result.Result = strings.Join(input_str_array, separator)
+	} else {
+		result.Error = fmt.Sprintf("Expected []string but got: %v", input)
+	}
+
+	return result
+}
+
 func UDN_StringLower(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "String Lower: %v\n", args)
 
