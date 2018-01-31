@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"io/ioutil"
+	"github.com/mitchellh/copystructure"
 )
 
 const (
@@ -457,6 +459,13 @@ func ReadPathData(path string) string {
 	return ""
 }
 
+func WritePathData(path string, text string) {
+	err := ioutil.WriteFile(path, []byte(text), 0644)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func MapCopy(input map[string]interface{}) map[string]interface{} {
 	new_map := make(map[string]interface{})
 
@@ -488,6 +497,14 @@ func JsonDump(value interface{}) string {
 	}
 
 	return json
+}
+
+func JsonLoadMap(text string) (map[string]interface{}, error) {
+	new_map := make(map[string]interface{})
+
+	err := json.Unmarshal([]byte(text), &new_map)
+
+	return new_map, err
 }
 
 func MapListToDict(map_array []map[string]interface{}, key string) map[string]interface{} {
@@ -602,4 +619,19 @@ func IsStringInArray(text string, arr []string) bool {
 		}
 	}
 	return false
+}
+
+func DeepCopy(v interface{}) interface{} {
+    // copystructure won't take a nil, so early return
+    if v == nil {
+        return nil
+    }
+    // might save a few cycles if we test for unmutable types
+    // and return early?
+    v_copy, err := copystructure.Copy(v)
+    if err != nil {
+        fmt.Print(err)
+        return v
+    }
+    return v_copy
 }
