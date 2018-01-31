@@ -180,6 +180,7 @@ func InitUdn() {
 		"__split":     UDN_StringSplit, // Split a string
 		"__lower":     UDN_StringLower, // Lower case a string
 		"__upper":     UDN_StringUpper, // Upper case a string
+		"__join" :     UDN_StringJoin,  // Join an array into a string on a separator string
 
 		"__debug_get_all_data": UDN_DebugGetAllUdnData, // Templates the string passed in as arg_0
 
@@ -192,7 +193,6 @@ func InitUdn() {
 		//"__increment": UDN_Increment,				// Increment value
 		//"__decrement": UDN_Decrement,				// Decrement value
 		//"__split": UDN_StringSplit,				// Split a string into an array on a separator string
-		//"__join": UDN_StringJoin,					// Join an array into a string on a separator string
 		//"__render_page": UDN_RenderPage,			// Render a page, and return it's widgets so they can be dynamically updated
 
 		// New
@@ -446,82 +446,113 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 	// Argument list
 	args := make([]interface{}, 0)
 
-	// Look through the children, adding them to the args, as they are processed.
-	//TODO(g): Do the accessors too, but for now, all of them will be functions, so optimizing for that case initially
+	if udn_start.PartType == part_function || udn_start.PartType == part_compound {
+		// Look through the children, adding them to the args, as they are processed.
+		for child := udn_start.Children.Front(); child != nil; child = child.Next() {
+			arg_udn_start := child.Value.(*UdnPart)
 
-	for child := udn_start.Children.Front(); child != nil; child = child.Next() {
-		arg_udn_start := child.Value.(*UdnPart)
+			if arg_udn_start.PartType == part_compound {
+				// In a Compound part, the NextUdnPart is the function (currently)
+				//TODO(g): This could be anything in the future, but at this point it should always be a function in a compound...  As it's a sub-statement.
+				if arg_udn_start.NextUdnPart != nil {
+					//UdnLog(udn_schema, "-=-=-= Args Execute from Compound -=-=-=-\n")
+					arg_result := ExecuteUdn(db, udn_schema, arg_udn_start.NextUdnPart, input, udn_data)
+					//UdnLog(udn_schema, "-=-=-= Args Execute from Compound -=-=-=-  RESULT: %T: %v\n", arg_result, arg_result)
+					//fmt.Printf("Compound Part: %s\n", DescribeUdnPart(arg_udn_start.NextUdnPart))
+					//fmt.Printf("Compound Parent: %s\n", DescribeUdnPart(arg_udn_start))
 
-		if arg_udn_start.PartType == part_compound {
-			// In a Compound part, the NextUdnPart is the function (currently)
-			//TODO(g): This could be anything in the future, but at this point it should always be a function in a compound...  As it's a sub-statement.
-			if arg_udn_start.NextUdnPart != nil {
-				//UdnLog(udn_schema, "-=-=-= Args Execute from Compound -=-=-=-\n")
-				arg_result := ExecuteUdn(db, udn_schema, arg_udn_start.NextUdnPart, input, udn_data)
-				//UdnLog(udn_schema, "-=-=-= Args Execute from Compound -=-=-=-  RESULT: %T: %v\n", arg_result, arg_result)
-				//fmt.Printf("Compound Part: %s\n", DescribeUdnPart(arg_udn_start.NextUdnPart))
-				//fmt.Printf("Compound Parent: %s\n", DescribeUdnPart(arg_udn_start))
+					args = AppendArray(args, arg_result)
+				} else {
+					//UdnLog(udn_schema, "  UDN Args: Skipping: No NextUdnPart: Children: %d\n\n", arg_udn_start.Children.Len())
+					//UdnLog(udn_schema, "  UDN Args: Skipping: No NextUdnPart: Value: %v\n\n", arg_udn_start.Value)
+				}
+			} else if arg_udn_start.PartType == part_function {
+				//UdnLog(udn_schema, "-=-=-= Args Execute from Function -=-=-=-\n")
+				arg_result := ExecuteUdn(db, udn_schema, arg_udn_start, input, udn_data)
 
 				args = AppendArray(args, arg_result)
+			} else if arg_udn_start.PartType == part_map {
+				// Take the value as a literal (string, basically, but it can be tested and converted)
+
+				arg_result_result := make(map[string]interface{})
+
+				//UdnLog(udn_schema, "--Starting Map Arg--\n\n")
+				// Then we populate it with data, by processing each of the keys and values
+				//TODO(g): Will first assume all keys are strings.  We may want to allow these to be dynamic as well, letting them be set by UDN, but forcing to a string afterwards...
+				for child := arg_udn_start.Children.Front(); child != nil; child = child.Next() {
+					key := child.Value.(*UdnPart).Value
+
+					//ORIGINAL:
+					//TODO(z): Is ExecuteUdnCompound necessary for part_map instead of ExecuteUdnPart? Change if not
+					udn_part_value := child.Value.(*UdnPart).Children.Front().Value.(*UdnPart)
+					//udn_part_result := ExecuteUdnPart(db, udn_schema, udn_part_value, input, udn_data)
+					udn_part_result := ExecuteUdnCompound(db, udn_schema, udn_part_value, input, udn_data)
+					arg_result_result[key] = udn_part_result.Result
+
+					UdnLog(udn_schema, "--  Map:  Key: %s  Value: %v (%T)--\n\n", key, udn_part_result.Result, udn_part_result.Result)
+				}
+				//UdnLog(udn_schema, "--Ending Map Arg--\n\n")
+
+				args = AppendArray(args, arg_result_result)
+			} else if arg_udn_start.PartType == part_list {
+				// Take each list item and process it as UDN, to get the final result for this arg value
+				// Populate the list
+				//list_values := list.New()
+				array_values := make([]interface{}, 0)
+
+				//TODO(g): Convert to an array.  I tried it naively, and it didnt work, so it needs a little more work than just these 2 lines...
+				//list_values := make([]interface{}, 0)
+
+				// Then we populate it with data, by processing each of the keys and values
+				for child := arg_udn_start.Children.Front(); child != nil; child = child.Next() {
+					udn_part_value := child.Value.(*UdnPart)
+
+					UdnLog(udn_schema, "List Arg Eval: %v\n", udn_part_value)
+
+					udn_part_result := ExecuteUdnPart(db, udn_schema, udn_part_value, input, udn_data)
+					//list_values.PushBack(udn_part_result.Result)
+					array_values = AppendArray(array_values, udn_part_result.Result)
+				}
+
+				//UdnLog(udn_schema, "  UDN Argument: List: %v\n", SprintList(*list_values))
+
+				//args = AppendArray(args, list_values)
+				args = AppendArray(args, array_values)
 			} else {
-				//UdnLog(udn_schema, "  UDN Args: Skipping: No NextUdnPart: Children: %d\n\n", arg_udn_start.Children.Len())
-				//UdnLog(udn_schema, "  UDN Args: Skipping: No NextUdnPart: Value: %v\n\n", arg_udn_start.Value)
+				args = AppendArray(args, arg_udn_start.Value)
 			}
-		} else if arg_udn_start.PartType == part_function {
-			//UdnLog(udn_schema, "-=-=-= Args Execute from Function -=-=-=-\n")
-			arg_result := ExecuteUdn(db, udn_schema, arg_udn_start, input, udn_data)
-
-			args = AppendArray(args, arg_result)
-		} else if arg_udn_start.PartType == part_map {
-			// Take the value as a literal (string, basically, but it can be tested and converted)
-
-			arg_result_result := make(map[string]interface{})
-
-			//UdnLog(udn_schema, "--Starting Map Arg--\n\n")
-
-			// Then we populate it with data, by processing each of the keys and values
-			//TODO(g): Will first assume all keys are strings.  We may want to allow these to be dynamic as well, letting them be set by UDN, but forcing to a string afterwards...
-			for child := arg_udn_start.Children.Front(); child != nil; child = child.Next() {
-				key := child.Value.(*UdnPart).Value
-
-				//ORIGINAL:
-				udn_part_value := child.Value.(*UdnPart).Children.Front().Value.(*UdnPart)
-				//udn_part_result := ExecuteUdnPart(db, udn_schema, udn_part_value, input, udn_data)
-				udn_part_result := ExecuteUdnCompound(db, udn_schema, udn_part_value, input, udn_data)
-				arg_result_result[key] = udn_part_result.Result
-
-				UdnLog(udn_schema, "--  Map:  Key: %s  Value: %v (%T)--\n\n", key, udn_part_result.Result, udn_part_result.Result)
-			}
-			//UdnLog(udn_schema, "--Ending Map Arg--\n\n")
-
-			args = AppendArray(args, arg_result_result)
-		} else if arg_udn_start.PartType == part_list {
-			// Take each list item and process it as UDN, to get the final result for this arg value
-			// Populate the list
-			//list_values := list.New()
-			array_values := make([]interface{}, 0)
-
-			//TODO(g): Convert to an array.  I tried it naively, and it didnt work, so it needs a little more work than just these 2 lines...
-			//list_values := make([]interface{}, 0)
-
-			// Then we populate it with data, by processing each of the keys and values
-			for child := arg_udn_start.Children.Front(); child != nil; child = child.Next() {
-				udn_part_value := child.Value.(*UdnPart)
-
-				UdnLog(udn_schema, "List Arg Eval: %v\n", udn_part_value)
-
-				udn_part_result := ExecuteUdnPart(db, udn_schema, udn_part_value, input, udn_data)
-				//list_values.PushBack(udn_part_result.Result)
-				array_values = AppendArray(array_values, udn_part_result.Result)
-			}
-
-			//UdnLog(udn_schema, "  UDN Argument: List: %v\n", SprintList(*list_values))
-
-			//args = AppendArray(args, list_values)
-			args = AppendArray(args, array_values)
-		} else {
-			args = AppendArray(args, arg_udn_start.Value)
 		}
+	} else if udn_start.PartType == part_list {
+		// Look through the children of the list and add to args
+		for child := udn_start.Children.Front(); child != nil; child = child.Next() {
+			udn_part_value := child.Value.(*UdnPart)
+
+			udn_part_result := ExecuteUdnPart(db, udn_schema, udn_part_value, input, udn_data)
+
+			args = AppendArray(args, udn_part_result.Result)
+		}
+	} else if udn_start.PartType == part_map {
+		// Look through the children of the map and add to args
+		arg_result_result := make(map[string]interface{})
+
+		//UdnLog(udn_schema, "--Starting Map Arg--\n\n")
+
+		for child := udn_start.Children.Front(); child != nil; child = child.Next() {
+			key := child.Value.(*UdnPart).Value
+
+			udn_part_value := child.Value.(*UdnPart).Children.Front().Value.(*UdnPart)
+			//udn_part_result := ExecuteUdnPart(db, udn_schema, udn_part_value, input, udn_data)
+			udn_part_result := ExecuteUdnCompound(db, udn_schema, udn_part_value, input, udn_data)
+			arg_result_result[key] = udn_part_result.Result
+
+			UdnLog(udn_schema, "--  Map:  Key: %s  Value: %v (%T)--\n\n", key, udn_part_result.Result, udn_part_result.Result)
+		}
+		//UdnLog(udn_schema, "--Ending Map Arg--\n\n")
+
+		args = AppendArray(args, arg_result_result)
+	} else {
+		// Default would be to just add to args (ex: string/item)
+		args = AppendArray(args, udn_start.Value)
 	}
 
 	// Only log if we have something to say, otherwise its just noise
@@ -607,19 +638,13 @@ func ExecuteUdnPart(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 		// Execute the first part of the Compound (should be a function, but it will get worked out)
 		udn_result = ExecuteUdnPart(db, udn_schema, udn_start.NextUdnPart, input, udn_data)
 	} else if udn_start.PartType == part_map {
-		map_result := make(map[string]interface{})
-
-		for child := udn_start.Children.Front(); child != nil; child = child.Next() {
-			cur_child := *child.Value.(*UdnPart)
-
-			key := cur_child.Value
-			value := cur_child.Children.Front().Value.(*UdnPart).Value
-
-			map_result[key] = value
+		if len(args) > 0 {
+			udn_result.Result = args[0]
+		} else {
+			udn_result.Result = udn_start.Value
 		}
-
-		udn_result.Result = map_result
-
+	} else if udn_start.PartType == part_list {
+		udn_result.Result = args
 	} else {
 		// We just store the value, if it is not handled as a special case above
 		udn_result.Result = udn_start.Value
@@ -658,8 +683,7 @@ func ExecuteUdnCompound(db *sql.DB, udn_schema map[string]interface{}, udn_start
 			}
 		}
 	} else {
-		// If we arent a compount, return the value
-		udn_result.Result = udn_start.Value
+		udn_result = ExecuteUdnPart(db, udn_schema, udn_start, input, udn_data)
 	}
 
 	return udn_result

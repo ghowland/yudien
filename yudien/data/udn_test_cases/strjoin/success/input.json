@@ -1,0 +1,5 @@
+{
+    "statement": "__join.'.'",
+    "input": ["192","168","0","1"],
+    "input_type": "[] string"
+}
