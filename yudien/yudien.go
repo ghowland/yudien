@@ -168,7 +168,7 @@ func InitUdn() {
 		"__data_get":    UDN_DataGet,    // Dataman Get
 		"__data_set":    UDN_DataSet,    // Dataman Set
 		"__data_filter": UDN_DataFilter, // Dataman Filter
-		"__data_search": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
+		"__data_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
 
 		"__compare_equal":     UDN_CompareEqual,    // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
 		"__compare_not_equal": UDN_CompareNotEqual, // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
