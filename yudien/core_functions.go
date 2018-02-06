@@ -1,6 +1,7 @@
 package yudien
 
 import (
+	"bytes"
 	"container/list"
 	"database/sql"
 	"encoding/json"
@@ -15,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
-	"bytes"
+	"time"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -1420,6 +1421,7 @@ func UDN_JsonEncodeData(db *sql.DB, udn_schema map[string]interface{}, udn_start
 
 	return result
 }
+
 func UDN_GetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//UdnLog(udn_schema, "Get Index: %v\n", SnippetData(args, 80))
 
@@ -1516,7 +1518,8 @@ func UDN_DataFilterFull(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	UdnLog(udn_schema, "Data Filter: %v\n", args)
 
 	collection_name := GetResult(args[0], type_string).(string)
-	filter := GetResult(args[1], type_string).(string)
+
+	filter := args[1] // filter could be either map[string]interface{} for single filters or []interface{} for multifilters
 
 	// Optionally, options
 	options := make(map[string]interface{})
@@ -1615,7 +1618,9 @@ func UDN_CompareEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 		value = 0
 	}
 
-	fmt.Printf("Compare: Equal: '%s' == '%s' : %d\n", arg0, arg1, value)
+	if Debug_Udn {
+		fmt.Printf("Compare: Equal: '%s' == '%s' : %d\n", arg0, arg1, value)
+	}
 
 	result := UdnResult{}
 	result.Result = value
@@ -1634,7 +1639,9 @@ func UDN_CompareNotEqual(db *sql.DB, udn_schema map[string]interface{}, udn_star
 		value = 0
 	}
 
-	fmt.Printf("Compare: Not Equal: '%s' != '%s' : %d\n", arg0, arg1, value)
+	if Debug_Udn {
+		fmt.Printf("Compare: Not Equal: '%s' != '%s' : %d\n", arg0, arg1, value)
+	}
 
 	result := UdnResult{}
 	result.Result = value
@@ -1756,6 +1763,42 @@ func UDN_GetTemp(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
+func UDN_GetTempKey(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	function_stack := udn_data["__function_stack"].([]map[string]interface{})
+	function_stack_item := function_stack[len(function_stack)-1]
+	function_uuid := function_stack_item["uuid"].(string)
+	UdnLog(udn_schema, "Get Temp Key: %s: %v\n", function_uuid, SnippetData(args, 80))
+
+	// Ensure temp exists
+	if udn_data["__temp"] == nil {
+		udn_data["__temp"] = make(map[string]interface{})
+	}
+
+	// Ensure this Function Temp exists
+	if udn_data["__temp"].(map[string]interface{})[function_uuid] == nil {
+		udn_data["__temp"].(map[string]interface{})[function_uuid] = make(map[string]interface{})
+	}
+
+	// concatenate all the arguments to return the final temp variable string
+	var buffer bytes.Buffer
+
+	buffer.WriteString("__temp.")
+	buffer.WriteString(function_uuid)
+
+	for _, arg := range args{
+		buffer.WriteString(".")
+		buffer.WriteString(arg.(string))
+	}
+
+	temp_string := buffer.String()
+
+	// return the string that will allow direct access to the temp variable (including the function uuid)
+	result := UdnResult{}
+	result.Result = temp_string
+
+	return result
+}
+
 func UDN_SetTemp(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	function_stack := udn_data["__function_stack"].([]map[string]interface{})
 	function_stack_item := function_stack[len(function_stack)-1]
@@ -1777,6 +1820,24 @@ func UDN_SetTemp(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 
 	// Call the normal Get function, with this temp_udn_data data
 	result := UDN_Set(db, udn_schema, udn_start, args, input, temp_udn_data)
+
+	return result
+}
+
+func UDN_SetHttpResponseCode(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "Set HTTP code: %v\n", SnippetData(args, 80))
+
+	// args[0] - desired http code to be set
+	if len(args) > 0 {
+		http_response_code, err := strconv.Atoi(args[0].(string))
+		if err == nil {
+			udn_data["http_response_code"] = http_response_code
+		}
+	}
+
+	// result is passed through
+	result := UdnResult{}
+	result.Result = input
 
 	return result
 }
@@ -2008,6 +2069,305 @@ func UDN_NotNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 
 	result := UdnResult{}
 	result.Result = value
+
+	return result
+}
+
+func UDN_StringToTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "String to Time: %v\n", SnippetData(input, 60))
+
+	time_string := ""
+	switch input.(type) {
+	case string:
+		time_string = input.(string)
+	}
+
+	layout := "2006-01-02 15:04:05"
+	parsed_time, err := time.Parse(layout, time_string)
+	result := UdnResult{}
+
+	// return Time.time object is conversion is successful
+	if err == nil {
+		result.Result = parsed_time
+	}
+
+	if err != nil {
+		// try another layout if previous one does not work
+		layout2 := "2006-01-02T15:04:05"
+		parsed_time, err := time.Parse(layout2, time_string)
+
+		if err == nil {
+			result.Result = parsed_time
+		}
+	}
+
+	if err != nil {
+		// try another layout if previous one does not work
+		layout3 := "2006-01-02T15:04:05.000Z"
+		parsed_time, err := time.Parse(layout3, time_string)
+
+		if err == nil {
+			result.Result = parsed_time
+		}
+	}
+
+	return result
+}
+
+func UDN_TimeToEpoch(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "time.Time to unix time in seconds: %v\n", SnippetData(input, 60))
+
+	result := UdnResult{}
+
+	// input is a Time.time object
+	switch input.(type) {
+	case time.Time:
+		result.Result = int64(input.(time.Time).Unix())
+	default: // Do nothing if input is not a Time.time object
+	}
+
+	return result
+}
+
+func UDN_TimeToEpochMs(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "time.Time to unix time in milliseconds: %v\n", SnippetData(input, 60))
+
+	result := UdnResult{}
+
+	// input is a Time.time object
+	switch input.(type) {
+	case time.Time:
+		result.Result = int64(input.(time.Time).UnixNano()) / int64(time.Millisecond)
+	default: // Do nothing if input is not a Time.time object
+	}
+
+	return result
+}
+
+func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "Group by: %v\n", SnippetData(input, 60))
+
+	// arg[0] = method to group on
+	// arg[1] = source of data
+	// arg[2] = aggregated field (ex: cost, total, etc.)
+	// arg[3] = field to group on
+	// ex: __group_by.method.data_location.field1.field2.field3...
+
+	// source of data should be a list of maps
+	// ex: [{order_id: 101, category: monitor, cost: 80},
+	//      {order_id: 102, category: monitor, cost: 82},
+	//      {order_id: 103, category: laptop, cost: 100}]
+	// __group_by.sum.data_above.category yields:
+	// [{category: monitor, cost: 162},
+	//  {category: laptop, cost: 100}]
+
+
+	result := UdnResult{}
+
+	if len(args) < 4 {
+		return result // Nothing to group by
+	}
+
+	var source_data []map[string]interface{}
+
+	switch args[1].(type){
+	case []interface{}:
+		source_data = make([]map[string]interface{}, len(args[1].([]interface{})))
+
+		for index, element := range args[1].([]interface{}) {
+			source_data[index] = element.(map[string]interface{})
+		}
+	case []map[string]interface{}:
+		source_data = args[1].([]map[string]interface{})
+	}
+
+	method := strings.ToLower(args[0].(string))
+	aggregate_field := args[2].(string)
+	field := args[3].(string) //TODO(z): Make field variadic - Implement grouping on multiple fields - currently only supports grouping on one field  (when there is use case)
+
+	result_list := make([]map[string]interface{}, 0) // stores result array
+	result_map := make(map[string]interface{}) // stores all seen keys
+
+	// Certain default methods will be implemented - rest found in an entry in opsdb udn_stored_functions table (TODO)
+	//TODO(z): Need to add entry in udn_stored_functions table to handle such new functions (ex: group_by_bettersum)
+	//TODO(z): Other default group by functions such as min, max, avg (when there is use case)
+	switch method {
+	case "count":
+		for _, element := range source_data {
+			// check for new keys based on the group by field
+			if _, key_exists := result_map[element[field].(string)]; !key_exists {
+				// create new key to group on
+				new_key_map := make(map[string]interface{})
+				new_key_map[field] = element[field].(string)
+				new_key_map[aggregate_field] = int64(1)
+
+				result_list = append(result_list, new_key_map)
+				result_map[element[field].(string)] = int64(len(result_list) - 1) // store index of the result in the seen key map
+			} else { // key exists - add sum to existing value
+				index := result_map[element[field].(string)].(int64)
+
+				result_list[index][aggregate_field] = result_list[index][aggregate_field].(int64) + int64(1)
+			}
+		}
+	case "sum":
+		for _, element := range source_data {
+			// convert element[aggregate_field] to int64 if necessary
+			//TODO(z): add float support if there is use-case for the sum function - default is int
+			aggregate_value := int64(0)
+
+			switch element[aggregate_field].(type){
+			case string:
+				aggregate_value, _ = strconv.ParseInt(element[aggregate_field].(string), 10, 64)
+			case int64:
+				aggregate_value = element[aggregate_field].(int64)
+			case float64:
+				aggregate_value = int64(element[aggregate_field].(float64))
+			}
+
+
+			// check for new keys based on the group by field
+			if _, key_exists := result_map[element[field].(string)]; !key_exists {
+				// create new key to group on
+				new_key_map := make(map[string]interface{})
+				new_key_map[field] = element[field].(string)
+				new_key_map[aggregate_field] = aggregate_value
+
+				result_list = append(result_list, new_key_map)
+				result_map[element[field].(string)] = int64(len(result_list) - 1) // store index of the result in the seen key map
+			} else { // key exists - add sum to existing value
+				index := result_map[element[field].(string)].(int64)
+
+				result_list[index][aggregate_field] = result_list[index][aggregate_field].(int64) + aggregate_value
+			}
+		}
+	default: // Not found - look in udn_stored_functions table (TODO)
+	}
+
+	result.Result = result_list
+	return result
+}
+
+func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "Group by: %v\n", SnippetData(input, 60))
+
+	// This function will encompass all math related functions for UDN
+	// arg[0] = function
+	// arg[1...n] = operands
+	// ex: __math.divide.operand1.operand2
+
+	result := UdnResult{}
+
+	if len(args) < 1 {
+		return result // Function not specified
+	}
+
+	all_integer := true // Flag used to determine whether we should do an integer operation
+	function := strings.ToLower(args[0].(string))
+	operands := args[1:]
+	num_of_operands := len(operands)
+
+	// Make a first pass through each operand to check if all operands are integers (for integer arithmetic)
+	for _, operand := range operands {
+		switch operand.(type) {
+		case int, int32, int64:
+		default:
+			all_integer = false
+		}
+	}
+
+	// Second pass - go through each operand and check for type and do conversions when necessary
+	for index, operand := range operands {
+		switch operand.(type) {
+		case int64: // int64 is default
+			if !all_integer {
+				operands[index] = float64(operand.(int64))
+			}
+		case int:
+			if all_integer {
+				operands[index] = int64(operand.(int))
+			} else {
+				operands[index] = float64(operand.(int))
+			}
+		case int32:
+			if all_integer {
+				operands[index] = int64(operand.(int32))
+			} else {
+				operands[index] = float64(operand.(int32))
+			}
+		case float64: // float64 is default
+		case float32:
+			operands[index] = float64(operand.(float32))
+		case string: // try to convert from string to int64 first, then float64
+			operand_int, err := strconv.ParseInt(operand.(string), 10, 64)
+
+			if err == nil && all_integer {
+				operands[index] = operand_int
+			} else { // try to convert to float64
+				operand_float, err := strconv.ParseFloat(operand.(string), 64)
+
+				if err == nil {
+					operands[index] = operand_float
+				} else {
+					return result // invalid operand - return nil
+				}
+			}
+		default:
+			// One of the operands is not a valid int/float, thus stop function and return nil
+			return result
+		}
+	}
+
+	//TODO(z): implement more arithmetic functions as needed when there is use case
+	switch function {
+	case "input": // __input function for integer or float
+		if num_of_operands < 1 {
+			return result
+		}
+		if all_integer {
+			result.Result = operands[0].(int64)
+		} else {
+			result.Result = operands[0].(float64)
+		}
+	case "+", "add": // TODO(z): make operations variadic when applicable
+		if num_of_operands < 2 {
+			return result
+		}
+		if all_integer {
+			result.Result = operands[0].(int64) + operands[1].(int64)
+		} else {
+			result.Result = operands[0].(float64) + operands[1].(float64)
+		}
+	case "-", "subtract":
+		if num_of_operands < 2 {
+			return result
+		}
+		if all_integer {
+			result.Result = operands[0].(int64) - operands[1].(int64)
+		} else {
+			result.Result = operands[0].(float64) - operands[1].(float64)
+		}
+	case "*", "multiply":
+		if num_of_operands < 2 {
+			return result
+		}
+		if all_integer {
+			result.Result = operands[0].(int64) * operands[1].(int64)
+		} else {
+			result.Result = operands[0].(float64) * operands[1].(float64)
+		}
+	case "/", "divide": // returns float - not integer division by default
+		if num_of_operands < 2 {
+			return result
+		}
+		if all_integer {
+			result.Result = float64(operands[0].(int64)) / float64(operands[1].(int64))
+		} else {
+			result.Result = operands[0].(float64) / operands[1].(float64)
+		}
+	default:
+		result.Result = 0
+	}
+
 
 	return result
 }
