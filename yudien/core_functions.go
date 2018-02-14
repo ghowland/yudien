@@ -2199,14 +2199,25 @@ func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 				// create new key to group on
 				new_key_map := make(map[string]interface{})
 				new_key_map[field] = element[field].(string)
-				new_key_map[aggregate_field] = int64(1)
+				new_key_map[aggregate_field] = int64(0)
 
 				result_list = append(result_list, new_key_map)
-				result_map[element[field].(string)] = int64(len(result_list) - 1) // store index of the result in the seen key map
-			} else { // key exists - add sum to existing value
+
+				index := int64(len(result_list) - 1)
+				result_map[element[field].(string)] = index // store index of the result in the seen key map
+
+				// only aggregate if the target field exists
+				if _, field_exists := element[aggregate_field]; field_exists {
+					result_list[index][aggregate_field] = result_list[index][aggregate_field].(int64) + int64(1)
+				}
+			} else { // key exists - add count to existing value if aggregate_field exists
+
 				index := result_map[element[field].(string)].(int64)
 
-				result_list[index][aggregate_field] = result_list[index][aggregate_field].(int64) + int64(1)
+				// only aggregate if the target field exists
+				if _, field_exists := element[aggregate_field]; field_exists {
+					result_list[index][aggregate_field] = result_list[index][aggregate_field].(int64) + int64(1)
+				}
 			}
 		}
 	case "sum":
