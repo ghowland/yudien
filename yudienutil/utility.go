@@ -13,6 +13,7 @@ import (
 	"strings"
 	"io/ioutil"
 	"github.com/mitchellh/copystructure"
+	"reflect"
 )
 
 const (
@@ -413,6 +414,20 @@ func ConvertListToMap(input *list.Element, count int) map[string]interface{} {
 	return result
 }
 
+func ConvertMapArrayToMap(map_array []map[string]interface{}, key string) map[string]interface{} {
+	// Flip the values to strings in the keys, so anything can go in.  Use %v.
+	result := make(map[string]interface{})
+
+	for _, item := range map_array {
+		result_key := fmt.Sprintf("%v", item[key])
+
+		result[result_key] = item
+	}
+
+	return result
+}
+
+
 func SprintMap(map_data map[string]interface{}) string {
 	output := ""
 
@@ -619,6 +634,27 @@ func IsStringInArray(text string, arr []string) bool {
 		}
 	}
 	return false
+}
+
+//TODO(g):PACKAGE:REFLECT: Using refect here, to not be string specific, evaluate removing this in the future
+func InArray(val interface{}, array interface{}) (exists bool, index int) {
+	exists = false
+	index = -1
+
+	switch reflect.TypeOf(array).Kind() {
+		case reflect.Slice:
+		s := reflect.ValueOf(array)
+
+		for i := 0; i < s.Len(); i++ {
+			if reflect.DeepEqual(val, s.Index(i).Interface()) == true {
+				index = i
+				exists = true
+				return
+			}
+		}
+	}
+
+	return
 }
 
 func DeepCopy(v interface{}) interface{} {

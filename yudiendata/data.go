@@ -16,6 +16,8 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
+	"time"
+	"github.com/jacksontj/dataman/src/datamantype"
 )
 
 const (
@@ -327,8 +329,265 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 }
 
 
+/*
+
+Redo DatamanEnsureDatabases to use https://github.com/jacksontj/dataman/blob/master/src/storage_node/datasource/interface.go:
+
+Provision States:
+
+-3 = Deleted from Real Schema.  Needs to be removed from the Database (purge/obliterate) -- Change Management pre-removal phase
+-2 = In process of Deletion
+-1 = Tagged for Deletion
+NULL = Unknown, test for existence and update.  Assume it is desired to be created if it doesnt exist.
+0 = In Process of Provisioning
+1 = Provisioned
+
+ */
+
+
 func DatamanEnsureDatabases(pgconnect string, database string, current_path string, new_path string) {
 
+	//TODO(g): Do multiple DBs in the future (schema), for now just limit it to opsdb, because thats all we need now
+	limited_database_search := "opsdb"
+
+
+	// Get the Hard coded OpsDB record from the database `schema` table
+	option_map := make(map[string]interface{})
+	filter_map := make(map[string]interface{})
+	filter_map["name"] = limited_database_search
+	schema_result := DatamanFilter("schema", filter_map, option_map)
+	schema_map := schema_result[0]
+
+	fmt.Printf("OpsDB Schema: %v\n\n", schema_map)
+
+	opsdb_schema := DatasourceInstance["opsdb"].StoreSchema
+
+	//TODO(g): Remove when we have the Dataman capability to ALTER tables to set PKEYs
+	db, err := sql.Open("postgres", pgconnect)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+
+
+	fmt.Printf("\nList DB Start: %v\n\n", time.Now().String())
+	//db_list := opsdb_schema.ListDatabase(context.Background())
+	db_item := opsdb_schema.GetDatabase(context.Background(), limited_database_search)
+	fmt.Printf("\nList DB Stop: %v\n\n", time.Now().String())
+
+	fmt.Printf("\n\nFound DB Item: %v\n\n", db_item.Name)
+
+	//shard_instance := opsdb_schema.ListShardInstance(context.Background(), db_item.Name)
+
+
+	//TODO(g): Make an empty list of the collections, so we can track what we have, to find missing ones
+	collection_array := make([]string, 0)
+
+
+	//fmt.Printf("\n\nFound DB Shard Instance: %v -- %v\n\n", shard_instance, db_item.ShardInstances["public"])
+
+	//collections := opsdb_schema.ListCollection(context.Background(), db_item.Name, "public")
+
+	for _, collection := range db_item.ShardInstances["public"].Collections {
+		fmt.Printf("\n\nFound DB Collections: %s\n", collection.Name)
+
+		option_map := make(map[string]interface{})
+		filter_map := make(map[string]interface{})
+		filter_map["name"] = collection.Name
+		filter_map["schema_id"] = schema_map["_id"]
+		collection_result := DatamanFilter("schema_table", filter_map, option_map)
+
+		collection_map := make(map[string]interface{})
+		if len(collection_result) > 0 {
+			collection_map = collection_result[0]
+			fmt.Printf("OpsDB Collection: %v\n\n", collection_map)
+
+			// Add collection to our tracking array
+			collection_array = append(collection_array, collection.Name)
+
+
+			//TODO(g): Make an empty list of the collection fields, so we can track what we have, to find missing ones
+			collection_field_array := make([]string, 0)
+
+			// Check: Index, Primary Index
+
+			for _, field := range collection.Fields {
+				fmt.Printf("\n\nFound DB Collections: %s  Field: %s  Type: %s   (Default: %v -- Not Null: %v -- Relation: %v)\n", collection.Name, field.Name, field.FieldType.Name, field.Default, field.NotNull, field.Relation)
+
+				// Check: Not Null, Relation, Default, Type
+
+				option_map := make(map[string]interface{})
+				filter_map := make(map[string]interface{})
+				filter_map["name"] = field.Name
+				filter_map["schema_table_id"] = collection_map["_id"]
+				collection_field_result := DatamanFilter("schema_table_field", filter_map, option_map)
+
+				collection_field_map := make(map[string]interface{})
+				if len(collection_field_result) > 0 {
+					collection_field_map = collection_field_result[0]
+					fmt.Printf("OpsDB Collection Field: %v\n\n", collection_field_map)
+
+					// Add collection to our tracking array
+					collection_field_array = append(collection_field_array, field.Name)
+
+
+				} else {
+					fmt.Printf("OpsDB Collection Field: MISSING: %s\n\n", field.Name)
+
+				}
+			}
+		} else {
+			fmt.Printf("OpsDB Collection: MISSING: %s\n\n", collection.Name)
+
+		}
+	}
+
+
+	// Loop over all collections and see if there are any we have in the `schema` table, that we dont have accounted for in the actual database
+	option_map = make(map[string]interface{})
+	filter_map = make(map[string]interface{})
+	argument_type_result := DatamanFilter("argument_type", filter_map, option_map)
+	argument_type_map := ConvertMapArrayToMap(argument_type_result, "_id")
+
+	// Loop over all collections and see if there are any we have in the `schema` table, that we dont have accounted for in the actual database
+	option_map = make(map[string]interface{})
+	filter_map = make(map[string]interface{})
+	all_collection_result := DatamanFilter("schema_table", filter_map, option_map)
+
+	for _, collection_record := range all_collection_result {
+		if ok, _ := InArray(collection_record["name"].(string), collection_array) ; !ok {
+			fmt.Printf("Not Found collection: %s\n\n", collection_record["name"])
+
+
+			new_collection := metadata.Collection{}
+
+			new_collection.Name = collection_record["name"].(string)
+			new_collection.Fields = make(map[string]*metadata.CollectionField)
+
+			// Get all the fields for this collection
+			option_map := make(map[string]interface{})
+			filter_map := make(map[string]interface{})
+			filter_map["schema_table_id"] = collection_record["_id"]
+			all_collection_field_result := DatamanFilter("schema_table_field", filter_map, option_map)
+
+
+			// Create the new collection
+			err := opsdb_schema.AddCollection(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection)
+			fmt.Printf("Add New Collection: %s: ERROR: %s\n\n", new_collection.Name, err)
+
+			for _, field_map := range all_collection_field_result {
+				// Create fields we need to populate this table
+				new_field := metadata.CollectionField{}
+				new_field.Name = field_map["name"].(string)
+				argument_type_map_key := fmt.Sprintf("%v", field_map["argument_type_id"])
+				new_field.Type = argument_type_map[argument_type_map_key].(map[string]interface{})["schema_type_name"].(string)
+				new_field.NotNull = !field_map["allow_null"].(bool)
+				new_field.Default = field_map["default_value"]
+				new_field.FieldType = &metadata.FieldType{}
+				new_field.FieldType.Name = argument_type_map[argument_type_map_key].(map[string]interface{})["schema_type_name"].(string)
+				new_field.FieldType.DatamanType = datamantype.DatamanType(new_field.FieldType.Name)
+
+				new_collection.Fields[new_field.Name] = &new_field
+
+				// Create the new collection field
+				err := opsdb_schema.AddCollectionField(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_field)
+				fmt.Printf("Add New Collection Field: %s: %s: ERROR: %s\n\n", new_collection.Name, new_field.Name, err)
+
+				if field_map["is_primary_key"] == true {
+					new_index := metadata.CollectionIndex{}
+
+					new_index.Name = fmt.Sprintf("pkey_%s", new_field.Name)
+					new_index.Primary = true
+					new_index.Unique = true
+
+					new_index.Fields = make([]string, 0)
+					new_index.Fields = append(new_index.Fields, new_field.Name)
+
+					// Create the new collection field index
+//					err := opsdb_schema.AddCollectionIndex(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_index)
+
+					// Perform an ALTER table through SQL here, as dataman doesnt allow it
+					//TODO(g)...
+					//
+					sql := fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY (%s)", new_collection.Name, new_field.Name)
+					Query(db, sql)
+					fmt.Printf("Add New Collection Field PKEY: %s: %s: ERROR: %s\n\n", new_collection.Name, new_index.Name, err)
+
+				}
+
+				//TODO: Foreign Key
+
+
+
+
+			}
+
+
+			//TODO: Indices
+
+			//TODO: Sequences
+
+
+		}
+	}
+
+
+
+	// Returns a JSON-styled map which contains all the data needed to enact this change, and is what we store in version_pending/version_commit
+	//		We need to be able to do this comparison at 2 different times.
+	//		Should I do this through 2 diffs of the data?  Then I just pull in the current data, and compare it?
+	//		Yes, we need to be able to get data from 2 different databases.  So I will make the comparison work as it sending the data from one to the other.
+	//			The same will have to be done with the data.
+	//
+	//		For data, we need to get all the data sometimes, but othertimes, we want partial data.  Maybe last 2 weeks, or only by users with X.
+	//			Often this is based on how big the tables.  Small we take it all, big we want to dig.
+	//
+	//		Make this work as just sending the data packs across, either with everything, or with a sort.
+	//
+	//		If it's creating things with everything, it will have to respect FOREIGN KEY constraints, because otherwise we will corrupt the dataset.
+	//		But the FOREIGN KEY we protect only needs to be the shorter tables, our config tables?  Some tables we dont protect:  LOGGING TABLES.  Something like that name.  Non-core data tables.  Non-essential data.  Non-critical.  Supporting data.
+	//
+	//		This way we dont purge existing data, so it doesnt break anything, but UPDATES existing, and adds new data we need for testing.  They can purge on their own, as they wish.
+	//
+	//		This way, can request the schema from other machines.  Can share your schema, and data information, and then others can request your data.  They can get your schema all the time.
+	//
+	//	Uploading data dumps, we would always have the data.  Should I just have a method of restoring from a dump, and having everyone's DBs in a centralized location this way?
+	//
+	//		It does make sense to just constantly sync their dumps, because then we already have the data to sync it.  A staging server becomes a "hub" for people to sync against, and keeps all the DBs for the backups and such.
+	//
+	//			In this way, we can also test everyone's code and features, because we have all their code, so we basically have an instance of their opsdb, available for testing.  Make it an N-OpsDB Hub.
+
+	//				-- Does this system need a separate DB to track all these DBs?  How do we know about them, if we change the default?  Just copy the data from the old to the new!!! --
+
+
+	/*
+	for _, db_item := range db_list {
+		if db_item.Name == limited_database_search {
+			fmt.Printf("\n\nFound DB Item: %v\n\n", db_item.Name)
+
+		}
+
+	}*/
+
+
+
+	//result_list := DatamanFilter(collection_name, filter, options)
+
+
+	// Look through all our Schemas, can we connect.  Do they exist?  Skip some of this for now, OpsDB is enough.
+
+	// Look through single schema, for all tables/collections.
+	//		Any assertions on the Table level?  Sequences?  Indexes???????///////???
+
+	// Look through all fields in all tables, ensure they exist or should be removed.  Check for Alter, new foreign keys, etc
+
+
+	// The result of this should be a Change Management record, which can be applied, or replicated
+	//		Run Apply Change Management pending record, to actually apply the changes, and save them.  Storing original data too.
+
+
+	/*
 	fmt.Printf("Starting ensure DB processs...\n")
 
 	config := storagenode.DatasourceInstanceConfig{
@@ -372,20 +631,6 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 	//DatasourceInstance["opsdb"] = datasource
 	//DatasourceConfig["opsdb"] = &config
-
-/*
-	// Create a metaStore so we can mutate this DB schema
-	metaStore, err := storagenode.NewMetadataStore(DatasourceConfig["opsdb"])
-	if err != nil {
-		panic(err)
-	}
-
-	// To prep the current configuration, scans current schema
-	DatasourceInstance["opsdb"], err = storagenode.NewDatasourceInstance(DatasourceConfig["opsdb"], metaStore)
-	if err != nil {
-		panic(err)
-	}
-*/
 
 	fmt.Printf("Importing current database info...\n")
 
@@ -435,6 +680,9 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 	}
 
 	fmt.Printf("Finished Creating the NEW DB as ensure...\n")
+	*/
+
+
 
 	/*
 Geoffs-MacBook-Pro:web6.0 geoff$ cat ../../jacksontj/dataman/src//client/example_usage/datasourceinstance.yaml
