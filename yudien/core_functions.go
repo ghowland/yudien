@@ -36,6 +36,10 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 
 	user_map := make(map[string]interface{})
 
+	// This is for using this without LDAP.  Make it use the configuration file.
+	//TODO(g): Make a default config file that works with this, because people dont start with working LDAP
+	ldap_override_admin := true
+
 	// Get the user data, if they authed
 	if ldap_user.IsAuthenticated == true {
 		user_map["first_name"] = ldap_user.FirstName
@@ -50,6 +54,19 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		// Store it in UDN global as well
 		//TODO(g): Save into the DB as our User Session...
 		udn_data["ldap_user"] = user_map
+
+	} else if ldap_override_admin && username == "admin" {
+		user_map["first_name"] = "Admin"
+		user_map["full_name"] = "admin"
+		user_map["email"] = "admin@company"
+		user_map["home_dir"] = "/home/admin/"
+		user_map["uid"] = "5001"
+		user_map["username"] = "admin"
+		user_map["groups"] = make([]string, 0)
+		user_map["error"] = ""
+
+		ldap_user.Username = user_map["username"].(string)
+
 	} else {
 		user_map["error"] = ldap_user.Error
 
