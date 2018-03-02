@@ -2161,6 +2161,145 @@ func UDN_TimeToEpochMs(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	return result
 }
 
+func UDN_NumberToString(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "Number to String: %v\n", args)
+
+	result := UdnResult{}
+	args_len := len(args)
+
+	var prec int
+
+	var MAX_PRECISION int
+	MAX_PRECISION = 12
+
+	if args_len == 1 {
+		// check given precision (int)
+		switch args[0].(type) {
+		case string:
+			precision, err := strconv.Atoi(args[0].(string))
+
+			if err == nil {
+				prec = precision
+			} else {
+				// args[0] cannot convert to (int)
+				// return the input converted to string
+				result.Result = fmt.Sprintf("%v", input)
+				return result
+			}
+
+		case int:
+			prec = args[0].(int)
+		case int64:
+			prec = int(args[0].(int64))
+		case float64:
+			prec = int(args[0].(float64))
+		default:
+			// args[0] not (int/int64/float64/string), return the input converted to string
+			result.Result = fmt.Sprintf("%v", input)
+			return result
+		}
+
+		if prec > MAX_PRECISION {
+			prec = MAX_PRECISION
+		}
+
+		// Convert given number to string with specified precision
+		switch input.(type) {
+		case int:
+			num64 := int64(input.(int))
+			num_string := strconv.FormatFloat(float64(num64), 'f', prec, 64)
+			result.Result = num_string
+		case int64:
+			num_string := strconv.FormatFloat(float64(input.(int64)), 'f', prec, 64)
+			result.Result = num_string
+		case float64:
+			num_string := strconv.FormatFloat(input.(float64), 'f', prec, 64)
+			result.Result = num_string
+		default:
+			// Do nothing
+		}
+
+	} else {
+		// No precision is specified, 0 or > 2 arguments
+		// return input converted to string.
+		result.Result = fmt.Sprintf("%v", input)
+	}
+
+	return result
+}
+
+
+func UDN_GetCurrentTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLog(udn_schema, "Get Current Time: %v\n", SnippetData(input, 60))
+
+	result := UdnResult{}
+	args_len := len(args)
+
+	var zero_ascii byte
+	zero_ascii = 48
+
+	var nine_ascii byte
+	nine_ascii = 57
+
+	layout := "2006-01-02 15:04:05"
+	fmt_len := len(layout)
+	current_time_string := time.Now().String()[:fmt_len] // formated string of current time
+	time_obj := time.Now()
+
+	current_time, err := time.Parse(layout, current_time_string)
+
+	if err == nil {
+		time_obj = current_time
+	} else {
+		// if current_time is invalid => return current time.Time obj
+		time_obj = time.Now()
+	}
+
+	if args_len == 1 {
+
+		time_string := ""
+		specified_string := ""
+
+		switch args[0].(type) {
+		case string:
+			specified_string = args[0].(string) // 'YYYY-MM-DD hh:mm:ss'
+		default:
+			// if arg[0] is invalid => return current time.Time obj
+			result.Result = time_obj
+
+		}
+
+		if len(current_time_string) == len(specified_string) {
+
+			for i, _ := range specified_string {
+
+				if specified_string[i] != current_time_string[i] && specified_string[i] >= zero_ascii && specified_string[i] <= nine_ascii {
+					// specified_string[i] (byte) within ascii range for 0 to 9
+					time_string += string(specified_string[i])
+				} else {
+					time_string += string(current_time_string[i])
+				}
+			}
+		}
+		parsed_time, err := time.Parse(layout, time_string)
+		// if conversion from string is successful => return time.time obj
+		if err == nil {
+			result.Result = parsed_time
+		} else {
+			// if parsed_time is invalid => return current time.Time obj
+			result.Result = time_obj
+			return result
+		}
+
+	} else {
+		// invalid number of args => return current time.time obj
+		result.Result = time_obj
+
+	}
+	return result
+}
+
+
 func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLog(udn_schema, "Group by: %v\n", SnippetData(input, 60))
 
