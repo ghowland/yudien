@@ -8,6 +8,7 @@
     5. [__get_first - Get First non-nil Data](#__get_first)
     6. [__get_temp - Get Temp Data](#__get_temp)
     7. [__set_temp - Set Temp Data](#__set_temp)
+    8. [__get_current_time - Get Current Time](#__get_current_time)
 2. [Database](#database)
     1. [__data_get - Dataman Get](#__data_get)
     2. [__data_set - Dataman Set](#__data_set)
@@ -42,6 +43,7 @@
     11. [__json_decode - JSON Decode](#__json_decode)
     12. [__json_encode - JSON Encode](#__json_encode)
     13. [__html_encode - HTML Encode](#__html_encode)
+    14. [__num_to_string - Number to String](#__num_to_string)
 6. [Maps](#map)
     1. [__map_key_set - Map Key Set](#__map_key_set)
     2. [__map_key_delete - Map Key Delete](#__map_key_delete)
@@ -340,6 +342,49 @@ __input.Testing123.__set_'temp.testing'.__get_temp.testing
 **Side Effect:** None
 
 **Related Functions:** [__get_temp](#__get_temp)
+
+
+### __get_current_time ::: Get Current Time  <a name="__get_current_time"></a>
+
+Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss'. If specific number given for YYYY, DD, MM, hh, mm, ss, use that number instead. Outputs go time.Time object of current time.
+
+**Go:** UDN_GetCurrentTime
+
+**Input:** Ignored
+
+**Args:**
+
+  0. string (optional) :: string format ‘YYYY-DD-MM hh:mm:ss’ - desired numbers can be specified to replace YYYY, DD, MM, hh, mm, ss
+
+**Output:** time.time object
+
+**Example:**
+
+```
+__get_current_time.'YYYY-MM-01 hh:mm:ss'
+```
+
+**Result:**
+
+```
+time.Time object (First day of the current month)
+```
+
+
+Alternate Example, no arguments specified:
+
+```
+__get_current_time
+```
+
+**Result:**
+
+```
+time.Time object (Current time)
+```
+
+**Side Effect:** None
+
 
 ## Database  <a name="database"></a>
 
@@ -1218,6 +1263,46 @@ __input.'1 < 2'.__html_encode
 1 &lt; 2
 ```
 
+**Side Effect:** None
+
+
+### __num_to_string ::: Number To String  <a name="__num_to_string"></a>
+
+Given input number (int/int64/float64) and optional precision (int), outputs string (with specified precision/ original number)
+
+**Go:** UDN_NumberToString
+
+**Input:** number (int/int64/float64)
+
+**Args:**
+
+  0. int (optional) :: arithmetic precision (number of decimal places)
+
+**Output:** string (with specified precision/original number)
+
+**Example:**
+
+```
+__math.input.'999.99'.__num_to_string.4
+```
+
+**Returns:**
+
+```
+"999.9900"
+```
+
+Alternate Example, no argument/precision specified:
+
+```
+__math.input.999.__num_to_string
+```
+
+**Returns:**
+
+```
+"999"
+```
 **Side Effect:** None
 
 
