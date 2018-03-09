@@ -8,7 +8,6 @@
     5. [__get_first - Get First non-nil Data](#__get_first)
     6. [__get_temp - Get Temp Data](#__get_temp)
     7. [__set_temp - Set Temp Data](#__set_temp)
-    8. [__get_current_time - Get Current Time](#__get_current_time)
 2. [Database](#database)
     1. [__data_get - Dataman Get](#__data_get)
     2. [__data_set - Dataman Set](#__data_set)
@@ -22,14 +21,14 @@
     5. [__not_nil - Not Nil](#__not_nil)
     6. [__iterate - Iterate](#__iterate)
     7. [__end_iterate - End Iterate](#__end_iterate)
-    8. [compare_equal - Compare Equal](#compare_equal)
-    9. [compare_not_equal - Compare Not Equal](#compare_not_equal)
-4. [Execution Control](#execution)
+    8. [compare_equal - Compare Equal](#__compare_equal)
+    9. [compare_not_equal - Compare Not Equal](#__compare_not_equal)
+5. [Execution Control](#execution)
     1. [__input - Input](#__input)
     2. [__input_get - Input Get](#__input_get)
     3. [__function - Call Function](#__function)
     4. [__execute  - Execute UDN](#__execute)
-3. [Text](#text)
+6. [Text](#text)
     1. [__template - String Template from Value](#__template)
     2. [__template_wrap - TBD](#__template_wrap)
     3. [__format - Format Strings from Map](#__format)
@@ -44,26 +43,36 @@
     12. [__json_encode - JSON Encode](#__json_encode)
     13. [__html_encode - HTML Encode](#__html_encode)
     14. [__num_to_string - Number to String](#__num_to_string)
-6. [Maps](#map)
+7. [Maps](#map)
     1. [__map_key_set - Map Key Set](#__map_key_set)
     2. [__map_key_delete - Map Key Delete](#__map_key_delete)
     3. [__map_copy - Map Copy](#__map_copy)
     4. [__map_update - Map Update](#__map_update)
-7. [Array](#array)
+    5. [__group_by - Group By](#__group_by)
+8. [Array](#array)
     1. [__array_append - Array Append](#__array_append)
     2. [__array_slice - Array Slice](#__array_slice)
     3. [__array_map_remap - Array Map Remap](#__array_map_remap)
     4. [__array_divide - Array Divide](#__array_divide)
-5. [Rendering](#rendering)
+9. [Time](#time)
+    1. [__string_to_time - String to Time](#__string_to_time)
+    2. [__get_current_time - Get Current Time](#__get_current_time)
+    3. [__time_to_epoch - Convert Time to Unix Time in Seconds](#__time_to_epoch)
+    4. [__time_to_epoch_ms - Convert Time to Unix Time in Milliseconds](#__time_to_epoch_ms)
+10. [Math](#math)
+    1. [__math - Math functions](#__math)
+11. [Rendering](#rendering)
     1. [__widget - Render Widget](#__widget)
     2. [__render_data - Render Data Widget](#__render_data)
-8. [User](#user)
+12. [Networking](#networking)
+    1. [__set_http_response - Set http response code](#__set_http_response)
+13. [User](#user)
     1. [__login- LDAP Login](#__login)
-9. [Special](#special)
+14. [Special](#special)
     1. [__ddd_render - Render DDD Dialog Editor](#__ddd_render)
-10. [Debugging](#debugging)
+15. [Debugging](#debugging)
     1. [__debug_output - Debug Output](#__debug_output)
-11. [Comments](#comments)
+16. [Comments](#comments)
     1. [__comment - UDN Comment](#__comment)
 
 
@@ -342,48 +351,6 @@ __input.Testing123.__set_'temp.testing'.__get_temp.testing
 **Side Effect:** None
 
 **Related Functions:** [__get_temp](#__get_temp)
-
-
-### __get_current_time ::: Get Current Time  <a name="__get_current_time"></a>
-
-Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss'. If specific number given for YYYY, DD, MM, hh, mm, ss, use that number instead. Outputs go time.Time object of current time.
-
-**Go:** UDN_GetCurrentTime
-
-**Input:** Ignored
-
-**Args:**
-
-  0. string (optional) :: string format ‘YYYY-DD-MM hh:mm:ss’ - desired numbers can be specified to replace YYYY, DD, MM, hh, mm, ss
-
-**Output:** time.time object
-
-**Example:**
-
-```
-__get_current_time.'YYYY-MM-01 hh:mm:ss'
-```
-
-**Result:**
-
-```
-time.Time object (First day of the current month)
-```
-
-
-Alternate Example, no arguments specified:
-
-```
-__get_current_time
-```
-
-**Result:**
-
-```
-time.Time object (Current time)
-```
-
-**Side Effect:** None
 
 
 ## Database  <a name="database"></a>
@@ -1427,6 +1394,43 @@ __input.{name=Bob}.__map_update.{job=Programming}
 
 **Side Effect:** None
 
+### __group_by ::: Group by on a list of Maps  <a name="__group_by"></a>
+
+Given a list of maps, group by an aggregate field
+
+**Go:** UDN_GroupBy
+
+**Input:** None
+
+**Args:**
+
+  0. string :: method to group on
+  1. list of maps :: source of data to operate on
+  2. string :: aggregated field
+  3. string :: field to group on
+
+**Grouping methods:**
+1. sum
+2. count
+
+**Output:** Aggregated map
+
+**Example:**
+
+```
+__input.[{order_id:101,category:monitor,cost:(__math.input.80)},{order_id:102,category:monitor,cost:(__math.input.82)},{order_id:103,category:laptop,cost:(__math.input.100)}].__set.data,
+__group_by.sum.(__get.data).cost.category.__set.set_api_result
+```
+
+**Result:**
+
+```
+[{category:monitor,cost:162},{category:laptop,cost:100}]
+```
+
+**Side Effect:** None
+
+
 ## Array <a name="array"></a>
 
 
@@ -1472,7 +1476,7 @@ Splits the array based on the start and end index (args)
 
   0. Int :: Start index (can be positive or negative)
   1. Int :: End index (can be positive or negative) - if end index not provided then end index is assumed to be end of array
-  
+
 Note: for positive indices the end index is non-inclusive. For negative indices the start index is non inclusive. Also, for positive indices the first element of the array is at 0. For negative indices the last element is at -1.
 
 **Output:** Array Slice based on start & end index
@@ -1573,6 +1577,204 @@ __input.[{age=10},{age=20}].__array_map_remap.{age=8}
 
 **Side Effect:** None
 
+
+## Time <a name="time"></a>
+
+### __string_to_time ::: Convert String to Time  <a name="__string_to_time"></a>
+
+Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss' or 'YYYY-DD-MMThh:mm:ss.sssZ' (including milliseconds), return the go time.Time object.
+
+**Go:** UDN_GetCurrentTime
+
+**Input:** string :: This string must be of the format 'YYYY-DD-MM hh:mm:ss' or 'YYYY-DD-MMThh:mm:ss.sssZ' (including milliseconds). Otherwise, an empty result will be returned.
+
+**Args:**
+
+  None
+
+**Output:** time.time object
+
+**Example:**
+
+```
+__input.'2018-01-01 00:00:00'.__string_to_time
+```
+
+**Result:**
+
+```
+time.Time object (Representing the first day of 2018 at midnight)
+```
+
+**Side Effect:** None
+
+
+### __get_current_time ::: Get Current Time  <a name="__get_current_time"></a>
+
+Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss'. If specific number given for YYYY, DD, MM, hh, mm, ss, use that number instead. Outputs go time.Time object of current time.
+
+**Go:** UDN_GetCurrentTime
+
+**Input:** Ignored
+
+**Args:**
+
+  0. string (optional) :: string format ‘YYYY-DD-MM hh:mm:ss’ - desired numbers can be specified to replace YYYY, DD, MM, hh, mm, ss
+
+**Output:** time.time object
+
+**Example:**
+
+```
+__get_current_time.'YYYY-MM-01 hh:mm:ss'
+```
+
+**Result:**
+
+```
+time.Time object (First day of the current month)
+```
+
+
+Alternate Example, no arguments specified:
+
+```
+__get_current_time
+```
+
+**Result:**
+
+```
+time.Time object (Current time)
+```
+
+**Side Effect:** None
+
+
+### __time_to_epoch ::: Convert time.Time to a int64 unix time in seconds <a name="__time_to_epoch"></a>
+
+Given arg[0] time.Time object, convert to int64 unix time in seconds
+
+**Go:** UDN_TimeToEpoch
+
+**Input:** time.Time object
+
+**Args:**
+
+  None
+
+**Output:** int :: Unix time in seconds
+
+**Example:**
+
+```
+__input.'2018-01-01 00:00:00'.__string_to_time.__time_to_epoch
+```
+
+**Result:**
+
+```
+1514764800
+```
+
+**Side Effect:** None
+
+
+### __time_to_epoch_ms ::: Convert time.Time to a int64 unix time in milliseconds <a name="__time_to_epoch_ms"></a>
+
+Given arg[0] time.Time object, convert to int64 unix time in milliseconds
+
+**Go:** UDN_TimeToEpochMs
+
+**Input:** time.Time object
+
+**Args:**
+
+  None
+
+**Output:** int :: Unix time in milliseconds
+
+**Example:**
+
+```
+__input.'2018-01-01 00:00:00'.__string_to_time.__time_to_epoch
+```
+
+**Result:**
+
+```
+1514764800000
+```
+
+**Side Effect:** None
+
+
+## Math <a name="math"></a>
+
+### __math ::: Math Functions  <a name="__math"></a>
+
+Performs a set of math functions
+
+**Go:** UDN_Math
+
+**Input:** None
+
+**Args:**
+
+  0. string :: specify the math function called
+  1. int/float :: Arguments for the math function (variadic)
+
+**Output:** int/float :: result of the math function
+
+**Functions:**
+
+```
+__math.input.arg0 (returns a int/float)
+__math.sum.arg0.arg1 or __math.+.arg0.arg1 (returns arg0 + arg1)
+__math.subtract.arg0.arg1 or __math.-.arg0.arg1 (returns arg0 - arg1)
+__math.multiply.arg0.arg1 or __math.*.arg0.arg1 (returns arg0 * arg1)
+__math.divide.arg0.arg1 or __math./.arg0.arg1 (returns arg0 / arg1)
+```
+
+**Example:**
+
+```
+__math.input.8
+```
+
+**Result:**
+
+```
+8 (int, not string "8" - __input.8 would return string "8")
+```
+
+**Example 2:**
+
+```
+__math.add.8.9
+```
+
+**Result:**
+
+```
+17
+```
+
+**Example 3:**
+
+```
+__math.multiply.'1.1'.'5.5'
+```
+
+**Result:**
+
+```
+6.05
+```
+
+**Side Effect:** None
+
+
 ## Rendering <a name="rendering"></a>
 
 ### __widget ::: Execute UDN from String <a name="__widget"></a>
@@ -1633,6 +1835,36 @@ __render_data.dialog_target.34.{control=(__get.param.data.__json_decode)}
 
 **Side Effect:** Any
 
+
+## Networking <a name="networking"></a>
+
+### __set_http_response ::: Set http response code  <a name="__set_http_response"></a>
+
+Sets the returning http response code
+
+**Go:** UDN_SetHttpResponseCode
+
+**Input:** None
+
+**Args:**
+
+  0. string :: the http code (string) to be returned
+
+**Output:** Nothing. The request's http return code will be set
+
+**Example:**
+
+```
+__set_http_response.404
+```
+
+**Result:**
+
+```
+Nothing
+```
+
+**Side Effect:** The request's http return code will be set
 
 
 ## User <a name="user"></a>
