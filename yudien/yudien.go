@@ -93,7 +93,7 @@ func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
 
 func InitUdn() {
 	Debug_Udn_Api = true
-	Debug_Udn = false
+	Debug_Udn = true
 
 	UdnFunctions = map[string]UdnFunc{
 		"__comment":      UDN_Comment,
@@ -192,6 +192,9 @@ func InitUdn() {
 		"__math": UDN_Math,
 
 		"__set_http_response": UDN_SetHttpResponseCode,
+
+		"__exec_command": UDN_ExecCommand,//UDN_ExecCommand, // Execute command line command. arg0 appname, arg1-n space delimited are args. 
+
 
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
