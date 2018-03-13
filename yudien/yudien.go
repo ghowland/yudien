@@ -195,6 +195,9 @@ func InitUdn() {
 		"__num_to_string": UDN_NumberToString, // Given input number (int/int64/float64) and optional precision (int), outputs string (with specified precision/ original number)
 		"__get_current_time": UDN_GetCurrentTime, // Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss'. If specific number given for YYYY, DD, MM, hh, mm, ss, use that number instead. Outputs go time.Time object of current time
 
+		"__exec_command": UDN_ExecCommand,//UDN_ExecCommand, // Execute command line command. arg0 appname, arg1-n space delimited are args. 
+
+
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
 		//"__ddd_get": UDN_DddGet,					// DDD Get.current.{}

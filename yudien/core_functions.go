@@ -17,6 +17,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"os/exec"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -2555,6 +2556,38 @@ func UDN_DebugGetAllUdnData(db *sql.DB, udn_schema map[string]interface{}, udn_s
 
 	result := UdnResult{}
 	result.Result = debug_udn_data
+
+	return result
+}
+
+func UDN_ExecCommand(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Execute a command line command from UDN
+	// Ex: __exec_command.'ls'.'-l'.'-h'
+	// Separating command and flags enables easy dynamic flag generations in UDN
+	// Data output: the output of the command line execution
+	// TODO: Require authentication for this command, o/w people can write commands that destroy a system. 
+
+	UdnLog(udn_schema, "UDN Exec_Command: %v\n", args)
+
+	var evaluated_args []string
+	for _, arg := range args {
+		evaluated_args = append(evaluated_args, GetResult(arg, type_string).(string))
+	}
+
+	cmd_output, err := exec.Command(evaluated_args[0], evaluated_args[1:]...).Output()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if Debug_Udn {
+		fmt.Printf("Exec_Command: Command '%s'\n", evaluated_args[0])
+		fmt.Printf("Exec_Command: Options '%s'\n", evaluated_args[1:])
+		fmt.Printf("Exec_Command: Output '%s'\n", cmd_output)
+	}
+
+	result := UdnResult{}
+	result.Result = string(cmd_output)
 
 	return result
 }
