@@ -93,7 +93,7 @@ func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
 
 func InitUdn() {
 	Debug_Udn_Api = true
-	Debug_Udn = true
+	Debug_Udn = false
 
 	UdnFunctions = map[string]UdnFunc{
 		"__comment":      UDN_Comment,
