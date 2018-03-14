@@ -29,6 +29,7 @@ const (
 
 var Debug_Udn bool
 var Debug_Udn_Api bool
+var Debug_Udn_Info bool
 
 var PartTypeName map[int]string
 
@@ -180,7 +181,7 @@ func (udn_parent *UdnPart) AddChild(part_type int, value string) *UdnPart {
 
 
 func UdnDebugWriteHtml(udn_schema map[string]interface{}) string {
-	fmt.Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Write HTML -=-=-=-=-=-\n\n\n\n")
+	Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Write HTML -=-=-=-=-=-\n\n\n\n")
 
 	//TODO(g): Make this unique, time in milliseconds should be OK (and sequential), so we can have more than one.  Then deal with cleanup.  And make a sub directory...
 	output_path := "/tmp/udn_debug_log.html"
@@ -201,7 +202,7 @@ func UdnDebugWriteHtml(udn_schema map[string]interface{}) string {
 }
 
 func UdnDebugReset(udn_schema map[string]interface{}) {
-	fmt.Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Reset -=-=-=-=-=-\n\n\n\n")
+	Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Reset -=-=-=-=-=-\n\n\n\n")
 
 	udn_schema["error_log"] = ""
 
@@ -323,7 +324,7 @@ func UdnError(udn_schema map[string]interface{}, format string, args ...interfac
 }
 
 func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interface{}) {
-	if udn_schema["allow_logging"].(bool) {
+	if udn_schema["allow_logging"].(bool) && Debug_Udn_Info {
 		// Format the incoming Printf args, and print them
 		output := fmt.Sprintf(format, args...)
 		fmt.Print(output)
@@ -332,6 +333,27 @@ func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interf
 		udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
 		// Append to HTML as well, so it shows up.  This is a convenience function for this reason.  Headers and stuff.
 		udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + "<pre>" + HtmlClean(output) + "</pre>"
+	}
+}
+
+func Print(a ...interface{}){
+	// Wrapper function for fmt.Print()
+	if Debug_Udn_Info{
+		fmt.Print(a)
+	}
+}
+
+func Printf(format string, a ...interface{}){
+	// Wrapper function for fmt.Printf()
+	if Debug_Udn_Info{
+		fmt.Printf(format, a)
+	}
+}
+
+func Println(a ...interface{}){
+	// Wrapper function for fmt.Println()
+	if Debug_Udn_Info{
+		fmt.Println(a)
 	}
 }
 

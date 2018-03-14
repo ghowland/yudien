@@ -92,14 +92,14 @@ func GetArgsFromArgsOrStrings(args []interface{}) []interface{} {
 		}
 	}
 
-	//fmt.Printf("\n\nGetArgsFromArgsOrStrings: %v   ===>>>  %v\n\n", args, out_args)
+	//Printf("\n\nGetArgsFromArgsOrStrings: %v   ===>>>  %v\n\n", args, out_args)
 
 	return out_args
 }
 
 func GetChildResult(parent interface{}, child interface{}) DynamicResult {
 	type_str := fmt.Sprintf("%T", parent)
-	//fmt.Printf("\n\nGetChildResult: %s: %s: %v\n\n", type_str, child, SnippetData(parent, 300))
+	//Printf("\n\nGetChildResult: %s: %s: %v\n\n", type_str, child, SnippetData(parent, 300))
 
 	result := DynamicResult{}
 
@@ -180,7 +180,7 @@ func _MapGet(args []interface{}, udn_data interface{}) interface{} {
 		}
 	}
 
-	//fmt.Printf("Get: Last Arg data: %s: %s\n\n", last_argument, SnippetData(cur_udn_data, 800))
+	//Printf("Get: Last Arg data: %s: %s\n\n", last_argument, SnippetData(cur_udn_data, 800))
 
 	// Our result will be a list, of the result of each of our iterations, with a UdnResult per element, so that we can Transform data, as a pipeline
 	final_result := GetChildResult(cur_udn_data, last_argument)
@@ -190,7 +190,7 @@ func _MapGet(args []interface{}, udn_data interface{}) interface{} {
 
 func SetChildResult(parent interface{}, child interface{}, value interface{}) {
 	type_str := fmt.Sprintf("%T", parent)
-	//fmt.Printf("\n\nSetChildResult: %s: %v: %v\n\n", type_str, child, SnippetData(parent, 300))
+	//Printf("\n\nSetChildResult: %s: %v: %v\n\n", type_str, child, SnippetData(parent, 300))
 
 	// Check if the parent is an array or a map
 	if strings.HasPrefix(type_str, "[]") {
@@ -369,7 +369,7 @@ func FinalParseProcessUdnParts(db *sql.DB, udn_schema map[string]interface{}, pa
 	if part.PartType == part_map {
 		new_children := list.New()
 
-		//fmt.Printf("\n\nMap Part:\n%s\n\n", DescribeUdnPart(part))
+		//Printf("\n\nMap Part:\n%s\n\n", DescribeUdnPart(part))
 
 		next_child_is_value := false
 		next_child_is_assignment := false

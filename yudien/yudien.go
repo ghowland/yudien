@@ -92,8 +92,11 @@ func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
 }
 
 func InitUdn() {
-	Debug_Udn_Api = true
+	//TODO(z): Should we specify the flags below from config?
+	// Turning on/off the below flags have very significant speed differences for program execution
+	Debug_Udn_Api = false
 	Debug_Udn = false
+	Debug_Udn_Info = false // Flag that turns on/off Print statements - see yudiencore/core.go for Print()/Printf()/Println()
 
 	UdnFunctions = map[string]UdnFunc{
 		"__comment":      UDN_Comment,
@@ -244,20 +247,20 @@ func init() {
 
 func Lock(lock string) {
 	// This must lock things globally.  Global lock server required, only for this Customer though, since "global" can be customer oriented.
-	fmt.Printf("Locking: %s\n", lock)
+	Printf("Locking: %s\n", lock)
 
 	// Acquire a lock, wait forever until we get it.  Pass in a request UUID so I can see who has the lock.
 }
 
 func Unlock(lock string) {
 	// This must lock things globally.  Global lock server required, only for this Customer though, since "global" can be customer oriented.
-	fmt.Printf("Unlocking: %s\n", lock)
+	Printf("Unlocking: %s\n", lock)
 
 	// Release a lock.  Should we ensure we still had it?  Can do if we gave it our request UUID
 }
 
 func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data_json string, udn_data map[string]interface{}) interface{} {
-	fmt.Printf("ProcessSchemaUDNSet: JSON:\n%s\n\n", udn_data_json)
+	Printf("ProcessSchemaUDNSet: JSON:\n%s\n\n", udn_data_json)
 
 	var result interface{}
 
@@ -281,7 +284,7 @@ func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data
 		new_function_stack["uuid"] = ksuid.New().String()
 		udn_data["__function_stack"] = append(udn_data["__function_stack"].([]map[string]interface{}), new_function_stack)
 
-		//fmt.Printf("UDN Execution Group: %v\n\n", udn_execution_group)
+		//Printf("UDN Execution Group: %v\n\n", udn_execution_group)
 
 		// Process all the UDN Execution blocks
 		//TODO(g): Add in concurrency, right now it does it all sequentially
@@ -300,7 +303,7 @@ func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data
 		udn_data["__function_stack"] = udn_data["__function_stack"].([]map[string]interface{})[0:len(udn_data["__function_stack"].([]map[string]interface{}))-1]
 
 	} else {
-		fmt.Print("UDN Execution Group: None\n\n")
+		Print("UDN Execution Group: None\n\n")
 	}
 
 	return result
@@ -317,7 +320,7 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 
 	// Add base_page_widget entries to page_map, if they dont already exist
 	for _, value := range result {
-		//fmt.Printf("UDN Config: %s = \"%s\"\n", value.Map["name"], value.Map["sigil"])
+		//Printf("UDN Config: %s = \"%s\"\n", value.Map["name"], value.Map["sigil"])
 
 		// Save the config value and sigil
 		//udn_config_map[string(value.Map["name"].(string))] = string(value.Map["sigil"].(string))
@@ -326,7 +329,7 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 		udn_config_map[string(value["name"].(string))] = string(value["sigil"].(string))
 	}
 
-	//fmt.Printf("udn_config_map: %v\n", udn_config_map)
+	//Printf("udn_config_map: %v\n", udn_config_map)
 
 	// Function
 	sql = "SELECT * FROM udn_function ORDER BY name"
@@ -339,7 +342,7 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 
 	// Add base_page_widget entries to page_map, if they dont already exist
 	for _, value := range result {
-		//fmt.Printf("UDN Function: %s = \"%s\"\n", value.Map["alias"], value.Map["function"])
+		//Printf("UDN Function: %s = \"%s\"\n", value.Map["alias"], value.Map["function"])
 
 		// Save the config value and sigil
 		udn_function_map[string(value["alias"].(string))] = string(value["function"].(string))
@@ -347,9 +350,9 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 		udn_function_id_function_map[value["_id"].(int64)] = string(value["function"].(string))
 	}
 
-	//fmt.Printf("udn_function_map: %v\n", udn_function_map)
-	//fmt.Printf("udn_function_id_alias_map: %v\n", udn_function_id_alias_map)
-	//fmt.Printf("udn_function_id_function_map: %v\n", udn_function_id_function_map)
+	//Printf("udn_function_map: %v\n", udn_function_map)
+	//Printf("udn_function_id_alias_map: %v\n", udn_function_id_alias_map)
+	//Printf("udn_function_id_function_map: %v\n", udn_function_id_function_map)
 
 	// Group
 	sql = "SELECT * FROM udn_group ORDER BY name"
@@ -361,7 +364,7 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 
 	// Add base_page_widget entries to page_map, if they dont already exist
 	for _, value := range result {
-		//fmt.Printf("UDN Group: %s = Start: \"%s\"  End: \"%s\"  Is Key Value: %v\n", value.Map["name"], value.Map["sigil"])
+		//Printf("UDN Group: %s = Start: \"%s\"  End: \"%s\"  Is Key Value: %v\n", value.Map["name"], value.Map["sigil"])
 
 		udn_group_map[string(value["name"].(string))] = make(map[string]interface{})
 	}
@@ -379,7 +382,7 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 		udn_stored_function[string(value["name"].(string))] = make(map[string]interface{})
 	}
 
-	//fmt.Printf("udn_group_map: %v\n", udn_group_map)
+	//Printf("udn_group_map: %v\n", udn_group_map)
 
 	// Pack a result map for return
 	result_map := make(map[string]interface{})
@@ -400,7 +403,7 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 	// Debug information, for rendering the debug output
 	UdnDebugReset(result_map)
 
-	fmt.Printf("=-=-=-=-= UDN Schema Created =-=-=-=-=\n")
+	Printf("=-=-=-=-= UDN Schema Created =-=-=-=-=\n")
 
 	return result_map
 }
@@ -428,7 +431,7 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 		UdnLog(udn_schema, "\n------- END EXECUTION: -------\n\n")
 
 		UdnLog(udn_schema, "------- RESULT: %v\n\n", SnippetData(udn_command_value, 1600))
-		//fmt.Printf("------- RESULT: %v\n\n", JsonDump(udn_command_value))
+		//Printf("------- RESULT: %v\n\n", JsonDump(udn_command_value))
 	}
 
 	return udn_command_value
@@ -465,8 +468,8 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 					//UdnLog(udn_schema, "-=-=-= Args Execute from Compound -=-=-=-\n")
 					arg_result := ExecuteUdn(db, udn_schema, arg_udn_start.NextUdnPart, input, udn_data)
 					//UdnLog(udn_schema, "-=-=-= Args Execute from Compound -=-=-=-  RESULT: %T: %v\n", arg_result, arg_result)
-					//fmt.Printf("Compound Part: %s\n", DescribeUdnPart(arg_udn_start.NextUdnPart))
-					//fmt.Printf("Compound Parent: %s\n", DescribeUdnPart(arg_udn_start))
+					//Printf("Compound Part: %s\n", DescribeUdnPart(arg_udn_start.NextUdnPart))
+					//Printf("Compound Parent: %s\n", DescribeUdnPart(arg_udn_start))
 
 					args = AppendArray(args, arg_result)
 				} else {
@@ -675,18 +678,18 @@ func ExecuteUdnCompound(db *sql.DB, udn_schema map[string]interface{}, udn_start
 		done := false
 
 		for !done {
-			//fmt.Printf("Execute UDN Compound: %s\n", DescribeUdnPart(udn_current))
-			//fmt.Printf("Execute UDN Compound: Input: %s\n", SnippetData(input, 60))
+			//Printf("Execute UDN Compound: %s\n", DescribeUdnPart(udn_current))
+			//Printf("Execute UDN Compound: Input: %s\n", SnippetData(input, 60))
 
 			udn_result = ExecuteUdnPart(db, udn_schema, udn_current, input, udn_data)
 			input = udn_result.Result
 
 			if udn_current.NextUdnPart == nil {
 				done = true
-				//fmt.Print("  UDN Compound: Finished\n")
+				//Print("  UDN Compound: Finished\n")
 			} else {
 				udn_current = udn_current.NextUdnPart
-				//fmt.Printf("  Next UDN Compound: %s\n", udn_current.Value)
+				//Printf("  Next UDN Compound: %s\n", udn_current.Value)
 			}
 		}
 	} else {
