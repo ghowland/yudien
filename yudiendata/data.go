@@ -39,6 +39,15 @@ const (
 	type_map          = iota // map[string]interface{}
 )
 
+const ( // order matters for log levels
+	log_off   = iota
+	log_error = iota
+	log_warn  = iota
+	log_info  = iota
+	log_debug = iota
+	log_trace = iota
+)
+
 type OpsdbConfig struct {
 	ConnectOptions string `json:"connect_opts"`
 	Database string `json:"database"`
@@ -66,7 +75,7 @@ func GetSelectedDb(db_web *sql.DB, db *sql.DB, db_id int64) *sql.DB {
 }
 
 func Query(db *sql.DB, sql string) []map[string]interface{} {
-	fmt.Printf("Query: %s\n", sql)
+	UdnLogLevel(nil, log_debug,"Query: %s\n", sql)
 
 	// Query
 	rs, err := db.Query(sql)
@@ -128,15 +137,16 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 		"join": options["join"],
 	}
 
-	//fmt.Printf("Dataman Get: %v\n\n", get_map)
+	UdnLogLevel(nil, log_debug, "Dataman Get: %v\n\n", get_map)
 
 	dataman_query := &query.Query{query.Get, get_map}
 
 	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
 
-	//fmt.Printf("Dataman GET: %v\n", result.Return[0])
+	UdnLogLevel(nil, log_debug, "Dataman GET: %v\n", result.Return[0])
+
 	if result.Error != "" {
-		fmt.Printf("Dataman GET: ERRORS: %v\n", result.Error)
+		UdnLogLevel(nil, log_error, "Dataman GET: ERRORS: %v\n", result.Error)
 	}
 
 	return result.Return[0]
@@ -199,7 +209,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 		// Remove any fields that arent present in the record_current
 		for k, _ := range record {
 			if _, has_key := record_current[k]; !has_key {
-				fmt.Printf("Removing field: %s: %s: %v\n", collection_name, k, record[k])
+				UdnLogLevel(nil, log_debug, "Removing field: %s: %s: %v\n", collection_name, k, record[k])
 				delete(record, k)
 			}
 		}
@@ -224,7 +234,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 		},
 	}
 
-	//fmt.Printf("Dataman SET: Record: %v\n", record)
+	UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
 	//fmt.Printf("Dataman SET: Record: JSON: %v\n", JsonDump(record))
 	//fmt.Printf("Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
 
@@ -234,7 +244,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	//fmt.Printf("Dataman SET: %s\n", result_bytes)
 
 	if result.Error != "" {
-		fmt.Printf("Dataman SET: ERROR: %v\n", result.Error)
+		UdnLogLevel(nil, log_error, "Dataman SET: ERROR: %v\n", result.Error)
 	}
 
 	if result.Return != nil {
@@ -280,7 +290,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
 
 	if result.Error != "" {
-		fmt.Printf("Dataman ERROR: %v\n", result.Error)
+		UdnLogLevel(nil, log_error, "Dataman ERROR: %v\n", result.Error)
 	} else {
 		//fmt.Printf("Dataman FILTER: %v\n", result.Return)
 	}
@@ -298,7 +308,7 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 	// ex: multi filter:
 	//     [{field1=value1}, "AND", {field2=value2}] (type: []interface{})
 	//     [{field1=value1}, "AND", [{field2=value2}, "AND", {field3=value3}]]
-	fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
+	UdnLogLevel(nil, log_debug, "DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
 
 	filter_map := map[string]interface{}{
@@ -311,8 +321,8 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 		//"sort_reverse":	  []bool{true},
 	}
 
-	fmt.Printf("Dataman Filter: %v\n\n", filter_map)
-	fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
+	UdnLogLevel(nil, log_debug, "Dataman Filter: %v\n\n", filter_map)
+	UdnLogLevel(nil, log_debug, "Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
 
 
 	dataman_query := &query.Query{query.Filter, filter_map}
@@ -320,9 +330,9 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
 
 	if result.Error != "" {
-		fmt.Printf("Dataman ERROR: %v\n", result.Error)
+		UdnLogLevel(nil, log_error, "Dataman ERROR: %v\n", result.Error)
 	} else {
-		fmt.Printf("Dataman FILTER: %v\n", result.Return)
+		UdnLogLevel(nil, log_debug, "Dataman FILTER: %v\n", result.Return)
 	}
 
 	return result.Return
@@ -358,7 +368,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 	schema_result := DatamanFilter("schema", filter_map, option_map)
 	schema_map := schema_result[0]
 
-	fmt.Printf("OpsDB Schema: %v\n\n", schema_map)
+	UdnLogLevel(nil, log_info, "OpsDB Schema: %v\n\n", schema_map)
 
 	opsdb_schema := DatasourceInstance["opsdb"].StoreSchema
 
@@ -371,12 +381,12 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 
 
-	fmt.Printf("\nList DB Start: %v\n\n", time.Now().String())
+	UdnLogLevel(nil, log_info, "\nList DB Start: %v\n\n", time.Now().String())
 	//db_list := opsdb_schema.ListDatabase(context.Background())
 	db_item := opsdb_schema.GetDatabase(context.Background(), limited_database_search)
-	fmt.Printf("\nList DB Stop: %v\n\n", time.Now().String())
+	UdnLogLevel(nil, log_info, "\nList DB Stop: %v\n\n", time.Now().String())
 
-	fmt.Printf("\n\nFound DB Item: %v\n\n", db_item.Name)
+	UdnLogLevel(nil, log_info, "\n\nFound DB Item: %v\n\n", db_item.Name)
 
 	//shard_instance := opsdb_schema.ListShardInstance(context.Background(), db_item.Name)
 
@@ -390,7 +400,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 	//collections := opsdb_schema.ListCollection(context.Background(), db_item.Name, "public")
 
 	for _, collection := range db_item.ShardInstances["public"].Collections {
-		fmt.Printf("\n\nFound DB Collections: %s\n", collection.Name)
+		UdnLogLevel(nil, log_info, "\n\nFound DB Collections: %s\n", collection.Name)
 
 		option_map := make(map[string]interface{})
 		filter_map := make(map[string]interface{})
@@ -401,7 +411,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 		collection_map := make(map[string]interface{})
 		if len(collection_result) > 0 {
 			collection_map = collection_result[0]
-			fmt.Printf("OpsDB Collection: %v\n\n", collection_map)
+			UdnLogLevel(nil, log_info, "OpsDB Collection: %v\n\n", collection_map)
 
 			// Add collection to our tracking array
 			collection_array = append(collection_array, collection.Name)
@@ -413,7 +423,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 			// Check: Index, Primary Index
 
 			for _, field := range collection.Fields {
-				fmt.Printf("\n\nFound DB Collections: %s  Field: %s  Type: %s   (Default: %v -- Not Null: %v -- Relation: %v)\n", collection.Name, field.Name, field.FieldType.Name, field.Default, field.NotNull, field.Relation)
+				UdnLogLevel(nil, log_info, "\n\nFound DB Collections: %s  Field: %s  Type: %s   (Default: %v -- Not Null: %v -- Relation: %v)\n", collection.Name, field.Name, field.FieldType.Name, field.Default, field.NotNull, field.Relation)
 
 				// Check: Not Null, Relation, Default, Type
 
@@ -426,19 +436,19 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 				collection_field_map := make(map[string]interface{})
 				if len(collection_field_result) > 0 {
 					collection_field_map = collection_field_result[0]
-					fmt.Printf("OpsDB Collection Field: %v\n\n", collection_field_map)
+					UdnLogLevel(nil, log_info, "OpsDB Collection Field: %v\n\n", collection_field_map)
 
 					// Add collection to our tracking array
 					collection_field_array = append(collection_field_array, field.Name)
 
 
 				} else {
-					fmt.Printf("OpsDB Collection Field: MISSING: %s\n\n", field.Name)
+					UdnLogLevel(nil, log_info, "OpsDB Collection Field: MISSING: %s\n\n", field.Name)
 
 				}
 			}
 		} else {
-			fmt.Printf("OpsDB Collection: MISSING: %s\n\n", collection.Name)
+			UdnLogLevel(nil, log_info, "OpsDB Collection: MISSING: %s\n\n", collection.Name)
 
 		}
 	}
@@ -457,7 +467,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 	for _, collection_record := range all_collection_result {
 		if ok, _ := InArray(collection_record["name"].(string), collection_array) ; !ok {
-			fmt.Printf("Not Found collection: %s\n\n", collection_record["name"])
+			UdnLogLevel(nil, log_info, "Not Found collection: %s\n\n", collection_record["name"])
 
 
 			new_collection := metadata.Collection{}
@@ -474,7 +484,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 			// Create the new collection
 			err := opsdb_schema.AddCollection(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection)
-			fmt.Printf("Add New Collection: %s: ERROR: %s\n\n", new_collection.Name, err)
+			UdnLogLevel(nil, log_info, "Add New Collection: %s: ERROR: %s\n\n", new_collection.Name, err)
 
 			for _, field_map := range all_collection_field_result {
 				// Create fields we need to populate this table
@@ -492,7 +502,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 				// Create the new collection field
 				err := opsdb_schema.AddCollectionField(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_field)
-				fmt.Printf("Add New Collection Field: %s: %s: ERROR: %s\n\n", new_collection.Name, new_field.Name, err)
+				UdnLogLevel(nil, log_info, "Add New Collection Field: %s: %s: ERROR: %s\n\n", new_collection.Name, new_field.Name, err)
 
 				if field_map["is_primary_key"] == true {
 					new_index := metadata.CollectionIndex{}
@@ -512,7 +522,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 					//
 					sql := fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY (%s)", new_collection.Name, new_field.Name)
 					Query(db, sql)
-					fmt.Printf("Add New Collection Field PKEY: %s: %s: ERROR: %s\n\n", new_collection.Name, new_index.Name, err)
+					UdnLogLevel(nil, log_info, "Add New Collection Field PKEY: %s: %s: ERROR: %s\n\n", new_collection.Name, new_index.Name, err)
 
 				}
 

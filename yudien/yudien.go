@@ -32,6 +32,15 @@ const (
 	type_map          = iota // map[string]interface{}
 )
 
+const ( // order matters for log levels
+	log_off   = iota
+	log_error = iota
+	log_warn  = iota
+	log_info  = iota
+	log_debug = iota
+	log_trace = iota
+)
+
 func DescribeUdnPart(part *UdnPart) string {
 
 	depth_margin := strings.Repeat("  ", part.Depth)
@@ -84,7 +93,7 @@ type LdapConfig struct {
 var Ldap *LdapConfig
 
 func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
-	fmt.Printf("Configuring Yudien\n")
+	UdnLogLevel(nil,log_info,"Configuring Yudien\n")
 	Ldap = ldap
 	Opsdb = opsdb
 
@@ -92,8 +101,9 @@ func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
 }
 
 func InitUdn() {
-	Debug_Udn_Api = true
-	Debug_Udn = false
+	Debug_Udn_Log_Level = log_off // see yudiencore/core.go func UdnLogLevels
+	Debug_Udn_Api = false // Legacy Logging
+	Debug_Udn = false // Legacy Logging - see yudiencore/core.go func UdnLog
 
 	UdnFunctions = map[string]UdnFunc{
 		"__comment":      UDN_Comment,
@@ -244,20 +254,20 @@ func init() {
 
 func Lock(lock string) {
 	// This must lock things globally.  Global lock server required, only for this Customer though, since "global" can be customer oriented.
-	fmt.Printf("Locking: %s\n", lock)
+	UdnLogLevel(nil, log_debug, "Locking: %s\n", lock)
 
 	// Acquire a lock, wait forever until we get it.  Pass in a request UUID so I can see who has the lock.
 }
 
 func Unlock(lock string) {
 	// This must lock things globally.  Global lock server required, only for this Customer though, since "global" can be customer oriented.
-	fmt.Printf("Unlocking: %s\n", lock)
+	UdnLogLevel(nil, log_debug, "Unlocking: %s\n", lock)
 
 	// Release a lock.  Should we ensure we still had it?  Can do if we gave it our request UUID
 }
 
 func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data_json string, udn_data map[string]interface{}) interface{} {
-	fmt.Printf("ProcessSchemaUDNSet: JSON:\n%s\n\n", udn_data_json)
+	UdnLogLevel(udn_schema, log_debug,"ProcessSchemaUDNSet: JSON:\n%s\n\n", udn_data_json)
 
 	var result interface{}
 
@@ -300,7 +310,7 @@ func ProcessSchemaUDNSet(db *sql.DB, udn_schema map[string]interface{}, udn_data
 		udn_data["__function_stack"] = udn_data["__function_stack"].([]map[string]interface{})[0:len(udn_data["__function_stack"].([]map[string]interface{}))-1]
 
 	} else {
-		fmt.Print("UDN Execution Group: None\n\n")
+		UdnLogLevel(udn_schema, log_info,"UDN Execution Group: None\n\n")
 	}
 
 	return result
@@ -400,7 +410,7 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 	// Debug information, for rendering the debug output
 	UdnDebugReset(result_map)
 
-	fmt.Printf("=-=-=-=-= UDN Schema Created =-=-=-=-=\n")
+	UdnLogLevel(nil, log_debug, "=-=-=-=-= UDN Schema Created =-=-=-=-=\n")
 
 	return result_map
 }

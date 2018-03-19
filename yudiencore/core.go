@@ -27,8 +27,18 @@ const (
 	type_map          = iota // map[string]interface{}
 )
 
+const ( // order matters for log levels
+	log_off   = iota
+	log_error = iota
+	log_warn  = iota
+	log_info  = iota
+	log_debug = iota
+	log_trace = iota
+)
+
 var Debug_Udn bool
 var Debug_Udn_Api bool
+var Debug_Udn_Log_Level int
 
 var PartTypeName map[int]string
 
@@ -180,7 +190,9 @@ func (udn_parent *UdnPart) AddChild(part_type int, value string) *UdnPart {
 
 
 func UdnDebugWriteHtml(udn_schema map[string]interface{}) string {
-	fmt.Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Write HTML -=-=-=-=-=-\n\n\n\n")
+	if Debug_Udn || udn_schema["udn_debug"] == true {
+		fmt.Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Write HTML -=-=-=-=-=-\n\n\n\n")
+	}
 
 	//TODO(g): Make this unique, time in milliseconds should be OK (and sequential), so we can have more than one.  Then deal with cleanup.  And make a sub directory...
 	output_path := "/tmp/udn_debug_log.html"
@@ -198,10 +210,13 @@ func UdnDebugWriteHtml(udn_schema map[string]interface{}) string {
 	UdnDebugReset(udn_schema)
 
 	return output_path
+
 }
 
 func UdnDebugReset(udn_schema map[string]interface{}) {
-	fmt.Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Reset -=-=-=-=-=-\n\n\n\n")
+	if Debug_Udn || udn_schema["udn_debug"] == true {
+		fmt.Printf("\n\n\n\n-=-=-=-=-=- UDN Debug Reset -=-=-=-=-=-\n\n\n\n")
+	}
 
 	udn_schema["error_log"] = ""
 
@@ -233,22 +248,24 @@ func UdnDebugReset(udn_schema map[string]interface{}) {
 }
 
 func UdnDebugIncrementChunk(udn_schema map[string]interface{}) {
-	current := udn_schema["debug_html_chunk_count"].(int)
-	current++
-	udn_schema["debug_html_chunk_count"] = current
+	if (Debug_Udn || udn_schema["udn_debug"].(bool)) {
+		current := udn_schema["debug_html_chunk_count"].(int)
+		current++
+		udn_schema["debug_html_chunk_count"] = current
 
-	// Update the output with the current Debug Log (and clear it, as it's temporary).  This ensures anything previously undated, gets updated.
-	UdnDebugUpdate(udn_schema)
+		// Update the output with the current Debug Log (and clear it, as it's temporary).  This ensures anything previously undated, gets updated.
+		UdnDebugUpdate(udn_schema)
 
-	// Wrap anything we have put into our current HTML chunk, and write it to the HTML Output
-	if udn_schema["debug_html_chunk"] != "" {
-		// Render our HTML chunk in a hidden DIV, with a button to toggle visibility
-		html_output := fmt.Sprintf("<button onclick=\"ToggleDisplay('debug_chunk_%d')\">Statement %d</button><br><br><div id=\"debug_chunk_%d\" style=\"display: none\">%s</div>\n", current, current, current, udn_schema["debug_html_chunk"])
+		// Wrap anything we have put into our current HTML chunk, and write it to the HTML Output
+		if udn_schema["debug_html_chunk"] != "" {
+			// Render our HTML chunk in a hidden DIV, with a button to toggle visibility
+			html_output := fmt.Sprintf("<button onclick=\"ToggleDisplay('debug_chunk_%d')\">Statement %d</button><br><br><div id=\"debug_chunk_%d\" style=\"display: none\">%s</div>\n", current, current, current, udn_schema["debug_html_chunk"])
 
-		udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + html_output
+			udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + html_output
 
-		// Clear the chunk
-		udn_schema["debug_html_chunk"] = ""
+			// Clear the chunk
+			udn_schema["debug_html_chunk"] = ""
+		}
 	}
 }
 
@@ -310,6 +327,25 @@ func UdnLog(udn_schema map[string]interface{}, format string, args ...interface{
 	}
 }
 
+func UdnLogLevel(udn_schema map[string]interface{}, log_level int, format string, args ...interface{}) {
+	// Function works the same as UdnLog/UdnError but allows level logging
+	//TODO(z): Migrate UdnDebug functionality here later
+	//TODO(z): Combine all log functions to put under UdnLogLevel
+	if log_level <= Debug_Udn_Log_Level {
+		output := fmt.Sprintf(format, args...)
+
+		fmt.Print(output)
+
+		if log_level == log_error && udn_schema != nil{
+			udn_schema["error_log"] = udn_schema["error_log"].(string) + output
+		}
+		if log_level == log_debug && udn_schema != nil{
+			// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
+			udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
+		}
+	}
+}
+
 func UdnError(udn_schema map[string]interface{}, format string, args ...interface{}) {
 	// Format the incoming Printf args, and print them
 	output := fmt.Sprintf("ERROR: " + format, args...)
@@ -323,7 +359,7 @@ func UdnError(udn_schema map[string]interface{}, format string, args ...interfac
 }
 
 func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interface{}) {
-	if udn_schema["allow_logging"].(bool) {
+	if (Debug_Udn || udn_schema["udn_debug"].(bool)) && udn_schema["allow_logging"].(bool) {
 		// Format the incoming Printf args, and print them
 		output := fmt.Sprintf(format, args...)
 		fmt.Print(output)
