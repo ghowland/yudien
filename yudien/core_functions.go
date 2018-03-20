@@ -83,7 +83,7 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 	filter_options := make(map[string]interface{})
 	user_data_result := DatamanFilter("user", filter, filter_options)
 
-	fmt.Printf("DatamanFilter: RESULT: %v\n", user_data_result)
+	UdnLogLevel(udn_schema, log_debug, "DatamanFilter: RESULT: %v\n", user_data_result)
 
 	var user_data map[string]interface{}
 
@@ -176,7 +176,7 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 	// Move, if we need to
 	position_location = DddMove(position_location, move_x, move_y)
-	fmt.Printf("DDD Render: After move: %s\n", position_location)
+	UdnLogLevel(udn_schema, log_debug, "DDD Render: After move: %s\n", position_location)
 
 	// Get the DDD Data (record data) from our stored location (first time) or from the temp table subsequent times
 	ddd_data := make(map[string]interface{})
@@ -194,13 +194,13 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 		data_record_args := make([]interface{}, 0)
 		data_record_args = append(data_record_args, data_location)
 		data_record = MapGet(data_record_args, udn_data)
-		fmt.Printf("DddRender: Data Record: %s: %s\n\n", data_location, JsonDump(data_record))
+		UdnLogLevel(udn_schema, log_debug, "DddRender: Data Record: %s: %s\n\n", data_location, JsonDump(data_record))
 
 		// Put this data into the temp table, and get our temp_id
 		temp_data := make(map[string]interface{})
 		temp_data["data_json"] = JsonDump(data_record)
 		temp_data_result := DatamanSet("temp", temp_data)
-		fmt.Printf("Temp data result: %v\n\n", temp_data_result)
+		UdnLogLevel(udn_schema, log_debug, "Temp data result: %v\n\n", temp_data_result)
 		temp_id = temp_data_result["_id"].(int64)
 	} else {
 		// Get the ddd_data from the temp table
@@ -217,8 +217,8 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	// Get the DDD node, which has our
 	ddd_label, ddd_node, ddd_cursor_data := DddGetNode(position_location, ddd_data, data_record, udn_data)
 
-	fmt.Printf("DDD Node: %s\n\n", JsonDump(ddd_node))
-	fmt.Printf("DDD Cursor Data: %s\n\n", JsonDump(ddd_cursor_data))
+	UdnLogLevel(udn_schema, log_debug, "DDD Node: %s\n\n", JsonDump(ddd_node))
+	UdnLogLevel(udn_schema, log_debug, "DDD Cursor Data: %s\n\n", JsonDump(ddd_cursor_data))
 
 	// -- Done changing stuff, time to RENDER!
 
@@ -384,7 +384,7 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	result := UdnResult{}
 	result.Result = input_map //TODO(g): Need to modify this, which is the point of this function...
 
-	fmt.Printf("\nDDD Render: Result:\n%s\n\n", JsonDump(input_map))
+	UdnLogLevel(udn_schema, log_debug, "\nDDD Render: Result:\n%s\n\n", JsonDump(input_map))
 
 	return result
 }
@@ -816,7 +816,7 @@ func UDN_MapUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	result := UdnResult{}
 	result.Result = input
 
-	fmt.Printf("Map Update: Result: %v", input)
+	UdnLogLevel(udn_schema, log_debug, "Map Update: Result: %v", input)
 
 	return result
 }
@@ -1352,7 +1352,7 @@ func UDN_RenderDataWidgetInstance(db *sql.DB, udn_schema map[string]interface{},
 
 	// Loop over all the keys in the udn_update_map, and update them directly into the udn_data.  This is for overriding things like "widget_static", which is initialized earlier
 	for key, value := range udn_update_map {
-		fmt.Printf("Render Data Widget Instance: Update udn_data: %s: %v\n", key, value)
+		UdnLogLevel(udn_schema, log_trace, "Render Data Widget Instance: Update udn_data: %s: %v\n", key, value)
 		udn_data[key] = value
 	}
 
@@ -1636,9 +1636,9 @@ func UDN_CompareEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 		value = 0
 	}
 
-	if Debug_Udn {
-		fmt.Printf("Compare: Equal: '%s' == '%s' : %d\n", arg0, arg1, value)
-	}
+
+	UdnLogLevel(udn_schema, log_debug, "Compare: Equal: '%s' == '%s' : %d\n", arg0, arg1, value)
+
 
 	result := UdnResult{}
 	result.Result = value
@@ -1657,9 +1657,7 @@ func UDN_CompareNotEqual(db *sql.DB, udn_schema map[string]interface{}, udn_star
 		value = 0
 	}
 
-	if Debug_Udn {
-		fmt.Printf("Compare: Not Equal: '%s' != '%s' : %d\n", arg0, arg1, value)
-	}
+	UdnLogLevel(udn_schema, log_debug, "Compare: Not Equal: '%s' != '%s' : %d\n", arg0, arg1, value)
 
 	result := UdnResult{}
 	result.Result = value
@@ -2580,11 +2578,10 @@ func UDN_ExecCommand(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 		log.Fatal(err)
 	}
 
-	if Debug_Udn {
-		fmt.Printf("Exec_Command: Command '%s'\n", evaluated_args[0])
-		fmt.Printf("Exec_Command: Options '%s'\n", evaluated_args[1:])
-		fmt.Printf("Exec_Command: Output '%s'\n", cmd_output)
-	}
+	UdnLogLevel(udn_schema, log_debug, "Exec_Command: Command '%s'\n", evaluated_args[0])
+	UdnLogLevel(udn_schema, log_debug, "Exec_Command: Options '%s'\n", evaluated_args[1:])
+	UdnLogLevel(udn_schema, log_debug, "Exec_Command: Output '%s'\n", cmd_output)
+
 
 	result := UdnResult{}
 	result.Result = string(cmd_output)
@@ -2629,7 +2626,7 @@ func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn
 		// Save the widget instance ID too, so we can put it in our hidden field for re-rendering
 		udn_data["widget_instance"].(map[string]interface{})["_web_data_widget_instance_id"] = web_data_widget_instance["_id"]
 
-		fmt.Printf("Web Data Widget Instance: %s\n", web_data_widget_instance["name"])
+		UdnLogLevel(udn_schema, log_debug, "Web Data Widget Instance: %s\n", web_data_widget_instance["name"])
 
 		// If we havent overridden this already, then get it
 		if udn_update_map["widget_static"] == nil {
@@ -2649,8 +2646,8 @@ func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn
 	sql := fmt.Sprintf("SELECT * FROM web_widget_instance WHERE _id = %d", widget_instance["web_widget_instance_id"])
 	web_widget_instance := Query(db_web, sql)[0]
 
-	fmt.Printf("Web Widget Instance: %s\n", web_widget_instance["name"])
-	fmt.Printf("Web Widget Instance Data: %s\n", JsonDump(udn_data["widget_instance"]))
+	UdnLogLevel(udn_schema, log_debug, "Web Widget Instance: %s\n", web_widget_instance["name"])
+	UdnLogLevel(udn_schema, log_debug, "Web Widget Instance Data: %s\n", JsonDump(udn_data["widget_instance"]))
 
 	// Get any static content associated with this page widget.  Then we dont need to worry about quoting or other stuff
 	widget_static := make(map[string]interface{})
@@ -2662,7 +2659,7 @@ func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn
 		}
 	}
 
-	fmt.Printf("Web Widget Instance Data Static: %s\n", JsonDump(udn_data["data_static"]))
+	UdnLogLevel(udn_schema, log_debug, "Web Widget Instance Data Static: %s\n", JsonDump(udn_data["data_static"]))
 
 	// Get all the web widgets, by their web_widget_instance_widget.name
 	sql = fmt.Sprintf("SELECT * FROM web_widget_instance_widget WHERE web_widget_instance_id = %d", widget_instance["web_widget_instance_id"])
@@ -2679,13 +2676,13 @@ func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn
 	if widget_instance["udn_data_json"] != nil {
 		ProcessSchemaUDNSet(db_web, udn_schema, widget_instance["udn_data_json"].(string), udn_data)
 	} else {
-		fmt.Printf("UDN Execution: %s: None\n\n", site_page_widget["name"])
+		UdnLogLevel(udn_schema, log_debug, "UDN Execution: %s: None\n\n", site_page_widget["name"])
 	}
 
 	// We have prepared the data, we can now execute the Widget Instance UDN, which will string append the output to udn_data["widget_instance"]["output_location"] when done
 	if web_widget_instance["udn_data_json"] != nil {
 		ProcessSchemaUDNSet(db_web, udn_schema, web_widget_instance["udn_data_json"].(string), udn_data)
 	} else {
-		fmt.Printf("Widget Instance UDN Execution: %s: None\n\n", site_page_widget["name"])
+		UdnLogLevel(udn_schema, log_debug, "Widget Instance UDN Execution: %s: None\n\n", site_page_widget["name"])
 	}
 }
