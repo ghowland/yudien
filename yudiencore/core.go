@@ -248,24 +248,22 @@ func UdnDebugReset(udn_schema map[string]interface{}) {
 }
 
 func UdnDebugIncrementChunk(udn_schema map[string]interface{}) {
-	if (Debug_Udn || udn_schema["udn_debug"].(bool)) {
-		current := udn_schema["debug_html_chunk_count"].(int)
-		current++
-		udn_schema["debug_html_chunk_count"] = current
+	current := udn_schema["debug_html_chunk_count"].(int)
+	current++
+	udn_schema["debug_html_chunk_count"] = current
 
-		// Update the output with the current Debug Log (and clear it, as it's temporary).  This ensures anything previously undated, gets updated.
-		UdnDebugUpdate(udn_schema)
+	// Update the output with the current Debug Log (and clear it, as it's temporary).  This ensures anything previously undated, gets updated.
+	UdnDebugUpdate(udn_schema)
 
-		// Wrap anything we have put into our current HTML chunk, and write it to the HTML Output
-		if udn_schema["debug_html_chunk"] != "" {
-			// Render our HTML chunk in a hidden DIV, with a button to toggle visibility
-			html_output := fmt.Sprintf("<button onclick=\"ToggleDisplay('debug_chunk_%d')\">Statement %d</button><br><br><div id=\"debug_chunk_%d\" style=\"display: none\">%s</div>\n", current, current, current, udn_schema["debug_html_chunk"])
+	// Wrap anything we have put into our current HTML chunk, and write it to the HTML Output
+	if udn_schema["debug_html_chunk"] != "" {
+		// Render our HTML chunk in a hidden DIV, with a button to toggle visibility
+		html_output := fmt.Sprintf("<button onclick=\"ToggleDisplay('debug_chunk_%d')\">Statement %d</button><br><br><div id=\"debug_chunk_%d\" style=\"display: none\">%s</div>\n", current, current, current, udn_schema["debug_html_chunk"])
 
-			udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + html_output
+		udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + html_output
 
-			// Clear the chunk
-			udn_schema["debug_html_chunk"] = ""
-		}
+		// Clear the chunk
+		udn_schema["debug_html_chunk"] = ""
 	}
 }
 
