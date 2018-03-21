@@ -828,7 +828,7 @@ Testing123
 **Example:**
 
 ```
-__input.{name="Bob"}.__template.'Name: {index .Map "name"}'
+__input.{name="Bob"}.__template.'Name: {{index .Map "name"}}'
 ```
 
 **Returns:**
@@ -862,7 +862,7 @@ NOTE(g): I dont know how this function is used at this point.  It was useful, bu
 **Example:**
 
 ```
-__input.{name=Bob,job=Programmer}.__template_wrap.'Name: {index .Map "name"}'.{name=Bob}.'Job: {index .Map "job"}'.{job=Programmer}
+__input.{name=Bob,job=Programmer}.__template_wrap.'Name: {{index .Map "name"}}'.{name=Bob}.'Job: {{index .Map "job"}}'.{job=Programmer}
 ```
 
 **Returns:**
@@ -894,7 +894,7 @@ Like format, for templating.  Takes 3*N **Args:** (key,text,map), any number of 
 **Example:**
 
 ```
-__template_map.'location.saved'.'Name: {index .Map "name"}'.{name=Bob}.__get.location.saved
+__template_map.'location.saved'.'Name: {{index .Map "name"}}'.{name=Bob}.__get.location.saved
 ```
 
 **Returns:**
