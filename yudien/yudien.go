@@ -92,10 +92,17 @@ type LdapConfig struct {
 
 var Ldap *LdapConfig
 
-func Configure(ldap *LdapConfig, default_database *DatabaseConfig) {
+type LoggingConfig struct {
+	OutputPath  string `json:"output_path"`
+	Level string `json:"level"`
+}
+
+func Configure(ldap *LdapConfig, default_database *DatabaseConfig, databases map[string]DatabaseConfig, logging *LoggingConfig) {
 	UdnLogLevel(nil, log_info,"Configuring Yudien\n")
 	Ldap = ldap
 	DefaultDatabase = default_database
+
+	fmt.Printf("\n\nConfig: Logging: %v\n\n", logging)
 
 	InitDataman(DefaultDatabase.ConnectOptions, DefaultDatabase.Database, DefaultDatabase.Schema)
 }
