@@ -48,13 +48,13 @@ const ( // order matters for log levels
 	log_trace = iota
 )
 
-type OpsdbConfig struct {
+type DatabaseConfig struct {
 	ConnectOptions string `json:"connect_opts"`
 	Database string `json:"database"`
 	Schema string `json:"schema"`
 }
 
-var Opsdb *OpsdbConfig
+var DefaultDatabase *DatabaseConfig
 
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
@@ -746,10 +746,9 @@ func InitDataman(pgconnect string, database string, configfile string) {
 	DatabaseTarget = database
 
 	// This is the development location
-//	configfile := "./data/schema.json"
 	schema_str, err := ioutil.ReadFile(configfile)
 	if err != nil {
-		// This is the production location
+		// This is the production location.  It is hard coded at the moment, for stability.  This is only the default schema.  The other schema files must be specified
 		configfile = "/etc/web6/schema.json"
 		schema_str, err = ioutil.ReadFile(configfile)
 		if err != nil {

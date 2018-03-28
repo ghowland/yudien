@@ -92,12 +92,12 @@ type LdapConfig struct {
 
 var Ldap *LdapConfig
 
-func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
-	UdnLogLevel(nil,log_info,"Configuring Yudien\n")
+func Configure(ldap *LdapConfig, default_database *DatabaseConfig) {
+	UdnLogLevel(nil, log_info,"Configuring Yudien\n")
 	Ldap = ldap
-	Opsdb = opsdb
+	DefaultDatabase = default_database
 
-	InitDataman(Opsdb.ConnectOptions, Opsdb.Database, Opsdb.Schema)
+	InitDataman(DefaultDatabase.ConnectOptions, DefaultDatabase.Database, DefaultDatabase.Schema)
 }
 
 func InitUdn() {
