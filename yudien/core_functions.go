@@ -56,6 +56,8 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		//TODO(g): Save into the DB as our User Session...
 		udn_data["ldap_user"] = user_map
 
+		fmt.Printf("LDAP Authenticated: %s\n\n", user_map["username"])
+
 	} else if ldap_override_admin && username == "admin" {
 		user_map["first_name"] = "Admin"
 		user_map["full_name"] = "admin"
@@ -68,11 +70,16 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 
 		ldap_user.Username = user_map["username"].(string)
 
+		fmt.Printf("LDAP Override: Admin User\n\n")
+
 	} else {
 		user_map["error"] = ldap_user.Error
 
 		result.Result = user_map
 		result.Error = ldap_user.Error
+
+		fmt.Printf("LDAP ERROR: %s\n\n", result.Error)
+
 		return result
 	}
 

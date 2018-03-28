@@ -51,6 +51,7 @@ const ( // order matters for log levels
 type OpsdbConfig struct {
 	ConnectOptions string `json:"connect_opts"`
 	Database string `json:"database"`
+	Schema string `json:"schema"`
 }
 
 var Opsdb *OpsdbConfig
@@ -61,6 +62,7 @@ var DatasourceConfig = map[string]*storagenode.DatasourceInstanceConfig{}
 
 var DatabaseTarget string
 
+//TODO(g):REMOVE: This is ancient.  I dont think its in use at all, but should be cleaned up when we are totally dynamic DBs.
 func GetSelectedDb(db_web *sql.DB, db *sql.DB, db_id int64) *sql.DB {
 	// Assume we are using the non-web DB
 	selected_db := db
@@ -125,6 +127,12 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 	return outArr
 }
 
+/*
+// Returns a DatasourceInstance.  If name is "" or not found, it starts with the lowest DB and finds the first collection/table that matches
+func GetDatasourceInstance(name string) *storagenode.DatasourceInstance {
+
+}*/
+
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
 	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
@@ -141,7 +149,7 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 
 	dataman_query := &query.Query{query.Get, get_map}
 
-	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
+	result := DatasourceInstance["_default"].HandleQuery(context.Background(), dataman_query)
 
 	UdnLogLevel(nil, log_debug, "Dataman GET: %v\n", result.Return[0])
 
@@ -238,7 +246,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	//fmt.Printf("Dataman SET: Record: JSON: %v\n", JsonDump(record))
 	//fmt.Printf("Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
 
-	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
+	result := DatasourceInstance["_default"].HandleQuery(context.Background(), dataman_query)
 
 	//result_bytes, _ := json.Marshal(result)
 	//fmt.Printf("Dataman SET: %s\n", result_bytes)
@@ -287,7 +295,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
-	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
+	result := DatasourceInstance["_default"].HandleQuery(context.Background(), dataman_query)
 
 	if result.Error != "" {
 		UdnLogLevel(nil, log_error, "Dataman ERROR: %v\n", result.Error)
@@ -327,7 +335,7 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
-	result := DatasourceInstance["opsdb"].HandleQuery(context.Background(), dataman_query)
+	result := DatasourceInstance["_default"].HandleQuery(context.Background(), dataman_query)
 
 	if result.Error != "" {
 		UdnLogLevel(nil, log_error, "Dataman ERROR: %v\n", result.Error)
@@ -358,7 +366,7 @@ NULL = Unknown, test for existence and update.  Assume it is desired to be creat
 func DatamanEnsureDatabases(pgconnect string, database string, current_path string, new_path string) {
 
 	//TODO(g): Do multiple DBs in the future (schema), for now just limit it to opsdb, because thats all we need now
-	limited_database_search := "opsdb"
+	limited_database_search := "_default"
 
 
 	// Get the Hard coded OpsDB record from the database `schema` table
@@ -368,9 +376,9 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 	schema_result := DatamanFilter("schema", filter_map, option_map)
 	schema_map := schema_result[0]
 
-	UdnLogLevel(nil, log_info, "OpsDB Schema: %v\n\n", schema_map)
+	UdnLogLevel(nil, log_info, "Schema: %v\n\n", schema_map)
 
-	opsdb_schema := DatasourceInstance["opsdb"].StoreSchema
+	default_schema := DatasourceInstance["_default"].StoreSchema
 
 	//TODO(g): Remove when we have the Dataman capability to ALTER tables to set PKEYs
 	db, err := sql.Open("postgres", pgconnect)
@@ -382,13 +390,13 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 
 	UdnLogLevel(nil, log_info, "\nList DB Start: %v\n\n", time.Now().String())
-	//db_list := opsdb_schema.ListDatabase(context.Background())
-	db_item := opsdb_schema.GetDatabase(context.Background(), limited_database_search)
+	//db_list := default_schema.ListDatabase(context.Background())
+	db_item := default_schema.GetDatabase(context.Background(), limited_database_search)
 	UdnLogLevel(nil, log_info, "\nList DB Stop: %v\n\n", time.Now().String())
 
 	UdnLogLevel(nil, log_info, "\n\nFound DB Item: %v\n\n", db_item.Name)
 
-	//shard_instance := opsdb_schema.ListShardInstance(context.Background(), db_item.Name)
+	//shard_instance := default_schema.ListShardInstance(context.Background(), db_item.Name)
 
 
 	//TODO(g): Make an empty list of the collections, so we can track what we have, to find missing ones
@@ -397,7 +405,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 	//fmt.Printf("\n\nFound DB Shard Instance: %v -- %v\n\n", shard_instance, db_item.ShardInstances["public"])
 
-	//collections := opsdb_schema.ListCollection(context.Background(), db_item.Name, "public")
+	//collections := default_schema.ListCollection(context.Background(), db_item.Name, "public")
 
 	for _, collection := range db_item.ShardInstances["public"].Collections {
 		UdnLogLevel(nil, log_info, "\n\nFound DB Collections: %s\n", collection.Name)
@@ -483,7 +491,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 
 			// Create the new collection
-			err := opsdb_schema.AddCollection(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection)
+			err := default_schema.AddCollection(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection)
 			UdnLogLevel(nil, log_info, "Add New Collection: %s: ERROR: %s\n\n", new_collection.Name, err)
 
 			for _, field_map := range all_collection_field_result {
@@ -501,7 +509,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 				new_collection.Fields[new_field.Name] = &new_field
 
 				// Create the new collection field
-				err := opsdb_schema.AddCollectionField(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_field)
+				err := default_schema.AddCollectionField(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_field)
 				UdnLogLevel(nil, log_info, "Add New Collection Field: %s: %s: ERROR: %s\n\n", new_collection.Name, new_field.Name, err)
 
 				if field_map["is_primary_key"] == true {
@@ -515,7 +523,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 					new_index.Fields = append(new_index.Fields, new_field.Name)
 
 					// Create the new collection field index
-//					err := opsdb_schema.AddCollectionIndex(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_index)
+//					err := default_schema.AddCollectionIndex(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_index)
 
 					// Perform an ALTER table through SQL here, as dataman doesnt allow it
 					//TODO(g)...
@@ -756,11 +764,9 @@ func InitDataman(pgconnect string, database string) {
 	}
 
 
-
 	if datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta); err == nil {
-	//if datasource, err := storagenode.NewDatasourceInstanceDefault(&config); err == nil {
-		DatasourceInstance["opsdb"] = datasource
-		DatasourceConfig["opsdb"] = &config
+		DatasourceInstance["_default"] = datasource
+		DatasourceConfig["_default"] = &config
 	} else {
 		panic("Cannot open primary database connection: " + err.Error())
 	}

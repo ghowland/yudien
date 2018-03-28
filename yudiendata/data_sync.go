@@ -128,7 +128,11 @@ func ImportSchemaJson(path string) map[string]interface{} {
 	type_map_options := make(map[string]interface{})
 	type_map_filter := make(map[string]interface{})
 	type_map := make(map[string]map[string]interface{})
+
+	//TODO(g): Should pull this from the path name, so that we can pull in multiple at a time
 	type_map_filter["schema_type_map_id"] = "1"	//TODO(g): Only works as a string.  Int value doesnt work.
+
+
 	type_map_result := DatamanFilter("schema_type_map_item", type_map_filter, type_map_options)
 	for _, item := range type_map_result {
 		type_map[item["name"].(string)] = item
@@ -168,6 +172,11 @@ func ImportSchemaJson(path string) map[string]interface{} {
 		}
 
 	}
+
+
+	//TODO(g): Remove tables/fields we didnt encounter, so we can clean things up as well as adding them
+	//
+
 
 
 	//TODO(g): Ive just added these to the DB manually in `schema_type_map` table.  Later import them.  How to name for upsert?
