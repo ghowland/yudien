@@ -97,12 +97,62 @@ type LoggingConfig struct {
 	Level string `json:"level"`
 }
 
-func Configure(ldap *LdapConfig, default_database *DatabaseConfig, databases map[string]DatabaseConfig, logging *LoggingConfig) {
+type StaticUser struct {
+	Username  string `json:"username"`
+	Password string `json:"password"`
+	Data StaticUserData `json:"data"`
+}
+
+type StaticUserData struct {
+	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+	LastName string `json:"last_name"`
+	Email string `json:"email"`
+	HomeDir string `json:"home_dir"`
+	Uid int64 `json:"uid"`
+	Groups []string `json:"groups"`
+}
+
+
+type DatabaseAuthenticationName struct {
+	Database string `json:"database"`
+	Table string `json:"table"`
+	Field string `json:"field"`
+}
+
+type DatabaseAuthenticationPassword struct {
+	Database string `json:"database"`
+	Table string `json:"table"`
+	FieldDigest string `json:"field_digest"`
+	FieldSalt string `json:"field_salt"`
+	DigestMethod string `json:"digest_method"`
+}
+
+type DatabaseAuthentication struct {
+	Name DatabaseAuthenticationName `json:"name"`
+	Password DatabaseAuthenticationPassword `json:"password"`
+}
+
+type AuthenticationConfig struct {
+	Method  string `json:"method"`
+	IsProduction bool `json:"is_production"`
+	DevelopmentUsers map[string]StaticUser `json:"development_users"`
+	DatabaseAuthentication DatabaseAuthentication `json:"database_authentication"`
+	LdapConfig LdapConfig `json:"ldap_authentication"`
+}
+
+
+//func Configure(ldap *LdapConfig, default_database *DatabaseConfig, databases map[string]DatabaseConfig, logging *LoggingConfig, authentication *AuthenticationConfig) {
+func Configure(default_database *DatabaseConfig, databases map[string]DatabaseConfig, logging *LoggingConfig, authentication *AuthenticationConfig) {
 	UdnLogLevel(nil, log_info,"Configuring Yudien\n")
-	Ldap = ldap
+
+	//Ldap = ldap
+	Ldap = &authentication.LdapConfig
+
 	DefaultDatabase = default_database
 
 	fmt.Printf("\n\nConfig: Logging: %v\n\n", logging)
+	fmt.Printf("\n\nConfig: Authentication: %v\n\n", authentication)
 
 	InitDataman(DefaultDatabase.ConnectOptions, DefaultDatabase.Database, DefaultDatabase.Schema)
 }
