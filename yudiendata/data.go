@@ -735,7 +735,7 @@ func SanitizeSQL(text string) string {
 	return text
 }
 
-func InitDataman(pgconnect string, database string) {
+func InitDataman(pgconnect string, database string, configfile string) {
 	config := storagenode.DatasourceInstanceConfig{
 		StorageNodeType: "postgres",
 		StorageConfig: map[string]interface{}{
@@ -745,9 +745,11 @@ func InitDataman(pgconnect string, database string) {
 
 	DatabaseTarget = database
 
-	configfile := "./data/schema.json"
+	// This is the development location
+//	configfile := "./data/schema.json"
 	schema_str, err := ioutil.ReadFile(configfile)
 	if err != nil {
+		// This is the production location
 		configfile = "/etc/web6/schema.json"
 		schema_str, err = ioutil.ReadFile(configfile)
 		if err != nil {

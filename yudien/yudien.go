@@ -97,7 +97,7 @@ func Configure(ldap *LdapConfig, opsdb *OpsdbConfig) {
 	Ldap = ldap
 	Opsdb = opsdb
 
-	InitDataman(Opsdb.ConnectOptions, Opsdb.Database)
+	InitDataman(Opsdb.ConnectOptions, Opsdb.Database, Opsdb.Schema)
 }
 
 func InitUdn() {
