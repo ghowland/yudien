@@ -735,7 +735,7 @@ func SanitizeSQL(text string) string {
 	return text
 }
 
-func InitDataman(pgconnect string, database string, configfile string) {
+func InitDataman(pgconnect string, database string, configfile string, databases map[string]DatabaseConfig) {
 	config := storagenode.DatasourceInstanceConfig{
 		StorageNodeType: "postgres",
 		StorageConfig: map[string]interface{}{
@@ -743,6 +743,7 @@ func InitDataman(pgconnect string, database string, configfile string) {
 		},
 	}
 
+	//TODO(g): Fix this, as this hardcodes everything to one.  Simple in the beginning, but maybe not useful now.  Maybe just the default?
 	DatabaseTarget = database
 
 	// This is the development location
