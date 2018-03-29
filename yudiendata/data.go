@@ -726,45 +726,6 @@ func SanitizeSQL(text string) string {
 }
 
 func InitDataman(pgconnect string, database string, configfile string, databases map[string]DatabaseConfig) {
-/*
-	// Initialize the DefaultDatabase
-	config := storagenode.DatasourceInstanceConfig{
-		StorageNodeType: "postgres",
-		StorageConfig: map[string]interface{}{
-			"pg_string": pgconnect,
-		},
-	}
-
-	//TODO(g): Fix this, as this hardcodes everything to one.  Simple in the beginning, but maybe not useful now.  Maybe just the default?
-	DefaultDatabaseTarget = database
-
-	// This is the development location
-	schema_str, err := ioutil.ReadFile(configfile)
-	if err != nil {
-		// This is the production location.  It is hard coded at the moment, for stability.  This is only the default schema.  The other schema files must be specified
-		configfile = "/etc/web6/schema.json"
-		schema_str, err = ioutil.ReadFile(configfile)
-		if err != nil {
-			panic(fmt.Sprintf("Load schema configuration data: %s: %s", configfile, err.Error()))
-		}
-	}
-
-	//fmt.Printf("Schema STR: %s\n\n", schema_str)
-
-	var meta metadata.Meta
-	err = json.Unmarshal(schema_str, &meta)
-	if err != nil {
-		panic("Cannot parse JSON config data: " + err.Error())
-	}
-
-
-	if datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta); err == nil {
-		DatasourceInstance["_default"] = datasource
-		DatasourceConfig["_default"] = &config
-	} else {
-		panic("Cannot open primary database connection: " + err.Error())
-	}
-*/
 
 	datasource, config, err := InitDatamanDatabase(database, pgconnect, configfile)
 	if err != nil {
@@ -791,11 +752,6 @@ func InitDataman(pgconnect string, database string, configfile string, databases
 		DatasourceConfig[database_name] = config
 	}
 
-	// Initalize all the Databases that arent the default.
-
-	// Use this:  var DatabaseToDatasourceInstance = map[string]*storagenode.DatasourceInstance{}
-
-	// ...  Make all of this generic, no reason to special case the default DB.  Too messy to have 2 ways, just wrap the result to put it into _default
 }
 
 func InitDatamanDatabase(database string, connect_string string, configfile string) (*storagenode.DatasourceInstance, *storagenode.DatasourceInstanceConfig, error) {
