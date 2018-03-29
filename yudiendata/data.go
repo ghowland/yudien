@@ -60,21 +60,11 @@ var DefaultDatabase *DatabaseConfig
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
 var DatasourceConfig = map[string]*storagenode.DatasourceInstanceConfig{}
 
-var DatabaseTarget string
+var DefaultDatabaseTarget string
 
-//TODO(g):REMOVE: This is ancient.  I dont think its in use at all, but should be cleaned up when we are totally dynamic DBs.
-func GetSelectedDb(db_web *sql.DB, db *sql.DB, db_id int64) *sql.DB {
-	// Assume we are using the non-web DB
-	selected_db := db
+// Maps database names to their Datasource Instance
+var DatabaseToDatasourceInstance = map[string]*storagenode.DatasourceInstance{}
 
-	if db_id == 1 {
-		selected_db = db_web
-	} else if db_id == 2 {
-		selected_db = db
-	}
-
-	return selected_db
-}
 
 func Query(db *sql.DB, sql string) []map[string]interface{} {
 	UdnLogLevel(nil, log_debug,"Query: %s\n", sql)
@@ -137,7 +127,7 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
 	get_map := map[string]interface{}{
-		"db":             DatabaseTarget,
+		"db":             DefaultDatabaseTarget,
 		"shard_instance": "public",
 		"collection":     collection_name,
 		//"_id":            record_id,
@@ -235,7 +225,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	dataman_query := &query.Query{
 		query.Set,
 		map[string]interface{} {
-			"db":             DatabaseTarget,
+			"db":             DefaultDatabaseTarget,
 			"shard_instance": "public",
 			"collection":     collection_name,
 			"record":         record,
@@ -280,7 +270,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 
 
 	filter_map := map[string]interface{}{
-		"db":             DatabaseTarget,
+		"db":             DefaultDatabaseTarget,
 		"shard_instance": "public",
 		"collection":     collection_name,
 		"filter":         filter,
@@ -736,6 +726,8 @@ func SanitizeSQL(text string) string {
 }
 
 func InitDataman(pgconnect string, database string, configfile string, databases map[string]DatabaseConfig) {
+/*
+	// Initialize the DefaultDatabase
 	config := storagenode.DatasourceInstanceConfig{
 		StorageNodeType: "postgres",
 		StorageConfig: map[string]interface{}{
@@ -744,7 +736,7 @@ func InitDataman(pgconnect string, database string, configfile string, databases
 	}
 
 	//TODO(g): Fix this, as this hardcodes everything to one.  Simple in the beginning, but maybe not useful now.  Maybe just the default?
-	DatabaseTarget = database
+	DefaultDatabaseTarget = database
 
 	// This is the development location
 	schema_str, err := ioutil.ReadFile(configfile)
@@ -772,5 +764,62 @@ func InitDataman(pgconnect string, database string, configfile string, databases
 	} else {
 		panic("Cannot open primary database connection: " + err.Error())
 	}
+*/
+
+	datasource, config, err := InitDatamanDatabase(database, pgconnect, configfile)
+	if err != nil {
+		datasource, config, err = InitDatamanDatabase(database, pgconnect, "/etc/web6/schema.json")
+		if err != nil {
+			panic(fmt.Sprintf("Load schema configuration data: %s: %s", configfile, err.Error()))
+		}
+	}
+
+	//TODO(g): Fix this, as this hardcodes everything to one.  Simple in the beginning, but maybe not useful now.  Maybe just the default?
+	DefaultDatabaseTarget = database
+
+	DatasourceInstance["_default"] = datasource
+	DatasourceConfig["_default"] = config
+
+	for database_name, database_data := range databases {
+		datasource, config, err = InitDatamanDatabase(database_data.Database, database_data.ConnectOptions, database_data.Schema)
+
+		if err != nil {
+			panic(fmt.Sprintf("Load schema configuration data: %s: %s", database_data.Schema, err.Error()))
+		}
+
+		DatasourceInstance[database_name] = datasource
+		DatasourceConfig[database_name] = config
+	}
+
+	// Initalize all the Databases that arent the default.
+
+	// Use this:  var DatabaseToDatasourceInstance = map[string]*storagenode.DatasourceInstance{}
+
+	// ...  Make all of this generic, no reason to special case the default DB.  Too messy to have 2 ways, just wrap the result to put it into _default
 }
 
+func InitDatamanDatabase(database string, connect_string string, configfile string) (*storagenode.DatasourceInstance, *storagenode.DatasourceInstanceConfig, error) {
+	// Initialize the DefaultDatabase
+	config := storagenode.DatasourceInstanceConfig{
+		StorageNodeType: "postgres",
+		StorageConfig: map[string]interface{}{
+			"pg_string": connect_string,
+		},
+	}
+
+	// This is the development location
+	schema_str, err := ioutil.ReadFile(configfile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Cannot read database config file: %s", configfile)
+	}
+
+	var meta metadata.Meta
+	err = json.Unmarshal(schema_str, &meta)
+	if err != nil {
+		panic(fmt.Sprintf("Cannot parse JSON config data: %s: %s", configfile, err.Error()))
+	}
+
+	datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta)
+
+	return datasource, &config, err
+}
