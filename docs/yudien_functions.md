@@ -369,6 +369,7 @@ Just like __set, except uses a portion of the Global Data space behind a UUID fo
 
   0. string :: Table/Collection name
   1. int :: Record ID.  Primary key.
+  2. options :: Options.  Example: {"db": "eventsum"}
 
 **Output:** Map :: map[string]interface
 
@@ -401,6 +402,7 @@ Just like __set, except uses a portion of the Global Data space behind a UUID fo
 
   0. string :: Table/Collection name
   1. map :: Record field data to put back in
+  2. options :: Options.  Example: {"db": "eventsum"}
 
 **Output:** Map :: map[string]interface
 
@@ -433,6 +435,7 @@ Just like __set, except uses a portion of the Global Data space behind a UUID fo
   0. string :: If quoted, this can contain dots, of each arg will become part of a "dotted string" to access the global data
   1. string (optional, variadic) :: Any number of args can be provided, all strings
   2. Any :: The final data can be any value, and is set into the location
+  3. options :: Options.  Example: {"db": "eventsum"}
 
 **Output:** list of maps :: []map[string]interface
 

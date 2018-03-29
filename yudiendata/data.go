@@ -59,6 +59,7 @@ var DefaultDatabase *DatabaseConfig
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
 var DatasourceConfig = map[string]*storagenode.DatasourceInstanceConfig{}
+var DatasourceDatabase = map[string]string{}
 
 var DefaultDatabaseTarget string
 
@@ -117,17 +118,29 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 	return outArr
 }
 
-/*
 // Returns a DatasourceInstance.  If name is "" or not found, it starts with the lowest DB and finds the first collection/table that matches
-func GetDatasourceInstance(name string) *storagenode.DatasourceInstance {
+func GetDatasourceInstance(options map[string]interface{}) (*storagenode.DatasourceInstance, string) {
+	datasource_instance := DatasourceInstance["_default"]
+	datasource_database := DatasourceDatabase["_default"]
 
-}*/
+	// If there is a specified option to select an explicit Database
+	if options["db"] != nil {
+		if DatasourceInstance[options["db"].(string)] != nil {
+			datasource_instance = DatasourceInstance[options["db"].(string)]
+			datasource_database = DatasourceDatabase[options["db"].(string)]
+		}
+	}
+
+	return datasource_instance, datasource_database
+}
 
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
 	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
-	get_map := map[string]interface{}{
-		"db":             DefaultDatabaseTarget,
+	datasource_instance, datasource_database := GetDatasourceInstance(options)
+
+	get_map := map[string]interface{} {
+		"db":             datasource_database,
 		"shard_instance": "public",
 		"collection":     collection_name,
 		//"_id":            record_id,
@@ -135,25 +148,27 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 		"join": options["join"],
 	}
 
-	UdnLogLevel(nil, log_debug, "Dataman Get: %v\n\n", get_map)
+	UdnLogLevel(nil, log_debug, "Dataman Get: %s: %v\n\n", datasource_database, get_map)
 
 	dataman_query := &query.Query{query.Get, get_map}
 
-	result := DatasourceInstance["_default"].HandleQuery(context.Background(), dataman_query)
+	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
-	UdnLogLevel(nil, log_debug, "Dataman GET: %v\n", result.Return[0])
+	UdnLogLevel(nil, log_debug, "Dataman GET: %s: %v\n", datasource_database, result.Return[0])
 
 	if result.Error != "" {
-		UdnLogLevel(nil, log_error, "Dataman GET: ERRORS: %v\n", result.Error)
+		UdnLogLevel(nil, log_error, "Dataman GET: %s: ERRORS: %v\n", datasource_database, result.Error)
 	}
 
 	return result.Return[0]
 }
 
-func DatamanSet(collection_name string, record map[string]interface{}) map[string]interface{} {
+func DatamanSet(collection_name string, record map[string]interface{}, options map[string]interface{}) map[string]interface{} {
 	// Duplicate this map, because we are messing with a live map, that we dont expect to change in this function...
 	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
 	record = MapCopy(record)
+
+	datasource_instance, datasource_database := GetDatasourceInstance(options)
 
 	// Remove the _id field, if it is nil.  This means it should be new/insert
 	if record["_id"] == nil || record["_id"] == "<nil>" || record["_id"] == "\u003cnil\u003e" || record["_id"] == "" {
@@ -225,7 +240,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	dataman_query := &query.Query{
 		query.Set,
 		map[string]interface{} {
-			"db":             DefaultDatabaseTarget,
+			"db":             datasource_database,
 			"shard_instance": "public",
 			"collection":     collection_name,
 			"record":         record,
@@ -236,7 +251,7 @@ func DatamanSet(collection_name string, record map[string]interface{}) map[strin
 	//fmt.Printf("Dataman SET: Record: JSON: %v\n", JsonDump(record))
 	//fmt.Printf("Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
 
-	result := DatasourceInstance["_default"].HandleQuery(context.Background(), dataman_query)
+	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
 	//result_bytes, _ := json.Marshal(result)
 	//fmt.Printf("Dataman SET: %s\n", result_bytes)
@@ -257,6 +272,8 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	//fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
 
+	datasource_instance, datasource_database := GetDatasourceInstance(options)
+
 	filter = MapCopy(filter)
 
 	for k, v := range filter {
@@ -269,8 +286,8 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	}
 
 
-	filter_map := map[string]interface{}{
-		"db":             DefaultDatabaseTarget,
+	filter_map := map[string]interface{} {
+		"db":             datasource_database,
 		"shard_instance": "public",
 		"collection":     collection_name,
 		"filter":         filter,
@@ -285,7 +302,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
-	result := DatasourceInstance["_default"].HandleQuery(context.Background(), dataman_query)
+	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
 	if result.Error != "" {
 		UdnLogLevel(nil, log_error, "Dataman ERROR: %v\n", result.Error)
@@ -299,6 +316,8 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 func DatamanFilterFull(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
 	// Contains updated functionality of DatamanFilter where multiple constraints can be used as per dataman specs
 
+	datasource_instance, datasource_database := GetDatasourceInstance(options)
+
 	// filter should be a map[string]interface{} for single filters and []interface{} for multi-filters
 	// dataman handles all cases so it is fine for filter to be interface{}
 	// ex: single filter:
@@ -309,8 +328,8 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 	UdnLogLevel(nil, log_debug, "DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
 
-	filter_map := map[string]interface{}{
-		"db":             "opsdb",
+	filter_map := map[string]interface{} {
+		"db":             datasource_database,
 		"shard_instance": "public",
 		"collection":     collection_name,
 		"filter":         filter,
@@ -325,7 +344,7 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
-	result := DatasourceInstance["_default"].HandleQuery(context.Background(), dataman_query)
+	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
 	if result.Error != "" {
 		UdnLogLevel(nil, log_error, "Dataman ERROR: %v\n", result.Error)
@@ -740,6 +759,7 @@ func InitDataman(pgconnect string, database string, configfile string, databases
 
 	DatasourceInstance["_default"] = datasource
 	DatasourceConfig["_default"] = config
+	DatasourceDatabase["_default"] = database
 
 	for database_name, database_data := range databases {
 		datasource, config, err = InitDatamanDatabase(database_data.Database, database_data.ConnectOptions, database_data.Schema)
@@ -750,6 +770,7 @@ func InitDataman(pgconnect string, database string, configfile string, databases
 
 		DatasourceInstance[database_name] = datasource
 		DatasourceConfig[database_name] = config
+		DatasourceDatabase[database_name] = database_data.Database
 	}
 
 }

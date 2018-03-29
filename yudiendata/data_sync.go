@@ -214,7 +214,8 @@ func Import_Database(name string, data map[string]interface{}) map[string]interf
 	}
 
 	// Update the record
-	record = DatamanSet("schema", record)
+	options_map = make(map[string]interface{})
+	record = DatamanSet("schema", record, options_map)
 
 	return record
 }
@@ -252,7 +253,8 @@ func Import_Collection(database map[string]interface{}, name string, data map[st
 	}
 
 	// Update the record
-	record = DatamanSet("schema_table", record)
+	options_map = make(map[string]interface{})
+	record = DatamanSet("schema_table", record, options_map)
 
 	return record
 }
@@ -343,7 +345,8 @@ func Import_CollectionField(collection map[string]interface{}, name string, data
 	fmt.Printf("Saved Table Field: BEFORE: %s: %s\n\n", name, JsonDump(record))
 
 	// Update the record
-	record = DatamanSet("schema_table_field", record)
+	options_map = make(map[string]interface{})
+	record = DatamanSet("schema_table_field", record, options_map)
 
 	fmt.Printf("Saved Table Field: AFTER: %s: %s\n\n", name, JsonDump(record))
 

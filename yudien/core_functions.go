@@ -110,7 +110,8 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		user_data["ldap_data_json"] = string(user_map_json)
 
 		// Save the new user into the DB
-		user_data = DatamanSet("user", user_data)
+		options_map := make(map[string]interface{})
+		user_data = DatamanSet("user", user_data, options_map)
 
 	} else {
 		//TODO(g): Remove once I can use filters...
@@ -141,7 +142,8 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		web_user_session["name"] = id.String()
 
 		// Save the new user session
-		web_user_session = DatamanSet("web_user_session", web_user_session)
+		options_map := make(map[string]interface{})
+		web_user_session = DatamanSet("web_user_session", web_user_session, options_map)
 
 	} else {
 		// Save the session information
@@ -206,7 +208,8 @@ func UDN_DddRender(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 		// Put this data into the temp table, and get our temp_id
 		temp_data := make(map[string]interface{})
 		temp_data["data_json"] = JsonDump(data_record)
-		temp_data_result := DatamanSet("temp", temp_data)
+		options_map := make(map[string]interface{})
+		temp_data_result := DatamanSet("temp", temp_data, options_map)
 		UdnLogLevel(udn_schema, log_debug, "Temp data result: %v\n\n", temp_data_result)
 		temp_id = temp_data_result["_id"].(int64)
 	} else {
@@ -1508,8 +1511,9 @@ func UDN_DataSet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 
 	collection_name := GetResult(args[0], type_string).(string)
 	record := GetResult(args[1], type_map).(map[string]interface{})
+	options := GetResult(args[1], type_map).(map[string]interface{})
 
-	result_map := DatamanSet(collection_name, record)
+	result_map := DatamanSet(collection_name, record, options)
 
 	result := UdnResult{}
 	result.Result = result_map
