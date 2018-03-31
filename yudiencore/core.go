@@ -332,15 +332,35 @@ func UdnLogLevel(udn_schema map[string]interface{}, log_level int, format string
 	if log_level <= Debug_Udn_Log_Level {
 		output := fmt.Sprintf(format, args...)
 
-		fmt.Print(output)
-
 		if log_level == log_error && udn_schema != nil{
+			output = fmt.Sprintf("ERROR: " + format, args...)
 			udn_schema["error_log"] = udn_schema["error_log"].(string) + output
 		}
-		if log_level == log_debug && udn_schema != nil{
+		if log_level >= log_debug && udn_schema != nil{
 			// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
 			udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
 		}
+
+		fmt.Print(output)
+	}
+}
+
+func ParseUdnLogLevel(level string) int {
+	level = strings.ToLower(level)
+
+	switch level {
+	case "error":
+		return log_error
+	case "warn":
+		return log_warn
+	case "info":
+		return log_info
+	case "debug":
+		return log_debug
+	case "trace":
+		return log_trace
+	default:
+		return log_off
 	}
 }
 

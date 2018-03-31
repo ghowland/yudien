@@ -73,7 +73,7 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 	// Query
 	rs, err := db.Query(sql)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("SQL: %s\nError: %s\n", sql, err))
+		log.Panic(fmt.Sprintf("SQL: %s\nError: %s\n", sql, err))
 	}
 	defer rs.Close()
 
@@ -82,7 +82,7 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 	fb := fieldbinding.NewFieldBinding()
 
 	if fArr, err = rs.Columns(); err != nil {
-		log.Fatal(fmt.Sprintf("SQL: %s\nError: %s\n", sql, err))
+		log.Panic(fmt.Sprintf("SQL: %s\nError: %s\n", sql, err))
 	}
 
 	fb.PutFields(fArr)
@@ -92,7 +92,7 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 
 	for rs.Next() {
 		if err := rs.Scan(fb.GetFieldPtrArr()...); err != nil {
-			log.Fatal(fmt.Sprintf("SQL: %s\nError: %s\n", sql, err))
+			log.Panic(fmt.Sprintf("SQL: %s\nError: %s\n", sql, err))
 		}
 
 		template_map := make(map[string]interface{})
@@ -112,7 +112,7 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 	}
 
 	if err := rs.Err(); err != nil {
-		log.Fatal(fmt.Sprintf("SQL: %s\nError: %s\n", sql, err))
+		log.Panic(fmt.Sprintf("SQL: %s\nError: %s\n", sql, err))
 	}
 
 	return outArr
@@ -200,7 +200,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		case string:
 			record_id, err = strconv.ParseInt(record["_id"].(string), 10, 32)
 			if err != nil {
-				UdnError(nil,"Record _id is not an integer: %s: %s", collection_name, record)
+				UdnLogLevel(nil, log_error,"Record _id is not an integer: %s: %s", collection_name, record)
 				delete(record, "_id")
 			}
 		default:
