@@ -91,7 +91,7 @@ type LdapConfig struct {
 }
 
 var Ldap *LdapConfig
-var DevelopmentUsers *map[string]StaticUser
+var DevelopmentUsers map[string]StaticUser
 var UDNLogConfig *LoggingConfig
 
 type LoggingConfig struct {
@@ -148,7 +148,7 @@ func Configure(default_database *DatabaseConfig, databases map[string]DatabaseCo
 	UdnLogLevel(nil, log_info,"Configuring Yudien\n")
 
 	Ldap = &authentication.LdapConfig
-	DevelopmentUsers = &authentication.DevelopmentUsers
+	DevelopmentUsers = authentication.DevelopmentUsers
 
 	UDNLogConfig = logging
 
@@ -157,7 +157,7 @@ func Configure(default_database *DatabaseConfig, databases map[string]DatabaseCo
 	DefaultDatabase = default_database
 
 	UdnLogLevel(nil, log_info,"\n\nConfig: Logging: %v\n\n", logging)
-	UdnLogLevel(nil, log_info,"\n\nConfig: Authentication: %v\n\n", authentication)
+	//UdnLogLevel(nil, log_info,"\n\nConfig: Authentication: %v\n\n", authentication)
 
 	InitDataman(DefaultDatabase.ConnectOptions, DefaultDatabase.Database, DefaultDatabase.Schema, databases)
 }

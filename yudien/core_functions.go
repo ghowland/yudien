@@ -40,8 +40,7 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 	// This is for using this without LDAP.
 	//TODO(z): Allow multiple static users from config file rather than just admin for now
 	ldap_override_admin := true
-	admin := (*DevelopmentUsers)["admin"]
-
+	
 	// Get the user data, if they authed
 	if ldap_user.IsAuthenticated == true {
 		user_map["first_name"] = ldap_user.FirstName
@@ -59,14 +58,14 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 
 		UdnLogLevel(udn_schema, log_info,"LDAP Authenticated: %s\n\n", user_map["username"])
 
-	} else if ldap_override_admin && username == "admin" && password == admin.Password {
-		user_map["first_name"] = admin.Data.FirstName
-		user_map["full_name"] = admin.Data.FirstName + " " + admin.Data.LastName
-		user_map["email"] = admin.Data.Email
-		user_map["home_dir"] = admin.Data.HomeDir
-		user_map["uid"] = admin.Data.Uid
-		user_map["username"] = admin.Data.Username
-		user_map["groups"] = admin.Data.Groups
+	} else if user, user_found := DevelopmentUsers[username]; user_found && ldap_override_admin && username == user.Username && password == user.Password {
+		user_map["first_name"] = user.Data.FirstName
+		user_map["full_name"] = user.Data.FirstName + " " + user.Data.LastName
+		user_map["email"] = user.Data.Email
+		user_map["home_dir"] = user.Data.HomeDir
+		user_map["uid"] = user.Data.Uid
+		user_map["username"] = user.Data.Username
+		user_map["groups"] = user.Data.Groups
 		user_map["error"] = ""
 
 		ldap_user.Username = user_map["username"].(string)
