@@ -91,6 +91,8 @@ type LdapConfig struct {
 }
 
 var Ldap *LdapConfig
+var DevelopmentUsers map[string]StaticUser
+var UDNLogConfig *LoggingConfig
 
 type LoggingConfig struct {
 	OutputPath  string `json:"output_path"`
@@ -146,17 +148,21 @@ func Configure(default_database *DatabaseConfig, databases map[string]DatabaseCo
 	UdnLogLevel(nil, log_info,"Configuring Yudien\n")
 
 	Ldap = &authentication.LdapConfig
+	DevelopmentUsers = authentication.DevelopmentUsers
+
+	UDNLogConfig = logging
+
+	Debug_Udn_Log_Level = ParseUdnLogLevel(UDNLogConfig.Level) // see yudiencore/core.go func UdnLogLevels
 
 	DefaultDatabase = default_database
 
-	fmt.Printf("\n\nConfig: Logging: %v\n\n", logging)
-	fmt.Printf("\n\nConfig: Authentication: %v\n\n", authentication)
+	UdnLogLevel(nil, log_info,"\n\nConfig: Logging: %v\n\n", logging)
+	//UdnLogLevel(nil, log_info,"\n\nConfig: Authentication: %v\n\n", authentication)
 
 	InitDataman(DefaultDatabase.ConnectOptions, DefaultDatabase.Database, DefaultDatabase.Schema, databases)
 }
 
 func InitUdn() {
-	Debug_Udn_Log_Level = log_off // see yudiencore/core.go func UdnLogLevels
 	Debug_Udn_Api = false // Legacy Logging
 	Debug_Udn = false // Legacy Logging - see yudiencore/core.go func UdnLog
 
@@ -472,27 +478,27 @@ func PrepareSchemaUDN(db *sql.DB) map[string]interface{} {
 
 // Pass in a UDN string to be processed - Takes function map, and UDN schema data and other things as input, as it works stand-alone from the application it supports
 func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []string, udn_data map[string]interface{}) interface{} {
-	UdnLog(udn_schema, "\n\nProcess UDN: \n\n")
+	UdnLogLevel(udn_schema, log_debug, "\n\nProcess UDN: \n\n")
 
 	var udn_command_value interface{} // used to track the piped input/output of UDN commands
 
 	// Walk through each UDN string in the list - the output of one UDN string is piped onto the input of the next
 	for i := 0; i < len(udn_value_list); i++ {
-		//UdnLog(udn_schema, "\n\nProcess UDN:  %s   \n\n", udn_value_list[i])
+		//UdnLogLevel(udn_schema, log_trace, "\n\nProcess UDN:  %s   \n\n", udn_value_list[i])
 		udn_command := ParseUdnString(db, udn_schema, udn_value_list[i])
 
-		 //UdnLog(udn_schema, "\n-------DESCRIPTION: -------\n\n%s", DescribeUdnPart(udn_command))
+		 //UdnLogLevel(udn_schema, log_trace, "\n-------DESCRIPTION: -------\n\n%s", DescribeUdnPart(udn_command))
 
 		UdnDebugIncrementChunk(udn_schema)
 		UdnLogHtml(udn_schema, "------- UDN: COMMAND -------\n%s\n", udn_value_list[i])
-		UdnLog(udn_schema, "------- BEGIN EXECUTION: -------\n\n")
+		UdnLogLevel(udn_schema, log_debug, "------- BEGIN EXECUTION: -------\n\n")
 
 		// Execute the UDN Command
 		udn_command_value = ExecuteUdn(db, udn_schema, udn_command, udn_command_value, udn_data)
 
-		UdnLog(udn_schema, "\n------- END EXECUTION: -------\n\n")
+		UdnLogLevel(udn_schema, log_debug, "\n------- END EXECUTION: -------\n\n")
 
-		UdnLog(udn_schema, "------- RESULT: %v\n\n", SnippetData(udn_command_value, 1600))
+		UdnLogLevel(udn_schema, log_debug, "------- RESULT: %v\n\n", SnippetData(udn_command_value, 1600))
 		//fmt.Printf("------- RESULT: %v\n\n", JsonDump(udn_command_value))
 	}
 
@@ -500,19 +506,19 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 }
 
 func ProcessSingleUDNTarget(db *sql.DB, udn_schema map[string]interface{}, udn_value_target string, input interface{}, udn_data map[string]interface{}) interface{} {
-	UdnLog(udn_schema, "\n\nProcess Single UDN: Target:  %s  Input: %s\n\n", udn_value_target, SnippetData(input, 80))
+	UdnLogLevel(udn_schema, log_debug, "\n\nProcess Single UDN: Target:  %s  Input: %s\n\n", udn_value_target, SnippetData(input, 80))
 
 	udn_target := ParseUdnString(db, udn_schema, udn_value_target)
 
 	target_result := ExecuteUdn(db, udn_schema, udn_target, input, udn_data)
 
-	UdnLog(udn_schema, "-------RETURNING: TARGET: %v\n\n", SnippetData(target_result, 300))
+	UdnLogLevel(udn_schema, log_debug, "-------RETURNING: TARGET: %v\n\n", SnippetData(target_result, 300))
 	return target_result
 }
 
 func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, input interface{}, udn_data map[string]interface{}) []interface{} {
 	if udn_start.Children.Len() > 0 {
-		UdnLog(udn_schema, "Processing UDN Arguments: %s [%s]  Starting: Arg Count: %d \n", udn_start.Value, udn_start.Id, udn_start.Children.Len())
+		UdnLogLevel(udn_schema, log_trace, "Processing UDN Arguments: %s [%s]  Starting: Arg Count: %d \n", udn_start.Value, udn_start.Id, udn_start.Children.Len())
 	}
 
 	// Argument list
@@ -527,19 +533,19 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 				// In a Compound part, the NextUdnPart is the function (currently)
 				//TODO(g): This could be anything in the future, but at this point it should always be a function in a compound...  As it's a sub-statement.
 				if arg_udn_start.NextUdnPart != nil {
-					//UdnLog(udn_schema, "-=-=-= Args Execute from Compound -=-=-=-\n")
+					//UdnLogLevel(udn_schema, log_trace, "-=-=-= Args Execute from Compound -=-=-=-\n")
 					arg_result := ExecuteUdn(db, udn_schema, arg_udn_start.NextUdnPart, input, udn_data)
-					//UdnLog(udn_schema, "-=-=-= Args Execute from Compound -=-=-=-  RESULT: %T: %v\n", arg_result, arg_result)
+					//UdnLogLevel(udn_schema, log_trace, "-=-=-= Args Execute from Compound -=-=-=-  RESULT: %T: %v\n", arg_result, arg_result)
 					//fmt.Printf("Compound Part: %s\n", DescribeUdnPart(arg_udn_start.NextUdnPart))
 					//fmt.Printf("Compound Parent: %s\n", DescribeUdnPart(arg_udn_start))
 
 					args = AppendArray(args, arg_result)
 				} else {
-					//UdnLog(udn_schema, "  UDN Args: Skipping: No NextUdnPart: Children: %d\n\n", arg_udn_start.Children.Len())
-					//UdnLog(udn_schema, "  UDN Args: Skipping: No NextUdnPart: Value: %v\n\n", arg_udn_start.Value)
+					//UdnLogLevel(udn_schema, log_trace, "  UDN Args: Skipping: No NextUdnPart: Children: %d\n\n", arg_udn_start.Children.Len())
+					//UdnLogLevel(udn_schema, log_trace, "  UDN Args: Skipping: No NextUdnPart: Value: %v\n\n", arg_udn_start.Value)
 				}
 			} else if arg_udn_start.PartType == part_function {
-				//UdnLog(udn_schema, "-=-=-= Args Execute from Function -=-=-=-\n")
+				//UdnLogLevel(udn_schema, log_trace, "-=-=-= Args Execute from Function -=-=-=-\n")
 				arg_result := ExecuteUdn(db, udn_schema, arg_udn_start, input, udn_data)
 
 				args = AppendArray(args, arg_result)
@@ -548,7 +554,7 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 
 				arg_result_result := make(map[string]interface{})
 
-				//UdnLog(udn_schema, "--Starting Map Arg--\n\n")
+				//UdnLogLevel(udn_schema, log_trace, "--Starting Map Arg--\n\n")
 				// Then we populate it with data, by processing each of the keys and values
 				//TODO(g): Will first assume all keys are strings.  We may want to allow these to be dynamic as well, letting them be set by UDN, but forcing to a string afterwards...
 				for child := arg_udn_start.Children.Front(); child != nil; child = child.Next() {
@@ -561,9 +567,9 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 					udn_part_result := ExecuteUdnCompound(db, udn_schema, udn_part_value, input, udn_data)
 					arg_result_result[key] = udn_part_result.Result
 
-					UdnLog(udn_schema, "--  Map:  Key: %s  Value: %v (%T)--\n\n", key, udn_part_result.Result, udn_part_result.Result)
+					UdnLogLevel(udn_schema, log_trace, "--  Map:  Key: %s  Value: %v (%T)--\n\n", key, udn_part_result.Result, udn_part_result.Result)
 				}
-				//UdnLog(udn_schema, "--Ending Map Arg--\n\n")
+				//UdnLogLevel(udn_schema, log_trace, "--Ending Map Arg--\n\n")
 
 				args = AppendArray(args, arg_result_result)
 			} else if arg_udn_start.PartType == part_list {
@@ -579,14 +585,14 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 				for child := arg_udn_start.Children.Front(); child != nil; child = child.Next() {
 					udn_part_value := child.Value.(*UdnPart)
 
-					UdnLog(udn_schema, "List Arg Eval: %v\n", udn_part_value)
+					UdnLogLevel(udn_schema, log_trace, "List Arg Eval: %v\n", udn_part_value)
 
 					udn_part_result := ExecuteUdnPart(db, udn_schema, udn_part_value, input, udn_data)
 					//list_values.PushBack(udn_part_result.Result)
 					array_values = AppendArray(array_values, udn_part_result.Result)
 				}
 
-				//UdnLog(udn_schema, "  UDN Argument: List: %v\n", SprintList(*list_values))
+				//UdnLogLevel(udn_schema, log_trace, "  UDN Argument: List: %v\n", SprintList(*list_values))
 
 				//args = AppendArray(args, list_values)
 				args = AppendArray(args, array_values)
@@ -607,7 +613,7 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 		// Look through the children of the map and add to args
 		arg_result_result := make(map[string]interface{})
 
-		//UdnLog(udn_schema, "--Starting Map Arg--\n\n")
+		//UdnLogLevel(udn_schema, log_trace, "--Starting Map Arg--\n\n")
 
 		for child := udn_start.Children.Front(); child != nil; child = child.Next() {
 			key := child.Value.(*UdnPart).Value
@@ -617,9 +623,9 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 			udn_part_result := ExecuteUdnCompound(db, udn_schema, udn_part_value, input, udn_data)
 			arg_result_result[key] = udn_part_result.Result
 
-			UdnLog(udn_schema, "--  Map:  Key: %s  Value: %v (%T)--\n\n", key, udn_part_result.Result, udn_part_result.Result)
+			UdnLogLevel(udn_schema, log_trace, "--  Map:  Key: %s  Value: %v (%T)--\n\n", key, udn_part_result.Result, udn_part_result.Result)
 		}
-		//UdnLog(udn_schema, "--Ending Map Arg--\n\n")
+		//UdnLogLevel(udn_schema, log_trace, "--Ending Map Arg--\n\n")
 
 		args = AppendArray(args, arg_result_result)
 	} else {
@@ -629,7 +635,7 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 
 	// Only log if we have something to say, otherwise its just noise
 	if len(args) > 0 {
-		UdnLog(udn_schema, "Processing UDN Arguments: %s [%s]  Result: %s\n", udn_start.Value, udn_start.Id, SnippetData(args, 400))
+		UdnLogLevel(udn_schema, log_trace, "Processing UDN Arguments: %s [%s]  Result: %s\n", udn_start.Value, udn_start.Id, SnippetData(args, 400))
 	}
 
 	return args
@@ -640,7 +646,7 @@ func ProcessUdnArguments(db *sql.DB, udn_schema map[string]interface{}, udn_star
 func ExecuteUdn(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, input interface{}, udn_data map[string]interface{}) interface{} {
 	// Process all our arguments, Executing any functions, at all depths.  Furthest depth first, to meet dependencies
 
-	UdnLog(udn_schema, "\nExecuteUDN: %s [%s]  Args: %d  Input: %s\n", udn_start.Value, udn_start.Id, udn_start.Children.Len(), SnippetData(input, 40))
+	UdnLogLevel(udn_schema, log_trace, "\nExecuteUDN: %s [%s]  Args: %d  Input: %s\n", udn_start.Value, udn_start.Id, udn_start.Children.Len(), SnippetData(input, 40))
 
 	// In case the function is nil, just pass through the input as the result.  Setting it here because we need this declared in function-scope
 	var result interface{}
@@ -652,11 +658,11 @@ func ExecuteUdn(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 
 		// If we have more to process, do it
 		if udn_result.NextUdnPart != nil {
-			UdnLog(udn_schema, "ExecuteUdn: Flow Control: JUMPING to NextUdnPart: %s [%s]\n", udn_result.NextUdnPart.Value, udn_result.NextUdnPart.Id)
+			UdnLogLevel(udn_schema, log_trace, "ExecuteUdn: Flow Control: JUMPING to NextUdnPart: %s [%s]\n", udn_result.NextUdnPart.Value, udn_result.NextUdnPart.Id)
 			// Our result gave us a NextUdnPart, so we can assume they performed some execution flow control themeselves, we will continue where they told us to
 			result = ExecuteUdn(db, udn_schema, udn_result.NextUdnPart, result, udn_data)
 		} else if udn_start.NextUdnPart != nil {
-			UdnLog(udn_schema, "ExecuteUdn: Flow Control: STEPPING to NextUdnPart: %s [%s]\n", udn_start.NextUdnPart.Value, udn_start.NextUdnPart.Id)
+			UdnLogLevel(udn_schema, log_trace, "ExecuteUdn: Flow Control: STEPPING to NextUdnPart: %s [%s]\n", udn_start.NextUdnPart.Value, udn_start.NextUdnPart.Id)
 			// We have a NextUdnPart and we didnt recieve a different NextUdnPart from our udn_result, so execute sequentially
 			result = ExecuteUdn(db, udn_schema, udn_start.NextUdnPart, result, udn_data)
 		}
@@ -672,7 +678,7 @@ func ExecuteUdn(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 		result = GetResult(result, type_array)
 	}
 
-	UdnLog(udn_schema, "ExecuteUDN: End Function: %s [%s]: Result: %s\n\n", udn_start.Value, udn_start.Id, SnippetData(result, 40))
+	UdnLogLevel(udn_schema, log_trace, "ExecuteUDN: End Function: %s [%s]: Result: %s\n\n", udn_start.Value, udn_start.Id, SnippetData(result, 40))
 
 	// Return the result directly (interface{})
 	return result
@@ -682,7 +688,7 @@ func ExecuteUdn(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 //		At the top level, this is not necessary, but for flow control, we need to wrap this so that each Block Executor doesnt need to duplicate logic.
 //NOTE(g): This function must return a UdnPart, because it is necessary for Flow Control (__iterate, etc)
 func ExecuteUdnPart(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, input interface{}, udn_data map[string]interface{}) UdnResult {
-	//UdnLog(udn_schema, "Executing UDN Part: %s [%s]\n", udn_start.Value, udn_start.Id)
+	//UdnLogLevel(udn_schema, log_trace, "Executing UDN Part: %s [%s]\n", udn_start.Value, udn_start.Id)
 
 	// Process the arguments
 	args := ProcessUdnArguments(db, udn_schema, udn_start, input, udn_data)
@@ -699,11 +705,11 @@ func ExecuteUdnPart(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	if udn_start.PartType == part_function {
 		if UdnFunctions[udn_start.Value] != nil {
 			// Execute a function
-			UdnLog(udn_schema, "Executing: %s [%s]   Args: %v\n", udn_start.Value, udn_start.Id, SnippetData(args, 80))
+			UdnLogLevel(udn_schema, log_trace, "Executing: %s [%s]   Args: %v\n", udn_start.Value, udn_start.Id, SnippetData(args, 80))
 
 			udn_result = UdnFunctions[udn_start.Value](db, udn_schema, udn_start, args, input, udn_data)
 		} else {
-			//UdnLog(udn_schema, "Skipping Execution, nil function, result = input: %s\n", udn_start.Value)
+			//UdnLogLevel(udn_schema, log_trace, "Skipping Execution, nil function, result = input: %s\n", udn_start.Value)
 			udn_result.Result = input
 		}
 	} else if udn_start.PartType == part_compound {
@@ -722,7 +728,7 @@ func ExecuteUdnPart(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 		udn_result.Result = udn_start.Value
 	}
 
-	//UdnLog(udn_schema, "=-=-=-=-= Executing UDN Part: End: %s [%s] Full Result: %v\n\n", udn_start.Value, udn_start.Id, udn_result.Result)	// DEBUG
+	//UdnLogLevel(udn_schema, log_trace, "=-=-=-=-= Executing UDN Part: End: %s [%s] Full Result: %v\n\n", udn_start.Value, udn_start.Id, udn_result.Result)	// DEBUG
 
 	UdnDebug(udn_schema, udn_result.Result, "View Output", "")
 
