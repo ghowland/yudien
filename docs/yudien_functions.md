@@ -1585,11 +1585,11 @@ __input.[{age=10},{age=20}].__array_map_remap.{age=8}
 
 ### __string_to_time ::: Convert String to Time  <a name="__string_to_time"></a>
 
-Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss' or 'YYYY-DD-MMThh:mm:ss.sssZ' (including milliseconds), return the go time.Time object.
+Given arg[0] string in the format 'YYYY-MM-DD hh:mm:ss' or 'YYYY-MM-DDThh:mm:ss.sssZ' (including milliseconds), return the go time.Time object.
 
 **Go:** UDN_GetCurrentTime
 
-**Input:** string :: This string must be of the format 'YYYY-DD-MM hh:mm:ss' or 'YYYY-DD-MMThh:mm:ss.sssZ' (including milliseconds). Otherwise, an empty result will be returned.
+**Input:** string :: This string must be of the format 'YYYY-MM-DD hh:mm:ss' or 'YYYY-MM-DDThh:mm:ss.sssZ' (including milliseconds). Otherwise, an empty result will be returned.
 
 **Args:**
 
