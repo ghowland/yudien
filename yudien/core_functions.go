@@ -2253,8 +2253,8 @@ func UDN_GetCurrentTime(db *sql.DB, udn_schema map[string]interface{}, udn_start
 
 	layout := "2006-01-02 15:04:05"
 	fmt_len := len(layout)
-	current_time_string := time.Now().String()[:fmt_len] // formated string of current time
-	time_obj := time.Now()
+	current_time_string := time.Now().UTC().String()[:fmt_len] // formated string of current time
+	time_obj := time.Now().UTC()
 
 	current_time, err := time.Parse(layout, current_time_string)
 
@@ -2262,7 +2262,7 @@ func UDN_GetCurrentTime(db *sql.DB, udn_schema map[string]interface{}, udn_start
 		time_obj = current_time
 	} else {
 		// if current_time is invalid => return current time.Time obj
-		time_obj = time.Now()
+		time_obj = time.Now().UTC()
 	}
 
 	if args_len == 1 {

@@ -1614,7 +1614,7 @@ time.Time object (Representing the first day of 2018 at midnight)
 
 ### __get_current_time ::: Get Current Time  <a name="__get_current_time"></a>
 
-Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss'. If specific number given for YYYY, DD, MM, hh, mm, ss, use that number instead. Outputs go time.Time object of current time.
+Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss'. If specific number given for YYYY, DD, MM, hh, mm, ss, use that number instead. Outputs go time.Time object of current time (UTC).
 
 **Go:** UDN_GetCurrentTime
 
@@ -1635,7 +1635,7 @@ __get_current_time.'YYYY-MM-01 hh:mm:ss'
 **Result:**
 
 ```
-time.Time object (First day of the current month)
+time.Time object (First day of the current month (UTC))
 ```
 
 
@@ -1648,7 +1648,7 @@ __get_current_time
 **Result:**
 
 ```
-time.Time object (Current time)
+time.Time object (Current time (UTC))
 ```
 
 **Side Effect:** None
