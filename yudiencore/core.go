@@ -376,7 +376,9 @@ func UdnError(udn_schema map[string]interface{}, format string, args ...interfac
 	}
 }
 
-func UdnLogHtml(udn_schema map[string]interface{}, format string, args ...interface{}) {
+func UdnLogHtml(udn_schema map[string]interface{}, log_level int, format string, args ...interface{}) {
+	UdnLogLevel(udn_schema, log_level, format, args)
+
 	if (Debug_Udn || udn_schema["udn_debug"].(bool)) && udn_schema["allow_logging"].(bool) {
 		// Format the incoming Printf args, and print them
 		output := fmt.Sprintf(format, args...)
