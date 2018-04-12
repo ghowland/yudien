@@ -1,4 +1,4 @@
-package yudieutil
+package yudienutil
 
 import (
 	"bytes"
