@@ -2310,6 +2310,49 @@ func UDN_GetCurrentTime(db *sql.DB, udn_schema map[string]interface{}, udn_start
 }
 
 
+func UDN_GetLocalTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Get Local Time: %v\n", SnippetData(input, 60))
+
+	result := UdnResult{}
+	args_len := len(args)
+
+	time_obj := time.Now()
+
+	if args_len == 1 {
+
+		specified_timezone := ""
+
+		switch args[0].(type) {
+		case string:
+			specified_timezone = args[0].(string) // specified timezone (e.g "America/Chicago")
+		default:
+			// if arg[0] is invalid => return current local time.Time obj
+			result.Result = time_obj
+		}
+
+		if specified_timezone == "" {
+			// Given empty string => override it with local as timezone
+			specified_timezone = "local"
+		}
+
+		location, err := time.LoadLocation(specified_timezone)
+		// given current UTC time => return current local time using the IANA specified_timezone location
+		if err == nil {
+			result.Result = time.Now().UTC().In(location)
+		} else {
+			// if specified_timezone is invalid => return current local time.Time obj
+			result.Result = time_obj
+			return result
+		}
+
+	} else {
+		// invalid number of args => return current local time.time obj
+		result.Result = time_obj
+	}
+	return result
+}
+
+
 func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Group by: %v\n", SnippetData(input, 60))
 

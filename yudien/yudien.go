@@ -264,7 +264,8 @@ func InitUdn() {
 
 		"__set_http_response": UDN_SetHttpResponseCode,
 		"__num_to_string": UDN_NumberToString, // Given input number (int/int64/float64) and optional precision (int), outputs string (with specified precision/ original number)
-		"__get_current_time": UDN_GetCurrentTime, // Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss'. If specific number given for YYYY, DD, MM, hh, mm, ss, use that number instead. Outputs go time.Time object of current time
+		"__get_current_time": UDN_GetCurrentTime, // Given arg[0] string in the format 'YYYY-DD-MM hh:mm:ss'. If specific number given for YYYY, DD, MM, hh, mm, ss, use that number instead. Outputs go time.Time object of current time (UTC)
+		"__get_local_time": UDN_GetLocalTime, // Given arg[0] string a valid time zone. Outputs go time.Time object of specified time zone, otherwise time.Time object of local time
 
 		"__exec_command": UDN_ExecCommand,//UDN_ExecCommand, // Execute command line command. arg0 appname, arg1-n space delimited are args. 
 

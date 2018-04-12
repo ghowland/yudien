@@ -57,8 +57,9 @@
 9. [Time](#time)
     1. [__string_to_time - String to Time](#__string_to_time)
     2. [__get_current_time - Get Current Time](#__get_current_time)
-    3. [__time_to_epoch - Convert Time to Unix Time in Seconds](#__time_to_epoch)
-    4. [__time_to_epoch_ms - Convert Time to Unix Time in Milliseconds](#__time_to_epoch_ms)
+    3. [__get_local_time - Get Local Time](#__get_local_time)
+    4. [__time_to_epoch - Convert Time to Unix Time in Seconds](#__time_to_epoch)
+    5. [__time_to_epoch_ms - Convert Time to Unix Time in Milliseconds](#__time_to_epoch_ms)
 10. [Math](#math)
     1. [__math - Math functions](#__math)
 11. [Rendering](#rendering)
@@ -1649,6 +1650,48 @@ __get_current_time
 
 ```
 time.Time object (Current time (UTC))
+```
+
+**Side Effect:** None
+
+
+### __get_local_time ::: Get Local Time  <a name="__get_local_time"></a>
+
+If given arg[0] string, a specified timezone in the IANA Time Zone database, such as "America/Chicago". If given "" or "local" or no argument, outputs go time.Time object of current local time. Otherwise, outputs time.Time object, current time in the specified timezone.
+
+**Go:** UDN_GetLocalTime
+
+**Input:** Ignored
+
+**Args:**
+
+  0. string (optional) ::  specified timezone in the IANA Time Zone database (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+
+**Output:** time.time object
+
+**Example:**
+
+```
+__get_local_time.'America/Chicago'
+```
+
+**Result:**
+
+```
+time.Time object (current time in America/Chicago timezone)
+```
+
+
+Alternate Example, no arguments specified:
+
+```
+__get_local_time
+```
+
+**Result:**
+
+```
+time.Time object (Current local time)
 ```
 
 **Side Effect:** None
