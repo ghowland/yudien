@@ -268,6 +268,7 @@ func InitUdn() {
 		"__get_local_time": UDN_GetLocalTime, // Given arg[0] string a valid time zone. Outputs go time.Time object of specified time zone, otherwise time.Time object of local time
 
 		"__exec_command": UDN_ExecCommand,//UDN_ExecCommand, // Execute command line command. arg0 appname, arg1-n space delimited are args. 
+		"__http_request": UDN_HttpRequest, //Sends http requests to the given url endpoint, returns the decoded response if have any.
 
 
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
