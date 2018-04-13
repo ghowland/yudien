@@ -1,0 +1,4 @@
+{
+  "statement": "__http_request.'GET'.'http://eventsum.infra.prod.wish.com/health",
+  "input": ""
+}
