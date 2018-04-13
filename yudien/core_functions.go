@@ -2735,12 +2735,17 @@ func UDN_HttpRequest(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 		if method == "POST" || method == "PUT" || method == "DELETE"{
 			result.Result = resp.StatusCode
 		} else {
-			err = json.Unmarshal(body, &res)
-			if err != nil {
-				UdnLogLevel(udn_schema, log_debug,"Response body unmarshal error: %v\n", err)
-				return result
+			contentType := resp.Header.Get("Content-Type")
+			if strings.Contains(contentType, "application/json"){
+				err = json.Unmarshal(body, &res)
+				if err != nil {
+					UdnLogLevel(udn_schema, log_debug,"Response body unmarshal error: %v\n", err)
+					return result
+				}
+				result.Result = res
+			} else {
+				result.Result = string(body)
 			}
-			result.Result = res
 		}
 	}
 	return result
