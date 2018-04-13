@@ -2656,7 +2656,7 @@ func UDN_HttpRequest(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	result := UdnResult{}
 
 	if len(args) < 2 {
-		UdnLogLevel(udn_schema, log_debug,"Insufficient args: %v\n", args)
+		UdnLogLevel(udn_schema, log_error,"Insufficient args: %v\n", args)
 		return result
 	}
 
@@ -2683,21 +2683,21 @@ func UDN_HttpRequest(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 				inputMap, ok = input.(map[string]interface{})
 				break
 			default:
-				UdnLogLevel(udn_schema, log_debug,"Body format not supported, input: %v\n", input)
+				UdnLogLevel(udn_schema, log_error,"Body format not supported, input: %v\n", input)
 				return result
 			}
 			if !ok {
-				UdnLogLevel(udn_schema, log_debug,"Input format casting failed, input: %v\n", input)
+				UdnLogLevel(udn_schema, log_error,"Input format casting failed, input: %v\n", input)
 				return result
 			}
 			jsonValue, err := json.Marshal(inputMap)
 			if err != nil {
-				UdnLogLevel(udn_schema, log_debug,"Input json marshal error: %v\n", err)
+				UdnLogLevel(udn_schema, log_error,"Input json marshal error: %v\n", err)
 				return result
 			}
 			request, err = http.NewRequest(method, url, bytes.NewBuffer(jsonValue))
 			if err != nil {
-				UdnLogLevel(udn_schema, log_debug, "Cannot create a Http NewRequest: %v\n", err)
+				UdnLogLevel(udn_schema, log_error, "Cannot create a Http NewRequest: %v\n", err)
 				return result
 			}
 		}
@@ -2705,17 +2705,17 @@ func UDN_HttpRequest(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 		var err error
 		request, err = http.NewRequest(method, url, nil)
 		if err != nil {
-			UdnLogLevel(udn_schema, log_debug, "Cannot create a Http NewRequest: %v\n", err)
+			UdnLogLevel(udn_schema, log_error, "Cannot create a Http NewRequest: %v\n", err)
 			return result
 		}
 	} else {
-		UdnLogLevel(udn_schema, log_debug, "Unsupported http request method: %v\n", method)
+		UdnLogLevel(udn_schema, log_error, "Unsupported http request method: %v\n", method)
 		return result
 	}
 
 	resp, err := client.Do(request)
 	if err != nil {
-		UdnLogLevel(udn_schema, log_debug,"Http request failed or timed-out: %v\n", err)
+		UdnLogLevel(udn_schema, log_error,"Http request failed or timed-out: %v\n", err)
 		return result
 	}
 
@@ -2725,22 +2725,27 @@ func UDN_HttpRequest(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
-		UdnLogLevel(udn_schema, log_debug,"Response body read error: %v\n", readErr)
+		UdnLogLevel(udn_schema, log_error,"Response body read error: %v\n", readErr)
 		return result
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 300{
-		UdnLogLevel(udn_schema, log_debug,"Http request failed with status: %v\n", resp.Status)
+		UdnLogLevel(udn_schema, log_error,"Http request failed with status: %v\n", resp.Status)
 	} else {
 		if method == "POST" || method == "PUT" || method == "DELETE"{
 			result.Result = resp.StatusCode
 		} else {
-			err = json.Unmarshal(body, &res)
-			if err != nil {
-				UdnLogLevel(udn_schema, log_debug,"Response body unmarshal error: %v\n", err)
-				return result
+			contentType := resp.Header.Get("Content-Type")
+			if strings.Contains(contentType, "application/json"){
+				err = json.Unmarshal(body, &res)
+				if err != nil {
+					UdnLogLevel(udn_schema, log_error,"Response body unmarshal error: %v\n", err)
+					return result
+				}
+				result.Result = res
+			} else {
+				result.Result = string(body)
 			}
-			result.Result = res
 		}
 	}
 	return result
