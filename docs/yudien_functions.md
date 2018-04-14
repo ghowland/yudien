@@ -67,6 +67,7 @@
     2. [__render_data - Render Data Widget](#__render_data)
 12. [Networking](#networking)
     1. [__set_http_response - Set http response code](#__set_http_response)
+    2. [__http_request - Send http request](#__http_request)
 13. [User](#user)
     1. [__login- LDAP Login](#__login)
 14. [Special](#special)
@@ -1911,6 +1912,50 @@ Nothing
 ```
 
 **Side Effect:** The request's http return code will be set
+
+
+### __http_request ::: Send http request  <a name="__http_request"></a>
+
+Sends a http request with a given method (POST|PUT|DELETE|GET) to a url endpoint.
+
+**Go:** UDN_HttpRequest
+
+**Input:** map or array of maps to be encoded in the request body sends alone with the POST, PUT, DELETE
+
+**Args:**
+
+  0. string :: request method, should be one of "POST","GET","DELETE","PUT"
+  1. endpoint url :: the url that the request goes to
+
+**Output:** if error occurrs, returns nothing. If a "GET" request, returns the decoded json(application/json) or text string(other content-type), otherwise returns the response status code.
+
+**Example:**
+
+```
+__http_request.'GET'.'http://eventsum.infra.prod.wish.com/detail?event_id=3002'
+```
+
+**Result:**
+
+```
+{ "event_name": "AttributeError", "event_type": "python", "raw_data": ...}
+```
+
+**Side Effect:** None
+
+**Example:**
+
+```
+__input.[{name=group1,info=group1_info}].__http_request.'POST'.'http://eventsum.infra.prod.wish.com/group'
+```
+
+**Result:**
+
+```
+201
+```
+
+**Side Effect:** If POST/PUT/DELETE request, will change the state on the target url.
 
 
 ## User <a name="user"></a>

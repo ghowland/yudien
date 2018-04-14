@@ -1,0 +1,14 @@
+{
+  "udn_result": {
+    "errors": {
+      "DBError": null,
+      "ServiceError": null
+    }
+  },
+  "udn_data": {
+    "arg": [
+      "GET",
+      "http://eventsum.infra.prod.wish.com/health"
+    ]
+  }
+}

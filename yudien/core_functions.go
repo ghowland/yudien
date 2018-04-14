@@ -18,6 +18,8 @@ import (
 	"text/template"
 	"time"
 	"os/exec"
+	"net/http"
+	"io/ioutil"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -40,7 +42,7 @@ func UDN_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 	// This is for using this without LDAP.
 	//TODO(z): Allow multiple static users from config file rather than just admin for now
 	ldap_override_admin := true
-	
+
 	// Get the user data, if they authed
 	if ldap_user.IsAuthenticated == true {
 		user_map["first_name"] = ldap_user.FirstName
@@ -2641,6 +2643,113 @@ func UDN_ExecCommand(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	result.Result = string(cmd_output)
 
 	return result
+}
+
+func UDN_HttpRequest(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult{
+	//Send a http request to url
+	//E.g. __http_request.'GET'.'http://example.com', sends GET request to target url, returns an unmarshalled json if have any in the response.
+	//E.g. __input.{name=Bob}.__http_request.'POST'.'http://example.com', sends POST request to target url with {"name":"bob"}, returns an unmarshalled json if have any in the response.
+	//If error or failed or timeout (10 seconds by default), return nothing
+
+	UdnLogLevel(udn_schema, log_debug,"Http Request: %v with input: %v\n", args, input)
+
+	result := UdnResult{}
+
+	if len(args) < 2 {
+		UdnLogLevel(udn_schema, log_error,"Insufficient args: %v\n", args)
+		return result
+	}
+
+	method := args[0].(string)
+	url := args[1].(string)
+
+	//TODO make it configurable
+	timeout := time.Duration(10 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+
+	var request *http.Request
+
+	if method == "POST" || method == "PUT"{
+		if input != nil {
+			var inputMap interface{}
+			var ok bool
+			switch input.(type){
+			case []interface{}:
+				inputMap, ok = input.([]interface{})
+				break
+			case map[string]interface{}:
+				inputMap, ok = input.(map[string]interface{})
+				break
+			default:
+				UdnLogLevel(udn_schema, log_error,"Body format not supported, input: %v\n", input)
+				return result
+			}
+			if !ok {
+				UdnLogLevel(udn_schema, log_error,"Input format casting failed, input: %v\n", input)
+				return result
+			}
+			jsonValue, err := json.Marshal(inputMap)
+			if err != nil {
+				UdnLogLevel(udn_schema, log_error,"Input json marshal error: %v\n", err)
+				return result
+			}
+			request, err = http.NewRequest(method, url, bytes.NewBuffer(jsonValue))
+			if err != nil {
+				UdnLogLevel(udn_schema, log_error, "Cannot create a Http NewRequest: %v\n", err)
+				return result
+			}
+		}
+	} else if method == "GET" || method == "DELETE"{
+		var err error
+		request, err = http.NewRequest(method, url, nil)
+		if err != nil {
+			UdnLogLevel(udn_schema, log_error, "Cannot create a Http NewRequest: %v\n", err)
+			return result
+		}
+	} else {
+		UdnLogLevel(udn_schema, log_error, "Unsupported http request method: %v\n", method)
+		return result
+	}
+
+	resp, err := client.Do(request)
+	if err != nil {
+		UdnLogLevel(udn_schema, log_error,"Http request failed or timed-out: %v\n", err)
+		return result
+	}
+
+	defer resp.Body.Close()
+
+	var res interface{}
+
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		UdnLogLevel(udn_schema, log_error,"Response body read error: %v\n", readErr)
+		return result
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 300{
+		UdnLogLevel(udn_schema, log_error,"Http request failed with status: %v\n", resp.Status)
+	} else {
+		if method == "POST" || method == "PUT" || method == "DELETE"{
+			result.Result = resp.StatusCode
+		} else {
+			contentType := resp.Header.Get("Content-Type")
+			if strings.Contains(contentType, "application/json"){
+				err = json.Unmarshal(body, &res)
+				if err != nil {
+					UdnLogLevel(udn_schema, log_error,"Response body unmarshal error: %v\n", err)
+					return result
+				}
+				result.Result = res
+			} else {
+				result.Result = string(body)
+			}
+		}
+	}
+	return result
+
 }
 
 func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn_data map[string]interface{}, site_page_widget map[string]interface{}, udn_update_map map[string]interface{}) {
