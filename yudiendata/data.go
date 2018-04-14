@@ -299,6 +299,9 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	//fmt.Printf("Dataman Filter: %s\n\n", JsonDump(filter_map))
 	//fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
 	//fmt.Printf("Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
+	UdnLogLevel(nil, log_trace, "Dataman Filter: %s\n\n", JsonDump(filter_map))
+	UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
+	UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
