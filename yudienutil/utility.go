@@ -522,6 +522,28 @@ func JsonLoadMap(text string) (map[string]interface{}, error) {
 	return new_map, err
 }
 
+func JsonLoadMapIfValid(text *string) (map[string]interface{}, error) {
+	new_map := make(map[string]interface{})
+
+	if text == nil {
+		return new_map, fmt.Errorf("Text is nil, cannot load map")
+	}
+
+	err := json.Unmarshal([]byte(*text), &new_map)
+
+	return new_map, err
+}
+
+
+func JsonLoadArray(text string) ([]interface{}, error) {
+	new_array := make([]interface{}, 0)
+
+	err := json.Unmarshal([]byte(text), &new_array)
+
+	return new_array, err
+}
+
+
 func MapListToDict(map_array []map[string]interface{}, key string) map[string]interface{} {
 	// Build a map of all our web site page widgets, so we can
 	output_map := make(map[string]interface{})

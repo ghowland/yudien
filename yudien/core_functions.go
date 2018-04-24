@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"net/http"
 	"io/ioutil"
+	"encoding/base64"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -1406,7 +1407,7 @@ func UDN_JsonDecode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	//result.Result = decoded_map
 	result.Result = decoded_interface
 
-	//UdnLogLevel(udn_schema, log_trace, "JSON Decode: Result: %v\n", decoded_map)
+	UdnLogLevel(udn_schema, log_trace, "JSON Decode: Result: %v\n", decoded_interface)
 	UdnLogLevel(udn_schema, log_trace, "JSON Decode: Result: %s\n", SnippetData(decoded_interface, 120))
 
 	return result
@@ -2809,6 +2810,7 @@ func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn
 	sql := fmt.Sprintf("SELECT * FROM web_widget_instance WHERE _id = %d", widget_instance["web_widget_instance_id"])
 	web_widget_instance := Query(db_web, sql)[0]
 
+
 	UdnLogLevel(udn_schema, log_debug, "Web Widget Instance: %s\n", web_widget_instance["name"])
 	UdnLogLevel(udn_schema, log_debug, "Web Widget Instance Data: %s\n", JsonDump(udn_data["widget_instance"]))
 
@@ -2821,6 +2823,37 @@ func RenderWidgetInstance(db_web *sql.DB, udn_schema map[string]interface{}, udn
 			log.Panic(err)
 		}
 	}
+
+	UdnLogLevel(udn_schema, log_debug, "Params Data: %s\n", JsonDump(udn_data["param"]))
+	default_map := make(map[string]interface{})
+	if udn_data["param"].(map[string]interface{})["defaults"] != nil {
+		defaults_string := udn_data["param"].(map[string]interface{})["defaults"].(string)
+		UdnLogLevel(udn_schema, log_trace, "WI: Param: Defaults: JSON Before Load: %s\n", defaults_string)
+		default_map, _ = JsonLoadMapIfValid(&defaults_string)
+		UdnLogLevel(udn_schema, log_trace, "WI: Param: Defaults: After JSON Load: %v\n", default_map)
+	} else if udn_data["widget_instance"].(map[string]interface{})["control"] != nil && udn_data["widget_instance"].(map[string]interface{})["control"].(map[string]interface{})["_defaults"] != nil {
+		defaults_string_base64 := udn_data["widget_instance"].(map[string]interface{})["control"].(map[string]interface{})["_defaults"].(string)
+		UdnLogLevel(udn_schema, log_trace, "WI: Control: _Defaults: %s\n", defaults_string_base64)
+		detaults_string_b, _ := base64.StdEncoding.DecodeString(defaults_string_base64)
+		defaults_string := string(detaults_string_b)
+		UdnLogLevel(udn_schema, log_trace, "WI: Control: _Defaults: JSON Before Load: %s\n", defaults_string)
+		default_map, _ = JsonLoadMapIfValid(&defaults_string)
+		UdnLogLevel(udn_schema, log_trace, "WI: Control: _Defaults: After JSON Load: %v\n", default_map)
+	}
+	//udn_data["widget_instance"].(map[string]interface{})["default"] = default_map
+	UdnLogLevel(udn_schema, log_trace, "WI: Defaults: Before default var assignment: %v\n", default_map)
+	for key, value := range default_map {
+		UdnLogLevel(udn_schema, log_trace, "WI: Defaults: Update: %s = %v\n", key, value)
+
+		udn_data["data_static"].(map[string]interface{})["defaults"].(map[string]interface{})[key] = value
+	}
+	// Add the defaults to the defaults, so we pass the originals through each time we re-render
+	if udn_data["data_static"] != nil && udn_data["data_static"].(map[string]interface{})["defaults"] != nil {
+		defaults_json := JsonDump(default_map)
+		defaults_json_base64 := base64.StdEncoding.EncodeToString([]byte(defaults_json))
+		udn_data["data_static"].(map[string]interface{})["defaults"].(map[string]interface{})["_defaults"] = defaults_json_base64
+	}
+
 
 	UdnLogLevel(udn_schema, log_debug, "Web Widget Instance Data Static: %s\n", JsonDump(udn_data["data_static"]))
 

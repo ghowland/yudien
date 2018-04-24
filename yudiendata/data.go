@@ -134,6 +134,12 @@ func GetDatasourceInstance(options map[string]interface{}) (*storagenode.Datasou
 	return datasource_instance, datasource_database
 }
 
+func GetRecordLabel(datasource_database string, collection_name string, record_id int) string {
+	record_label := fmt.Sprintf("%s.%s.%d", datasource_database, collection_name, record_id)
+
+	return record_label
+}
+
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
 	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
@@ -160,7 +166,12 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 		UdnLogLevel(nil, log_error, "Dataman GET: %s: ERRORS: %v\n", datasource_database, result.Error)
 	}
 
-	return result.Return[0]
+	record := result.Return[0]
+	if record != nil {
+		record["__record_label"] = GetRecordLabel(datasource_database, collection_name, record_id)
+	}
+
+	return record
 }
 
 func DatamanSet(collection_name string, record map[string]interface{}, options map[string]interface{}) map[string]interface{} {
@@ -178,12 +189,34 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		//fmt.Printf("DatamanSet: Not Removing _id: %s\n", record["_id"])
 	}
 
+	// Delete the defaults base64 encoded map, it is never part of a record, it is to ensure we keep our defaults
+	if record["_defaults"] != nil {
+		delete(record, "_defaults")
+	}
+
 	// Fix data manually, for now
 	for k, v := range record {
 		if v == "true" {
 			record[k] = true
 		} else if v == "false" {
 			record[k] = false
+		}
+
+		//TODO(g): I shouldnt have to hard-code this, but just building the editors now, so I will need to find a better solution than this.  Can do it by schema_table_field information, which would be fine to assert types there dynamically
+		if strings.Contains(k, "data_json") {
+			switch v.(type) {
+			case string:
+				valid_map, err := JsonLoadMap(v.(string))
+
+				if err == nil {
+					record[k] = valid_map
+				} else {
+					valid_array, err := JsonLoadArray(v.(string))
+					if err == nil {
+						record[k] = valid_array
+					}
+				}
+			}
 		}
 	}
 
@@ -261,7 +294,11 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	}
 
 	if result.Return != nil {
-		return result.Return[0]
+		record := result.Return[0]
+		record["__record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+		UdnLogLevel(nil, log_trace, "Dataman SET: Result Record: JSON: %v\n", record)
+
+		return record
 	} else {
 		return nil
 	}
