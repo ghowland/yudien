@@ -237,6 +237,9 @@ func InitUdn() {
 		"__json_encode": UDN_JsonEncode, // Encode JSON
 		"__json_encode_data": UDN_JsonEncodeData, // Encode JSON - Format as data.  No indenting, etc.
 
+		//"__base64_decode": UDN_Base64Decode, // Decode base64
+		//"__base64_encode": UDN_Base64Encode, // Encode base64
+
 		"__data_get":    UDN_DataGet,    // Dataman Get
 		"__data_set":    UDN_DataSet,    // Dataman Set
 		"__data_filter": UDN_DataFilter, // Dataman Filter
