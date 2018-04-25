@@ -1213,6 +1213,102 @@ func UDN_ArraySlice(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	return result
 }
 
+func UDN_Increment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Increment: %v\n", args)
+
+	result := UdnResult{}
+
+	if len(args) < 1 {
+		return result // no arg to increment
+	}
+
+	// Get whatever we have stored at that location
+	access_result := UDN_Get(db, udn_schema, udn_start, args, input, udn_data)
+	access_value := access_result.Result
+
+	switch access_value.(type) {
+	case int, int32, int64:
+		// Force value to be int64
+		index_value := GetResult(access_value, type_int).(int64)
+
+		// Increment index value
+		index_value++
+
+		// Save the result back into udn_data
+		UDN_Set(db, udn_schema, udn_start, args, index_value, udn_data)
+
+		// Return the index
+		result.Result = index_value
+
+	case float32, float64:
+		// Force value to be float64
+		index_value := GetResult(access_value, type_float).(float64)
+
+		// Increment index value
+		index_value++
+
+		// Save the result back into udn_data
+		UDN_Set(db, udn_schema, udn_start, args, index_value, udn_data)
+
+		// Return the index
+		result.Result = index_value
+
+	default:
+		// if args are invalid, pass the access result along
+		result.Result = access_value
+		UdnLogLevel(udn_schema, log_trace, "Invalid args result.Result: %v\n", access_value)
+	}
+	return result
+}
+
+func UDN_Decrement(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Decrement: %v\n", args)
+
+	result := UdnResult{}
+
+	if len(args) < 1 {
+		return result // no arg to increment
+	}
+
+	// Get whatever we have stored at that location
+	access_result := UDN_Get(db, udn_schema, udn_start, args, input, udn_data)
+	access_value := access_result.Result
+
+	switch access_value.(type) {
+	case int, int32, int64:
+		// Force value to be int64
+		index_value := GetResult(access_value, type_int).(int64)
+
+		// Decrement index value
+		index_value--
+
+		// Save the result back into udn_data
+		UDN_Set(db, udn_schema, udn_start, args, index_value, udn_data)
+
+		// Return the index
+		result.Result = index_value
+
+	case float32, float64:
+		// Force value to be float64
+		index_value := GetResult(access_value, type_float).(float64)
+
+		// Decrement index value
+		index_value--
+
+		// Save the result back into udn_data
+		UDN_Set(db, udn_schema, udn_start, args, index_value, udn_data)
+
+		// Return the index
+		result.Result = index_value
+
+	default:
+		// if args are invalid, pass the access result along
+		result.Result = access_value
+		UdnLogLevel(udn_schema, log_trace, "Invalid args result.Result: %v\n", access_value)
+	}
+	return result
+}
+
 func UDN_ArrayAppend(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//UdnLogLevel(udn_schema, log_trace, "Array Append: %v\n", args)
 
@@ -2590,8 +2686,6 @@ func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 	default:
 		result.Result = 0
 	}
-
-
 	return result
 }
 

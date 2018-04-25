@@ -8,6 +8,8 @@
     5. [__get_first - Get First non-nil Data](#__get_first)
     6. [__get_temp - Get Temp Data](#__get_temp)
     7. [__set_temp - Set Temp Data](#__set_temp)
+    8. [__increment - Increment Value](#__increment)
+    9. [__decrement - Decrement Value](#__decrement)
 2. [Database](#database)
     1. [__data_get - Dataman Get](#__data_get)
     2. [__data_set - Dataman Set](#__data_set)
@@ -349,10 +351,108 @@ Alternate Example, single dotted string uses the same Global Data:
 __input.Testing123.__set_'temp.testing'.__get_temp.testing
 ```
 
-
 **Side Effect:** None
 
 **Related Functions:** [__get_temp](#__get_temp)
+
+
+### __increment ::: Increment Value <a name="__increment"></a>
+
+Given arg[0], increment value by 1. Output incremented value (float64/int64)
+
+**Go:** UDN_Increment
+
+**Input:** Ignored
+
+**Args:**
+
+  0. int, int32, int64, float32 or float64 :: Given arg[0], increment value by 1. Output incremented value (float64/int64)
+
+**Output:** incremented value by 1 :: float64/int64
+
+**Example:**
+
+```
+__math.input.99.__set.x.__increment.x.__get.x
+```
+
+**Result:**
+
+```
+100
+```
+
+
+Alternate Example,
+
+```
+__math.input.'0.99'.__set.x.__increment.x.__get.x
+```
+
+**Result:**
+
+```
+1.99
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__decrement](#__decrement)
+
+
+### __decrement ::: Decrement Value <a name="__decrement"></a>
+
+ Given arg[0], decrement value by 1. Output decremented value (float64/int64)
+
+**Go:** UDN_Decrement
+
+**Input:** Ignored
+
+**Args:**
+
+  0. int, int32, int64, float32 or float64 :: Given arg[0], decrement value by 1. Output decremented value (float64/int64)
+
+**Output:** decremented value by 1 :: float64/int64
+
+**Example:**
+
+```
+__math.input.0.__set.x.__decrement.x.__get.x
+```
+
+**Result:**
+
+```
+-1
+```
+
+**Example:**
+
+```
+__math.input.1.__set_temp.x.__decrement.(__get_temp_key.x).__get_temp.x
+```
+
+**Result:**
+
+```
+0
+```
+
+Alternate Example,
+
+```
+__math.input.'99.99'.__set.x.__decrement.x.__get.x
+```
+
+**Result:**
+
+```
+98.99
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__increment](#__increment)
 
 
 ## Database  <a name="database"></a>

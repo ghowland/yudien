@@ -273,15 +273,14 @@ func InitUdn() {
 		"__exec_command": UDN_ExecCommand,//UDN_ExecCommand, // Execute command line command. arg0 appname, arg1-n space delimited are args. 
 		"__http_request": UDN_HttpRequest, //Sends http requests to the given url endpoint, returns the decoded response if have any.
 
-
 		//TODO(g): I think I dont need this, as I can pass it to __ddd_render directly
 		//"__ddd_move": UDN_DddMove,				// DDD Move position.current.x.y:  Takes X/Y args, attempted to move:  0.1.1 ^ 0.1.0 < 0.1 > 0.1.0 V 0.1.1
 		//"__ddd_get": UDN_DddGet,					// DDD Get.current.{}
 		//"__ddd_set": UDN_DddSet,					// DDD Set.current.{}
 		//"__ddd_delete": UDN_DddDelete,			// DDD Delete.current: Delete the current item (and all it's sub-items).  Append will be used with __ddd_set/move
 
-		//"__increment": UDN_Increment,				// Increment value
-		//"__decrement": UDN_Decrement,				// Decrement value
+		"__increment": UDN_Increment,				// Given arg[0] int, int32, int64, float32, float64. Increment value by 1
+		"__decrement": UDN_Decrement,   			// Given arg[0] int, int32, int64, float32, float64. Decrement value by 1
 		//"__render_page": UDN_RenderPage,			// Render a page, and return it's widgets so they can be dynamically updated
 
 		// New
