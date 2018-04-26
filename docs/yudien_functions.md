@@ -722,19 +722,47 @@ __iterate.__debug_output.__end_iterate
 
 **Example:**
 
-```
-__input.[1,2,3].__iterate.__debug_output.__end_iterate
-```
-
-****Returns:****
-
-```
-[1,2,3]
-```
-
 **Side Effect:** None
 
 **Related Functions:** [__iterate](#__iterate)
+
+### __while :: While <a name="__while"></a>
+
+**Go:** UDN_While
+
+**Input:** None
+
+**Args:** None
+
+  0. Bool :: Determines if the While should execute
+  1. Int :: Maximum number of times the while should execute.  Must be positive integer, 0/-1 will never execute.  Ensures it does not infinitely loop.
+
+**Output:** None
+
+**Example:**
+
+```
+__input.10__set_temp_counter.__while.(__not.(__compare.(__get_temp.counter).0)).__get_temp.counter.__decrement.__set_temp.counter.__debug_output.__end_iterate
+```
+
+**End Block:** [__end_while](#__end_while)
+
+**Side Effect:** Loops over all functions in the block (between __while and matching __end_while), as long as the condition is true, up to the maximum number of times (arg 1)
+
+
+### __end_while :: End While  <a name="__end_while"></a>
+
+**Go:** nil
+
+**Input:** Any
+
+**Args:** None
+
+**Output:** Array of All while block runs
+
+**Side Effect:** None
+
+**Related Functions:** [__while](#__while)
 
 ### __compare_equal :: Conditon to Check for Equality  <a name="__compare_equal"></a>
 
@@ -1569,6 +1597,64 @@ __input.4.__array_append.test
 **Side Effect:** None
 
 
+### __array_remove ::: Array Remove <a name="__array_remove"></a>
+
+Removes first entry of the element (input)
+
+**Go:** UDN_ArrayRemove
+
+**Input:** Item to remove from the array
+
+**Args:**
+
+  0. Map :: Target array name
+
+**Output:** Array
+
+**Example:**
+
+```
+__input["Alice", "Bob"].__set.test.array.__input.["Alice"].__array_remove.test_array
+```
+
+**Result:**
+
+```
+["Bob"]
+```
+
+**Side Effect:** None
+
+
+### __array_index ::: Array Index <a name="__array_index"></a>
+
+Returns the index (int) of the first entry in the array of the input element
+
+**Go:** UDN_ArrayIndex
+
+**Input:** Item to find the index of in the array
+
+**Args:**
+
+  0. Map :: Target array name
+
+**Output:** Array
+
+**Example:**
+
+```
+__input["Alice", "Bob"].__set.test.array.__input.["Bob"].__array_remove.test_array
+```
+
+**Result:**
+
+```
+0
+```
+
+**Side Effect:** None
+
+
 ### __array_slice ::: Array Slice <a name="__array_slice"></a>
 
 Splits the array based on the start and end index (args)
@@ -1649,6 +1735,35 @@ __input.[1,2,3,4].__array_divide.2
 
 ```
 [[1,2],[3,4]]
+```
+
+**Side Effect:** None
+
+
+### __array_contains ::: Array Contains <a name="__array_contains"></a>
+
+Returns boolean, if the array specified by args contains all the elements in the input (single or array of elements)
+
+**Go:** UDN_ArrayContains
+
+**Input:** Item or Array of Items to see if they all exist in the specified array
+
+**Args:**
+
+  0. Map :: Target array name
+
+**Output:** Bool
+
+**Example:**
+
+```
+__input["Alice", "Bob"].__set.test.array.__input.["Bob"].__array_remove.test_array
+```
+
+**Result:**
+
+```
+0
 ```
 
 **Side Effect:** None

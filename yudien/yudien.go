@@ -180,6 +180,8 @@ func InitUdn() {
 		"__not_nil":      UDN_NotNil,
 		"__iterate":      UDN_Iterate,
 		"__end_iterate":  nil,
+		"__while":        UDN_While,	 // While takes a condition (arg_0) and a max (arg_1:int) number of iterations, so it cannot run forever
+		"__end_while":  nil,
 		"__get":          UDN_Get,
 		"__set":          UDN_Set,
 		"__get_index": 	  UDN_GetIndex, // Get data using input rather than args (otherwise same as __get)
@@ -218,13 +220,15 @@ func InitUdn() {
 		"__function":      UDN_StoredFunction, //TODO(g): This uses the udn_stored_function.name as the first argument, and then uses the current input to pass to the function, returning the final result of the function.		Uses the web_site.udn_stored_function_domain_id to determine the stored function
 		"__execute":       UDN_Execute,        //TODO(g): Executes ("eval") a UDN string, assumed to be a "Set" type (Target), will use __input as the Source, and the passed in string as the Target UDN
 
-		"__html_encode": UDN_HtmlEncode, // Encode HTML symbols so they are not taken as literal HTML
+		"__html_encode":     UDN_HtmlEncode, // Encode HTML symbols so they are not taken as literal HTML
 
-		"__array_append": UDN_ArrayAppend, // Appends the input into the specified target location (args)
-
+		"__array_append":    UDN_ArrayAppend, // Appends the input into the specified target location (args)
 		"__array_slice": 	 UDN_ArraySlice, // Slices an input array based on the start and end index
-		"__array_divide":    UDN_ArrayDivide,   //TODO(g): Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
-		"__array_map_remap": UDN_ArrayMapRemap, //TODO(g): Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
+		"__array_divide":    UDN_ArrayDivide,   // Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
+		"__array_map_remap": UDN_ArrayMapRemap, // Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
+		"__array_remove":    UDN_ArrayRemove, // Removes the first instance of an element in an array.  Recquires exact match
+		"__array_index":     UDN_ArrayIndex, // Gets the index of the first instance of an element in an array.  Requires exact match
+		"__array_contains":  UDN_ArrayContains, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
 
 		"__map_key_delete": UDN_MapKeyDelete, // Each argument is a key to remove
 		"__map_key_set":    UDN_MapKeySet,    // Sets N keys, like __format, but with no formatting

@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"io/ioutil"
 	"encoding/base64"
+	"github.com/google/go-cmp/cmp"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -1398,6 +1399,99 @@ func UDN_ArrayMapRemap(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	return result
 }
 
+func UDN_ArrayRemove(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Get the remapping information
+	array_value_potential := MapGet(args, udn_data)
+
+	// Force it into an array
+	array_value := GetResult(array_value_potential, type_array).([]interface{})
+
+	UdnLogLevel(udn_schema, log_trace, "Array Remove: %v  FROM  %v\n", input, array_value)
+
+	new_array := make([]interface{}, 0)
+
+	found_index := -1
+	for index, value := range array_value {
+		//TODO(g): Is this a good enough comparison?  What about map to map?  Content of the map?
+		if cmp.Equal(value, input) {
+			found_index = index
+			break
+		}
+	}
+
+	new_array = array_value
+	if found_index != -1 {
+		new_array = append(array_value[:found_index], array_value[found_index+1:len(array_value)-1])
+	}
+
+	result := UdnResult{}
+	result.Result = new_array
+
+	return result
+}
+
+func UDN_ArrayContains(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Get the remapping information
+	array_value_potential := MapGet(args, udn_data)
+
+	// Force we want to check into an array
+	array_value := GetResult(array_value_potential, type_array).([]interface{})
+
+	// Force the input into an array
+	array_input := GetResult(input, type_array).([]interface{})
+
+	UdnLogLevel(udn_schema, log_trace, "Array Contains: %v  IN  %v\n", array_input, array_value)
+
+	found_all := true
+	for _, input_item := range array_input {
+		found_item := false
+		for _, value := range array_value {
+			//TODO(g): Is this a good enough comparison?  What about map to map?  Content of the map?
+			if cmp.Equal(value, input_item) {
+				found_item = true
+				break
+			}
+		}
+
+		// If we didnt find this item, we didnt find them all, fail and return
+		if !found_item {
+			found_all = false
+			break
+		}
+	}
+
+	result := UdnResult{}
+	result.Result = found_all
+
+	return result
+}
+
+func UDN_ArrayIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	arg_0 := args[0]
+
+	UdnLogLevel(udn_schema, log_trace, "Array Index: %v\n", arg_0)
+
+	found_index := -1		// -1 is not found
+
+	array_value_potential := MapGet(args, udn_data)
+
+	// Force it into an array
+	array_value := GetResult(array_value_potential, type_array).([]interface{})
+
+	for index, value := range array_value {
+		//TODO(g): Is this a good enough comparison?  What about map to map?  Content of the map?
+		if cmp.Equal(value, input) {
+			found_index = index
+			break
+		}
+	}
+
+	result := UdnResult{}
+	result.Result = found_index
+
+	return result
+}
+
 func UDN_RenderDataWidgetInstance(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//TODO(g): Take arg3 as optional argument, which is a map of control values.  Allow "dialog=true" to wrap any result in a dialog window.  This will allow non-dialog items to be rendered in a dialog.
 	//
@@ -2045,6 +2139,97 @@ func UDN_Iterate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
+
+func UDN_While(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Will loop over all UdnParts until it finds __end_iterate.  It expects input to hold a list.List, which use to iterate and execute the UdnPart blocks
+	// It will set a variable that will be accessable by the "__get.current.ARG0"
+	// Will return a list.List of each of the loops, which allows for filtering the iteration
+
+	// This is our final input list, as an array, it always works and gets input to pass into the first function
+	condition_udn_string := GetResult(args[0], type_string).(string)
+
+	max_loops := GetResult(args[1], type_int).(int64)
+	current_loops := int64(0)
+
+	UdnLogLevel(udn_schema, log_trace, "While: [MAX=%s]  Condition: %s\n\n", max_loops, condition_udn_string)
+
+	// Our result will be a list, of the result of each of our iterations, with a UdnResult per element, so that we can Transform data, as a pipeline
+	result := UdnResult{}
+	result_list := make([]interface{}, 0)
+
+	var current_input interface{}
+
+	// If we have something to iterate over
+	for current_loops < max_loops {
+		condition_value := ProcessSingleUDNTarget(db, udn_schema, condition_udn_string, nil, udn_data)
+
+		UdnLogLevel(udn_schema, log_trace, "\n====== While Loop Start: [%d]  Current Loop: %d  Condition: %v\n\n", udn_start.Id, current_loops, SnippetData(condition_value, 300))
+
+		// Get the input
+		current_input = nil
+
+		// Variables for looping over functions (flow control)
+		udn_current := udn_start
+
+		// Loop over the UdnParts, executing them against the input, allowing it to transform each time
+		for udn_current != nil && udn_current.Id != udn_start.BlockEnd.Id && udn_current.NextUdnPart != nil {
+			udn_current = udn_current.NextUdnPart
+
+			//UdnLogLevel(udn_schema, log_trace, "  Walking ITERATE block [%s]: Current: %s   Current Input: %v\n", udn_start.Id, udn_current.Value, SnippetData(current_input, 60))
+
+			// Execute this, because it's part of the __if block, and set it back into the input for the next function to take
+			current_input_result := ExecuteUdnPart(db, udn_schema, udn_current, current_input, udn_data)
+			current_input = current_input_result.Result
+
+			// If we are being told to skip to another NextUdnPart, we need to do this, to respect the Flow Control
+			if current_input_result.NextUdnPart != nil {
+				// Move the current to the specified NextUdnPart
+				//NOTE(g): This works because this NextUdnPart will be "__end_iterate", or something like that, so the next for loop test works
+				udn_current = current_input_result.NextUdnPart
+			}
+		}
+
+		// Take the final input (the result of all the execution), and put it into the list.List we return, which is now a transformation of the input list
+		result_list = AppendArray(result_list, current_input)
+
+		// Fix the execution stack by setting the udn_current to the udn_current, which is __end_iterate, which means this block will not be executed when UDN_Iterate completes
+		result.NextUdnPart = udn_current
+
+		// Send them passed the __end_iterate, to the next one, or nil
+		if result.NextUdnPart == nil {
+			UdnLogLevel(udn_schema, log_trace, "\n====== While Finished: [%s]  NextUdnPart: %v\n\n", udn_start.Id, result.NextUdnPart)
+		} else if result.NextUdnPart.NextUdnPart != nil {
+			UdnLogLevel(udn_schema, log_trace, "\n====== While Finished: [%s]  NextUdnPart: %v\n\n", udn_start.Id, result.NextUdnPart)
+		} else {
+			UdnLogLevel(udn_schema, log_trace, "\n====== While Finished: [%s]  NextUdnPart: End of UDN Parts\n\n", udn_start.Id)
+		}
+
+		current_loops++
+		if current_loops >= max_loops {
+			UdnLogLevel(udn_schema, log_trace, "\n====== While Finished: [%s]  Maximum Loops Reached (%d): %v\n\n", udn_start.Id, max_loops, result.NextUdnPart)
+			// Break out of the while loop
+			break
+		}
+	}
+
+	// Store the result list
+	result.Result = result_list
+
+	// Return the
+	return result
+}
+
+// This is a common function to test for UDN true/false.  Similar to Python's concept of true false.
+//TODO(g): Include empty array and empty map in this, as returning "false", non-empty is "true"
+func IfResult(value interface{}) bool {
+	if value == "0" || value == nil || value == 0 || value == false || value == "" {
+		return false
+	} else {
+		return true
+	}
+
+}
+
 func UDN_IfCondition(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	arg_0 := args[0]
 
@@ -2059,7 +2244,8 @@ func UDN_IfCondition(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 
 	// Evaluate whether we will execute the IF-THEN (first) block.  (We dont use a THEN, but thats the saying)
 	execute_then_block := true
-	if arg_0 == "0" || arg_0 == nil || arg_0 == 0 || arg_0 == false || arg_0 == "" {
+	//if arg_0 == "0" || arg_0 == nil || arg_0 == 0 || arg_0 == false || arg_0 == "" {
+	if !IfResult(arg_0) {
 		execute_then_block = false
 
 		UdnLogLevel(udn_schema, log_trace, "If Condition: Not Executing THEN: %s\n", arg_0)
