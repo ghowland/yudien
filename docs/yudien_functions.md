@@ -747,7 +747,7 @@ __iterate.__debug_output.__end_iterate
 **Example:**
 
 ```
-__input.10__set_temp_counter.__while.(__not.(__compare.(__get_temp.counter).0)).__get_temp.counter.__decrement.__set_temp.counter.__debug_output.__end_iterate
+__input.10__set_temp_counter.__while.(__not.(__compare.(__get_temp.counter).0)).__math.input.(__get_temp.counter).__decrement.__set_temp.counter.__debug_output.__end_iterate
 ```
 
 **End Block:** [__end_while](#__end_while)
