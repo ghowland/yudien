@@ -739,7 +739,7 @@ __iterate.__debug_output.__end_iterate
 
 **Args:** None
 
-  0. Bool :: Determines if the While should execute
+  0. String :: UDN code that is executed, and then checked like an __if result, which becomes boolean each while loop, breaking the while on a False result
   1. Int :: Maximum number of times the while should execute.  Must be positive integer, 0/-1 will never execute.  Ensures it does not infinitely loop.
 
 **Output:** None
