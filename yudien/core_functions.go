@@ -2163,6 +2163,12 @@ func UDN_While(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 	for current_loops < max_loops {
 		condition_value := ProcessSingleUDNTarget(db, udn_schema, condition_udn_string, nil, udn_data)
 
+		if !IfResult(condition_value) {
+			UdnLogLevel(udn_schema, log_trace, "\n====== While Finished: [%s]  Condition False (%v): %v\n\n", udn_start.Id, current_loops, condition_value)
+			// Break out of the while loop
+			break
+		}
+
 		UdnLogLevel(udn_schema, log_trace, "\n====== While Loop Start: [%d]  Current Loop: %d  Condition: %v\n\n", udn_start.Id, current_loops, SnippetData(condition_value, 300))
 
 		// Get the input
