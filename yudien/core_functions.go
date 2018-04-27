@@ -1219,46 +1219,19 @@ func UDN_Increment(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 	result := UdnResult{}
 
-	if len(args) < 1 {
-		return result // no arg to increment
+	value := GetResult(input, type_int).(int64)
+
+	increment := int64(1)
+
+	// First value represents the diff if it exists
+	if len(args) >= 1 {
+		increment = GetResult(args[0], type_int).(int64)
 	}
 
-	// Get whatever we have stored at that location
-	access_result := UDN_Get(db, udn_schema, udn_start, args, input, udn_data)
-	access_value := access_result.Result
+	value += increment
 
-	switch access_value.(type) {
-	case int, int32, int64:
-		// Force value to be int64
-		index_value := GetResult(access_value, type_int).(int64)
+	result.Result = value
 
-		// Increment index value
-		index_value++
-
-		// Save the result back into udn_data
-		UDN_Set(db, udn_schema, udn_start, args, index_value, udn_data)
-
-		// Return the index
-		result.Result = index_value
-
-	case float32, float64:
-		// Force value to be float64
-		index_value := GetResult(access_value, type_float).(float64)
-
-		// Increment index value
-		index_value++
-
-		// Save the result back into udn_data
-		UDN_Set(db, udn_schema, udn_start, args, index_value, udn_data)
-
-		// Return the index
-		result.Result = index_value
-
-	default:
-		// if args are invalid, pass the access result along
-		result.Result = access_value
-		UdnLogLevel(udn_schema, log_trace, "Invalid args result.Result: %v\n", access_value)
-	}
 	return result
 }
 
@@ -1267,46 +1240,19 @@ func UDN_Decrement(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 	result := UdnResult{}
 
-	if len(args) < 1 {
-		return result // no arg to increment
+	value := GetResult(input, type_int).(int64)
+
+	decrement := int64(1)
+
+	// First value represents the diff if it exists
+	if len(args) >= 1 {
+		decrement = GetResult(args[0], type_int).(int64)
 	}
 
-	// Get whatever we have stored at that location
-	access_result := UDN_Get(db, udn_schema, udn_start, args, input, udn_data)
-	access_value := access_result.Result
+	value -= decrement
 
-	switch access_value.(type) {
-	case int, int32, int64:
-		// Force value to be int64
-		index_value := GetResult(access_value, type_int).(int64)
+	result.Result = value
 
-		// Decrement index value
-		index_value--
-
-		// Save the result back into udn_data
-		UDN_Set(db, udn_schema, udn_start, args, index_value, udn_data)
-
-		// Return the index
-		result.Result = index_value
-
-	case float32, float64:
-		// Force value to be float64
-		index_value := GetResult(access_value, type_float).(float64)
-
-		// Decrement index value
-		index_value--
-
-		// Save the result back into udn_data
-		UDN_Set(db, udn_schema, udn_start, args, index_value, udn_data)
-
-		// Return the index
-		result.Result = index_value
-
-	default:
-		// if args are invalid, pass the access result along
-		result.Result = access_value
-		UdnLogLevel(udn_schema, log_trace, "Invalid args result.Result: %v\n", access_value)
-	}
 	return result
 }
 

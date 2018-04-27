@@ -367,18 +367,18 @@ Given arg[0], increment value by 1. Output incremented value (float64/int64)
 
 **Go:** UDN_Increment
 
-**Input:** Ignored
+**Input:** int (starting value)
 
 **Args:**
 
-  0. int, int32, int64, float32 or float64 :: Given arg[0], increment value by 1. Output incremented value (float64/int64)
+  0. int (value to be incremented by, default is 1 if not provided)
 
-**Output:** incremented value by 1 :: float64/int64
+**Output:** int - incremented value
 
 **Example:**
 
 ```
-__math.input.99.__set.x.__increment.x.__get.x
+__input.99.__increment
 ```
 
 **Result:**
@@ -391,13 +391,13 @@ __math.input.99.__set.x.__increment.x.__get.x
 Alternate Example,
 
 ```
-__math.input.'0.99'.__set.x.__increment.x.__get.x
+__input.99.__increment.2
 ```
 
 **Result:**
 
 ```
-1.99
+101
 ```
 
 **Side Effect:** None
@@ -411,48 +411,36 @@ __math.input.'0.99'.__set.x.__increment.x.__get.x
 
 **Go:** UDN_Decrement
 
-**Input:** Ignored
+**Input:** int
 
 **Args:**
 
-  0. int, int32, int64, float32 or float64 :: Given arg[0], decrement value by 1. Output decremented value (float64/int64)
+  0. int - value to be incremented by (default is 0 if not provided)
 
-**Output:** decremented value by 1 :: float64/int64
-
-**Example:**
-
-```
-__math.input.0.__set.x.__decrement.x.__get.x
-```
-
-**Result:**
-
-```
--1
-```
+**Output:** int - decremented value
 
 **Example:**
 
 ```
-__math.input.1.__set_temp.x.__decrement.(__get_temp_key.x).__get_temp.x
+__input.100.__decrement
 ```
 
 **Result:**
 
 ```
-0
+99
 ```
 
-Alternate Example,
+**Example:**
 
 ```
-__math.input.'99.99'.__set.x.__decrement.x.__get.x
+__input.100.__decrement.2
 ```
 
 **Result:**
 
 ```
-98.99
+98
 ```
 
 **Side Effect:** None
