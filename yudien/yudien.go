@@ -495,7 +495,7 @@ func ProcessUDN(db *sql.DB, udn_schema map[string]interface{}, udn_value_list []
 		UdnLogLevel(udn_schema, log_trace, "\n\nProcess UDN statement:  %s   \n\n", udn_value_list[i])
 		udn_command := ParseUdnString(db, udn_schema, udn_value_list[i])
 
-		 UdnLogLevel(udn_schema, log_trace, "\n-------DESCRIPTION: -------\n\n%s", DescribeUdnPart(udn_command))
+		 //UdnLogLevel(udn_schema, log_trace, "\n-------DESCRIPTION: -------\n\n%s", DescribeUdnPart(udn_command))
 
 		UdnDebugIncrementChunk(udn_schema)
 		UdnLogHtml(udn_schema, log_debug, "------- UDN: COMMAND -------\n%s\n", udn_value_list[i])

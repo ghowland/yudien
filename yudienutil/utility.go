@@ -54,7 +54,9 @@ func GetResult(input interface{}, type_value int) interface{} {
 			result, err := strconv.ParseInt(input.(string), 10, 64)
 			if err != nil {
 				fmt.Printf("\nGetResult: int: ERROR: %v (%T): %s\n\n", input, input, err)
-				return 0
+
+				log.Panicf("\nGetResult: int: ERROR: %v (%T): %s\n\n", input, input, err)
+				return int64(0)
 			}
 			return result
 		case int:

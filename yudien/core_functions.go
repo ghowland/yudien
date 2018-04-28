@@ -1275,6 +1275,8 @@ func UDN_ArrayAppend(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	result := UdnResult{}
 	result.Result = array_value
 
+	UdnLogLevel(nil, log_trace, "Array Append: Final: %v: %s\n", args, JsonDump(array_value))
+
 	return result
 }
 
@@ -1353,6 +1355,7 @@ func UDN_ArrayRemove(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	array_value := GetResult(array_value_potential, type_array).([]interface{})
 
 	UdnLogLevel(udn_schema, log_trace, "Array Remove: %v  FROM  %v\n", input, array_value)
+	UdnLogLevel(udn_schema, log_trace, "Array Remove: Array Value Length: %d\n", len(array_value))
 
 	new_array := make([]interface{}, 0)
 
@@ -1360,18 +1363,42 @@ func UDN_ArrayRemove(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	for index, value := range array_value {
 		//TODO(g): Is this a good enough comparison?  What about map to map?  Content of the map?
 		if cmp.Equal(value, input) {
+			UdnLogLevel(udn_schema, log_trace, "Array Remove: Found: Value: %s\n", JsonDump(value))
+			UdnLogLevel(udn_schema, log_trace, "Array Remove: Found: Input: %s\n", JsonDump(input))
 			found_index = index
 			break
 		}
 	}
 
-	new_array = array_value
 	if found_index != -1 {
-		new_array = append(array_value[:found_index], array_value[found_index+1:len(array_value)-1])
+		UdnLogLevel(udn_schema, log_trace, "Array Remove: %v  Found Index: %d\n", input, found_index)
+		UdnLogLevel(udn_schema, log_trace, "Array Remove: Array Value: %s\n", JsonDump(array_value))
+
+		for item_index, item := range array_value {
+			if item_index != found_index {
+				new_array = append(new_array, item)
+			}
+		}
+
+		/*
+		if len(array_value) == 1 {
+			UdnLogLevel(udn_schema, log_trace, "Array Remove: Array Value: 000: Clearing the array, last element\n")
+
+		} else if found_index+1 != len(array_value) {
+			new_array = append(array_value[:found_index], array_value[found_index+1:]...)
+			UdnLogLevel(udn_schema, log_trace, "Array Remove: Array Value: 111: %s\n", JsonDump(array_value))
+		} else {
+			new_array = array_value[:found_index]
+			UdnLogLevel(udn_schema, log_trace, "Array Remove: Array Value: 222: %s\n", JsonDump(array_value))
+		}*/
 	}
 
 	result := UdnResult{}
 	result.Result = new_array
+
+	MapSet(args, new_array, udn_data)
+
+	UdnLogLevel(nil, log_trace, "Array Remove: Final: %v: %s\n", args, JsonDump(new_array))
 
 	return result
 }
@@ -1387,6 +1414,7 @@ func UDN_ArrayContains(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	array_input := GetResult(input, type_array).([]interface{})
 
 	UdnLogLevel(udn_schema, log_trace, "Array Contains: %v  IN  %v\n", array_input, array_value)
+	UdnLogLevel(udn_schema, log_trace, "Array Contains: Array Value Length: %d\n", len(array_value))
 
 	found_all := true
 	for _, input_item := range array_input {
@@ -1394,6 +1422,8 @@ func UDN_ArrayContains(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 		for _, value := range array_value {
 			//TODO(g): Is this a good enough comparison?  What about map to map?  Content of the map?
 			if cmp.Equal(value, input_item) {
+				UdnLogLevel(udn_schema, log_trace, "Array Contains: Value: %s\n", JsonDump(value))
+				UdnLogLevel(udn_schema, log_trace, "Array Contains: Input: %s\n", JsonDump(input))
 				found_item = true
 				break
 			}
@@ -1775,19 +1805,82 @@ func UDN_MapCopy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
+// This is the generalized function for comparing UDN data.  Works like Python where empty map/array is equal to nil
+func CompareUdnData(arg0 interface{}, arg1 interface{}) int64 {
+	arg0_str := GetResult(arg0, type_string).(string)
+	arg1_str := GetResult(arg1, type_string).(string)
+
+	var value int64
+
+	// Assume they are equal and find negation
+	value = 1
+
+	// Do basic comparison with forced strings.  Works for many cases
+	if arg0_str != arg1_str {
+		value = 0
+	}
+
+	UdnLogLevel(nil, log_trace, "CompareUdnData: String Compare: %v == %v :: %d\n", arg0, arg1, value)
+
+	// arg0: Solve the unequal data type cases:  nil == [] == {}
+	if arg0 == nil {
+		switch arg1.(type) {
+		case map[string]interface{}:
+			arg1_map := arg1.(map[string]interface{})
+			UdnLogLevel(nil, log_trace, "CompareUdnData: Nil Compare: %v == %v :: Arg1 Map Len: %d\n", arg0, arg1, len(arg1_map))
+			if len(arg1_map) == 0 {
+				value = 1
+			}
+
+
+		case []interface{}:
+			arg1_array := arg1.([]interface{})
+			UdnLogLevel(nil, log_trace, "CompareUdnData: Nil Compare: %v == %v :: Arg1 Array Len: %d\n", arg0, arg1, len(arg1_array))
+			if len(arg1_array) == 0 {
+				value = 1
+			}
+		}
+	}
+
+	// arg1: Solve the unequal data type cases:  nil == [] == {}
+	if arg1 == nil {
+		switch arg0.(type) {
+		case map[string]interface{}:
+			arg0_map := arg0.(map[string]interface{})
+			UdnLogLevel(nil, log_trace, "CompareUdnData: Nil Compare: %v == %v :: Arg0 Map Len: %d\n", arg0, arg1, len(arg0_map))
+			if len(arg0_map) == 0 {
+				value = 1
+			}
+
+
+		case []interface{}:
+			arg0_array := arg0.([]interface{})
+			UdnLogLevel(nil, log_trace, "CompareUdnData: Nil Compare: %v == %v :: Arg0 Array Len: %d\n", arg0, arg1, len(arg0_array))
+			if len(arg0_array) == 0 {
+				value = 1
+			}
+		}
+	}
+
+	return value
+}
+
 func UDN_CompareEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Compare: Equal: %v\n", args)
 
+	value := CompareUdnData(args[0], args[1])
+
+	/*
 	arg0 := GetResult(args[0], type_string).(string)
 	arg1 := GetResult(args[1], type_string).(string)
 
 	value := 1
 	if arg0 != arg1 {
 		value = 0
-	}
+	}*/
 
 
-	UdnLogLevel(udn_schema, log_debug, "Compare: Equal: '%s' == '%s' : %d\n", arg0, arg1, value)
+	UdnLogLevel(udn_schema, log_debug, "Compare: Equal: '%v' == '%v' : %d\n", args[0], args[1], value)
 
 
 	result := UdnResult{}
@@ -1797,8 +1890,18 @@ func UDN_CompareEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 }
 
 func UDN_CompareNotEqual(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLogLevel(udn_schema, log_trace, "Compare: Equal: %v\n", args)
+	UdnLogLevel(udn_schema, log_trace, "Compare: Not Equal: %v\n", args)
 
+	value := CompareUdnData(args[0], args[1])
+
+	// Reverse the comparison result, because we are NOT EQUAL
+	if value == 0 {
+		value = 1
+	} else {
+		value = 0
+	}
+
+	/*
 	arg0 := GetResult(args[0], type_string).(string)
 	arg1 := GetResult(args[1], type_string).(string)
 
@@ -1806,8 +1909,9 @@ func UDN_CompareNotEqual(db *sql.DB, udn_schema map[string]interface{}, udn_star
 	if arg0 == arg1 {
 		value = 0
 	}
+	*/
 
-	UdnLogLevel(udn_schema, log_debug, "Compare: Not Equal: '%s' != '%s' : %d\n", arg0, arg1, value)
+	UdnLogLevel(udn_schema, log_debug, "Compare: Not Equal: '%v' != '%v' : %d\n", args[0], args[1], value)
 
 	result := UdnResult{}
 	result.Result = value
@@ -2097,7 +2201,7 @@ func UDN_While(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 	max_loops := GetResult(args[1], type_int).(int64)
 	current_loops := int64(0)
 
-	UdnLogLevel(udn_schema, log_trace, "While: [MAX=%s]  Condition: %s\n\n", max_loops, condition_udn_string)
+	UdnLogLevel(udn_schema, log_trace, "While: [MAX=%d]  Condition: %s\n\n", max_loops, condition_udn_string)
 
 	// Our result will be a list, of the result of each of our iterations, with a UdnResult per element, so that we can Transform data, as a pipeline
 	result := UdnResult{}
@@ -2174,10 +2278,29 @@ func UDN_While(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 // This is a common function to test for UDN true/false.  Similar to Python's concept of true false.
 //TODO(g): Include empty array and empty map in this, as returning "false", non-empty is "true"
 func IfResult(value interface{}) bool {
+	// Empty arrays and maps are false
+	switch value.(type) {
+	case []interface{}:
+		if len(value.([]interface{})) == 0 {
+			return false
+		}
+	case map[string]interface{}:
+		if len(value.(map[string]interface{})) == 0 {
+			return false
+		}
+	}
+
+	// Match various "false" equavalent values
 	if value == "0" || value == nil || value == 0 || value == false || value == "" {
 		return false
 	} else {
-		return true
+		// Catch all: Match various "false" equavalent values, as a string representation
+		value_str := fmt.Sprintf("%v", value)
+		if value_str == "0" || value_str == "<nil>" || value_str == "0" || value_str == "false" || value_str == "" {
+			return false
+		} else {
+			return true
+		}
 	}
 
 }

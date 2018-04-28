@@ -355,7 +355,7 @@ func ParseUdnString(db *sql.DB, udn_schema map[string]interface{}, udn_value_sou
 	FinalParseProcessUdnParts(db, udn_schema, &udn_start)
 
 	//output := DescribeUdnPart(&udn_start)
-	//UdnLog(udn_schema, "\n===== 1 - Description of UDN Part:\n\n%s\n===== 1 - END\n", output)
+	//UdnLogLevel(nil, log_trace, "\n===== 1 - Description of UDN Part:\n\n%s\n===== 1 - END\n", output)
 
 	return &udn_start
 }
@@ -363,7 +363,7 @@ func ParseUdnString(db *sql.DB, udn_schema map[string]interface{}, udn_value_sou
 // Take the partially created UdnParts, and finalize the parsing, now that it has a hierarchical structure.  Recusive function
 func FinalParseProcessUdnParts(db *sql.DB, udn_schema map[string]interface{}, part *UdnPart) {
 
-	//UdnLog(udn_schema, "\n** Final Parse **:  Type: %d   Value: %s   Children: %d  Next: %v\n", part.PartType, part.Value, part.Children.Len(), part.NextUdnPart)
+	//UdnLogLevel(nil, log_trace, "\n** Final Parse **:  Type: %d   Value: %s   Children: %d  Next: %v\n", part.PartType, part.Value, part.Children.Len(), part.NextUdnPart)
 
 	// If this is a map component, make a new Children list with our Map Keys
 	if part.PartType == part_map {
@@ -563,11 +563,11 @@ func CreateUdnPartsFromSplit_Initial(db *sql.DB, udn_schema map[string]interface
 
 	is_open_quote := false
 
-	//UdnLog(udn_schema, "Create UDN Parts: Initial: %v\n\n", source_array)
+	//UdnLogLevel(nil, log_trace, "Create UDN Parts: Initial: %v\n\n", source_array)
 
 	// Traverse into the data, and start storing everything
 	for _, cur_item := range source_array {
-		//UdnLog(udn_schema, "  Create UDN Parts: UDN Current: %-20s    Cur Item: %v\n", udn_current.Value, cur_item)
+		//UdnLogLevel(nil, log_trace, "  Create UDN Parts: UDN Current: %-20s    Cur Item: %v\n", udn_current.Value, cur_item)
 
 		// If we are in a string, and we are not about to end it, keep appending to the previous element
 		if is_open_quote && cur_item != "'" {
@@ -745,7 +745,7 @@ func CreateUdnPartsFromSplit_Initial(db *sql.DB, udn_schema map[string]interface
 
 	}
 
-	//UdnLog(udn_schema, "Finished Create UDN Parts: Initial\n\n")
+	//UdnLogLevel(nil, log_trace, "Finished Create UDN Parts: Initial\n\n")
 
 	return udn_start
 }
