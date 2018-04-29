@@ -1048,8 +1048,10 @@ Updates a map with keys and string formats.  Uses the map to format the strings.
   1. String :: Format string.  This is the data to be templated into the 0th arg location.
 
 *** Optional and Repetable ***
+
   2. String (optional, variadic) :: Set key. Indefinite pairs of String/Map args
   3. Map (optional, variadic) :: Format string.  Indefinite pairs of String/Map args
+
 *** End Optional and Repetable ***
 
 **Output:** Passed Through Input
