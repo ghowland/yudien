@@ -218,7 +218,7 @@ func InitUdn() {
 		"__input":         UDN_Input,          //TODO(g): This takes any input as the first arg, and then passes it along, so we can type in new input to go down the pipeline...
 		"__input_get":     UDN_InputGet,       // Gets information from the input, accessing it like __get
 		"__function":      UDN_StoredFunction, //TODO(g): This uses the udn_stored_function.name as the first argument, and then uses the current input to pass to the function, returning the final result of the function.		Uses the web_site.udn_stored_function_domain_id to determine the stored function
-		"__execute":       UDN_Execute,        //TODO(g): Executes ("eval") a UDN string, assumed to be a "Set" type (Target), will use __input as the Source, and the passed in string as the Target UDN
+		"__execute":       UDN_Execute,        // Can take single string or the tripple array of UDN statements
 
 		"__html_encode":     UDN_HtmlEncode, // Encode HTML symbols so they are not taken as literal HTML
 
@@ -253,6 +253,8 @@ func InitUdn() {
 		"__compare_not_equal": UDN_CompareNotEqual, // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
 
 		"__ddd_render": UDN_DddRender, // DDD Render.current: the JSON Dialog Form data for this DDD position.  Uses __ddd_get to get the data, and ___ddd_move to change position.
+
+		"__uuid": UDN_Uuid, // Returns a UUID string
 
 		"__login": UDN_Login, // Login through LDAP
 

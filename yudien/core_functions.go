@@ -1076,7 +1076,7 @@ func UDN_Execute(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 		udn_target = GetResult(args[0], type_string).(string)
 	}
 
-	UdnLogLevel(udn_schema, log_trace, "Execute: UDN String As Target: %s\n", udn_target)
+	UdnLogLevel(udn_schema, log_trace, "Execute: UDN String As Target: %v\n", udn_target)
 
 	// Execute the Target against the input
 	result := UdnResult{}
@@ -1095,6 +1095,20 @@ func UDN_Execute(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	}
 
 	return result
+}
+
+func UDN_Uuid(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+
+	uuid := ksuid.New()
+
+	UdnLogLevel(udn_schema, log_trace, "UUID: %s\n", uuid.String())
+
+	// Execute the Target against the input
+	result := UdnResult{}
+	result.Result = uuid.String()
+
+	return result
+
 }
 
 func UDN_ArraySlice(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
