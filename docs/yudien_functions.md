@@ -1045,9 +1045,10 @@ Updates a map with keys and string formats.  Uses the map to format the strings.
 **Args:**
 
   0. String :: Set key.  This is where we will set the value once templated.
-  1. Map :: This is the data to be templated into the 2nd arg.
-  2. String (optional, variadic) :: Indefinite pairs of String/Map args
-  3. Map (optional, variadic) :: Indefinite pairs of String/Map args
+  1. String :: Format string.  This is the data to be templated into the 0th arg location.
+
+  2. String (optional, variadic) :: Set key. Indefinite pairs of String/Map args
+  3. Map (optional, variadic) :: Format string.  Indefinite pairs of String/Map args
 
 **Output:** Passed Through Input
 
