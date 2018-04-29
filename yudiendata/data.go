@@ -140,6 +140,20 @@ func GetRecordLabel(datasource_database string, collection_name string, record_i
 	return record_label
 }
 
+func AddJoinAsFlatNamespace(record map[string]interface{}, join_array []interface{}) {
+	//TODO(g): Handle multiple depths of joins.  Currently I dont check if they are dotted for more depth in joins...
+	for _, join_name := range join_array {
+		join_string := join_name.(string)
+
+		join_record := record[join_string].(map[string]interface{})
+
+		for field_name, value := range join_record {
+			field_key := fmt.Sprintf("%s.%s", join_name, field_name)
+			record[field_key] = value
+		}
+	}
+}
+
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
 	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
@@ -169,6 +183,11 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 	record := result.Return[0]
 	if record != nil {
 		record["__record_label"] = GetRecordLabel(datasource_database, collection_name, record_id)
+	}
+
+	// Add all the joined fields as a flat namespace to the original table
+	if options["join"] != nil {
+		AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
 	}
 
 	return record
@@ -350,6 +369,13 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 		//fmt.Printf("Dataman FILTER: %v\n", result.Return)
 	}
 
+	// Add all the joined fields as a flat namespace to the original table
+	for _, record := range result.Return {
+		if options["join"] != nil {
+			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
+		}
+	}
+
 	return result.Return
 }
 
@@ -390,6 +416,14 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 		UdnLogLevel(nil, log_error, "Dataman ERROR: %v\n", result.Error)
 	} else {
 		UdnLogLevel(nil, log_debug, "Dataman FILTER: %v\n", result.Return)
+	}
+
+
+	// Add all the joined fields as a flat namespace to the original table
+	for _, record := range result.Return {
+		if options["join"] != nil {
+			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
+		}
 	}
 
 	return result.Return
