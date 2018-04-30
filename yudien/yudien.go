@@ -244,10 +244,21 @@ func InitUdn() {
 		//"__base64_decode": UDN_Base64Decode, // Decode base64
 		//"__base64_encode": UDN_Base64Encode, // Encode base64
 
+		//TODO(g): Make these the new defaults, which use CM
+		"__change_get":    UDN_DataGet,    // Dataman Get
+		"__change_set":    UDN_DataSet,    // Dataman Set
+		"__change_filter": UDN_DataFilter, // Dataman Filter
+		"__change_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
+		//"__change_delete":    UDN_DataDelete,    // Dataman Get
+		//"__change_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
+
+
 		"__data_get":    UDN_DataGet,    // Dataman Get
 		"__data_set":    UDN_DataSet,    // Dataman Set
 		"__data_filter": UDN_DataFilter, // Dataman Filter
 		"__data_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
+		//"__data_delete":    UDN_DataDelete,    // Dataman Get
+		//"__data_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
 
 		"__compare_equal":     UDN_CompareEqual,    // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
 		"__compare_not_equal": UDN_CompareNotEqual, // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
