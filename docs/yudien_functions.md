@@ -1795,6 +1795,34 @@ __input.[{age=10},{age=20}].__array_map_remap.{age=8}
 
 **Side Effect:** None
 
+### __array_map_find ::: Array Map Find <a name="__array_map_find"></a>
+
+Takes an array of maps, and returns the first entry that matches all key values of the arg0 map, or nil
+
+**Go:** UDN_ArrayMapRemap
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Map :: This is a key/value map to check against the array of maps, returning the first map which matches all keys/values.
+
+**Output:** Map
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find.{age=10}
+```
+
+**Result:**
+
+```
+{age=10,name=Joe}
+```
+
+**Side Effect:** None
+
 
 ## Time <a name="time"></a>
 
