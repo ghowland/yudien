@@ -2514,6 +2514,20 @@ func UDN_NotNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 	return result
 }
 
+func UDN_IsNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Not Nil: %v\n", SnippetData(input, 60))
+
+	value := "0"
+	if input == nil {
+		value = "1"
+	}
+
+	result := UdnResult{}
+	result.Result = value
+
+	return result
+}
+
 func UDN_StringToTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "String to Time: %v\n", SnippetData(input, 60))
 

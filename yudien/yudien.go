@@ -178,6 +178,7 @@ func InitUdn() {
 		"__end_else_if":  nil,
 		"__not":          UDN_Not,
 		"__not_nil":      UDN_NotNil,
+		"__is_nil":       UDN_IsNil,
 		"__iterate":      UDN_Iterate,
 		"__end_iterate":  nil,
 		"__while":        UDN_While,	 // While takes a condition (arg_0) and a max (arg_1:int) number of iterations, so it cannot run forever

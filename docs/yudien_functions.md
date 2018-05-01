@@ -21,6 +21,7 @@
     3. [__end_if - Debug Output](#__end_if)
     4. [__not - Not](#__not)
     5. [__not_nil - Not Nil](#__not_nil)
+    5. [__is_nil - Is Nil](#__is_nil)
     6. [__iterate - Iterate](#__iterate)
     7. [__end_iterate - End Iterate](#__end_iterate)
     8. [__while - While](#__while)
@@ -60,6 +61,7 @@
     2. [__array_slice - Array Slice](#__array_slice)
     1. [__array_contains - Array Contains](#__array_contains)
     3. [__array_map_remap - Array Map Remap](#__array_map_remap)
+    3. [__array_map_find - Array Map Find](#__array_map_find)
     4. [__array_divide - Array Divide](#__array_divide)
 9. [Time](#time)
     1. [__string_to_time - String to Time](#__string_to_time)
@@ -674,12 +676,32 @@ __if.(__not.0).__debug_output.__end_if
 **Example:**
 
 ```
-__if.(__not.0).__debug_output.__end_if
+__if.(__get.thing.that.exists.__not_nil).__debug_output.__end_if
 ```
 
 **Side Effect:** None
 
-**Related Functions:** [__not](#__not), [__if](#__if)
+**Related Functions:** [__not](#__not), [__is_nil](#__is_nil), [__if](#__if)
+
+### __is_nil :: Is Nil - Returns "1" (true) if is nil  <a name="__is_nil"></a>
+
+**Go:** UDN_NotNil
+
+**Input:** nil or Not
+
+**Args:** None
+
+**Output:** Boolean: "1", "0"
+
+**Example:**
+
+```
+__if.(__get.thing.that.doesnt.exist.__is_nil).__debug_output.__end_if
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__not](#__not), [__not_nil](#__not_nil), [__if](#__if)
 
 
 ### __iterate :: Iterate  <a name="__iterate"></a>
