@@ -229,6 +229,7 @@ func InitUdn() {
 		"__array_remove":    UDN_ArrayRemove, // Removes the first instance of an element in an array.  Recquires exact match
 		"__array_index":     UDN_ArrayIndex, // Gets the index of the first instance of an element in an array.  Requires exact match
 		"__array_contains":  UDN_ArrayContains, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
+		"__array_map_find":  UDN_ArrayMapFind, // Finds a single map element, and returns the result in a map of {key=key,value=value}
 
 		"__map_key_delete": UDN_MapKeyDelete, // Each argument is a key to remove
 		"__map_key_set":    UDN_MapKeySet,    // Sets N keys, like __format, but with no formatting
@@ -251,6 +252,8 @@ func InitUdn() {
 		"__change_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
 		//"__change_delete":    UDN_DataDelete,    // Dataman Get
 		//"__change_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
+		//"__change_ensure_exists":    UDN_ChangeEnsureExists,    // Ensure that the specified data exists in the database.  Does not have Dataman equivalent functions, wrapper.
+		//"__change_ensure_not_exists":    UDN_ChangeEnsureNotExists,    // Ensure that the specified data DOES NOT exist in the database.  Does not have Dataman equivalent functions, wrapper.
 
 
 		"__data_get":    UDN_DataGet,    // Dataman Get

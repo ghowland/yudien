@@ -1361,6 +1361,46 @@ func UDN_ArrayMapRemap(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	return result
 }
 
+func UDN_ArrayMapFind(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Get the remapping information
+	arg_0 := args[0]
+	find_map := GetResult(arg_0, type_map).(map[string]interface{})
+
+	UdnLogLevel(udn_schema, log_trace, "Array Map Find: %v in %d Record(s)\n", find_map, len(input.([]map[string]interface{})))
+
+	result := UdnResult{}
+	found_value := false
+
+	// Find and return the first item that matches
+	for _, item := range input.([]map[string]interface{}) {
+		all_matched := true
+
+		// Remap all the old map keys to new map keys in the new map
+		for key, value := range find_map {
+			if item[key] != value {
+				all_matched = false
+				break
+			}
+
+			if !all_matched {
+				break
+			}
+		}
+
+		if all_matched {
+			found_value = true
+			result.Result = item
+		}
+	}
+
+	// If we didn't find the record, we return nil
+	if !found_value {
+		result.Result = nil
+	}
+
+	return result
+}
+
 func UDN_ArrayRemove(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// Get the remapping information
 	array_value_potential := MapGet(args, udn_data)
