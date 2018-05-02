@@ -835,6 +835,54 @@ func UDN_MapUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 	return result
 }
 
+func UDN_MapTemplateKey(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_map := GetResult(input, type_map).(map[string]interface{})
+
+
+	template_str := GetResult(args[0], type_string).(string)
+	template_map := GetResult(args[1], type_map).(map[string]interface{})
+
+	if len(args) > 2 {
+		input_map = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	// Update the input map's fields with the arg0 map
+	UdnLogLevel(udn_schema, log_trace, "Map Template Key: %s  Template Map: %s  Input Map: %s\n", SnippetData(template_str, 60), SnippetData(template_map, 60), SnippetData(input_map, 60))
+
+	output_map := make(map[string]interface{})
+
+	// Loop over our
+	for k, v := range input_map {
+		// Add this key to "key" value, so we can use it in our template as well
+		template_map["key"] = k
+
+
+		// Use the actual_input, which may be input or arg_1
+		input_template := NewTextTemplateMap()
+		input_template.Map = template_map
+
+		//item_template := template.Must(template.New("text").Delims("<<<", ">>>").Parse(template_str))
+		item_template := template.Must(template.New("text").Parse(template_str))
+
+		item := StringFile{}
+		err := item_template.Execute(&item, input_template)
+		if err != nil {
+			log.Panic(err)
+		}
+
+		template_key := item.String
+
+		output_map[template_key] = v
+	}
+
+	result := UdnResult{}
+	result.Result = output_map
+
+	UdnLogLevel(udn_schema, log_debug, "Map Update: Result: %v", input)
+
+	return result
+}
+
 func UDN_HtmlEncode(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "HTML Encode: %v\n", SnippetData(input, 80))
 

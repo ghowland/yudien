@@ -55,6 +55,7 @@
     2. [__map_key_delete - Map Key Delete](#__map_key_delete)
     3. [__map_copy - Map Copy](#__map_copy)
     4. [__map_update - Map Update](#__map_update)
+    4. [__map_template_key - Map Template Key](#__map_template_key)
     5. [__group_by - Group By](#__group_by)
 8. [Array](#array)
     1. [__array_append - Array Append](#__array_append)
@@ -1604,6 +1605,38 @@ __input.{name=Bob}.__map_update.{job=Programming}
 
 ```
 {name=Bob,job=Programming}
+```
+
+**Side Effect:** None
+
+### __map_template_key ::: Map Template Key <a name="__map_template_key"></a>
+
+Creates a new Map which has keys that are templated versions of the previos map.  The values remain the same.
+
+This is useful for things such as prefixing a UUID in front of keys, so that they can be injected into HTML pages.
+
+**Go:** UDN_MapTemplateKey
+
+**Input:** Map
+
+**Args:**
+
+  0. String :: Template string (text/template)
+  1. Map :: Map of values to use for templating.  A "key" key will be added with each key's string, so that it can be used in the templating process.
+  2. Map (optional) :: Map that overrides input Map.
+
+**Output:** Map
+
+**Example:**
+
+```
+__input.{name=Bob}.__map_template_key.'{{uuid}}_{{key}}'.{uuid=1234}
+```
+
+**Result:**
+
+```
+{1234_name=Bob}
 ```
 
 **Side Effect:** None
