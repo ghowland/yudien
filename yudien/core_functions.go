@@ -1673,6 +1673,43 @@ func UDN_JsonEncodeData(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	return result
 }
 
+func UDN_Base64Decode(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Base64 Decode: %v   Input: %v\n", args, SnippetData(input, 300))
+
+	// Use the argument instead of input, if it exists
+	if len(args) != 0 {
+		input = args[0]
+	}
+
+	decoded := base64.URLEncoding.EncodeToString([]byte(input.(string)))
+
+	result := UdnResult{}
+	result.Result = decoded
+
+	UdnLogLevel(udn_schema, log_trace, "Base64 Decode: Result: %v\n", decoded)
+	UdnLogLevel(udn_schema, log_trace, "Base64 Decode: Result: %s\n", SnippetData(decoded, 120))
+
+	return result
+}
+
+func UDN_Base64Encode(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Base64 Encode: %v\n", args)
+
+	// Use the argument instead of input, if it exists
+	if len(args) != 0 {
+		input = args[0]
+	}
+
+	result_string, _ := base64.URLEncoding.DecodeString(input.(string))
+
+	result := UdnResult{}
+	result.Result = JsonDump(result_string)
+
+	UdnLogLevel(udn_schema, log_trace, "Base64 Encode: Result: %v\n", result.Result)
+
+	return result
+}
+
 func UDN_GetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//UdnLogLevel(udn_schema, log_trace, "Get Index: %v\n", SnippetData(args, 80))
 
