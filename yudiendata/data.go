@@ -145,11 +145,13 @@ func AddJoinAsFlatNamespace(record map[string]interface{}, join_array []interfac
 	for _, join_name := range join_array {
 		join_string := join_name.(string)
 
-		join_record := record[join_string].(map[string]interface{})
+		if record[join_string] != nil {
+			join_record := record[join_string].(map[string]interface{})
 
-		for field_name, value := range join_record {
-			field_key := fmt.Sprintf("%s.%s", join_name, field_name)
-			record[field_key] = value
+			for field_name, value := range join_record {
+				field_key := fmt.Sprintf("%s.%s", join_name, field_name)
+				record[field_key] = value
+			}
 		}
 	}
 }
