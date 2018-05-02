@@ -46,6 +46,8 @@
     10. [__split - String Split](#__split)
     11. [__json_decode - JSON Decode](#__json_decode)
     12. [__json_encode - JSON Encode](#__json_encode)
+    11. [__base64_decode - Base64 Decode](#__base64_decode)
+    12. [__base64_encode - Base64 Encode](#__base64_encode)
     13. [__html_encode - HTML Encode](#__html_encode)
     14. [__num_to_string - Number to String](#__num_to_string)
 7. [Maps](#map)
@@ -1356,6 +1358,64 @@ __input.{a=1}.__json_encode
 ```
 
 **Related Functions:** [__json_decode](#__json_decode)
+
+**Side Effect:** None
+
+
+### __base64_decode :: Base64 Decode  <a name="__base64_decode"></a>
+
+Decodes a string from base64 into a normal string
+
+**Go:** UDN_JsonDecode
+
+**Input:** String
+
+**Args:** None
+
+**Output:** Map :: map[string]interface
+
+**Example:**
+
+```
+__input.'todo'.__base64_decode
+```
+
+**Returns:**
+
+```
+todo
+```
+
+**Related Functions:** [__base64_encode](#__base64_encode)
+
+**Side Effect:** None
+
+
+### __base64_encode :: Base64 Encode  <a name="__base64_encode"></a>
+
+Encodes a string into base64, needed for passing around in web pages where quoting issues or spacing won't allow regular text, or binary transmission
+
+**Go:** UDN_JsonDecode
+
+**Input:** Any
+
+**Args:** None
+
+**Output:** String
+
+**Example:**
+
+```
+__input.todo.__json_encode
+```
+
+**Returns:**
+
+```
+todo
+```
+
+**Related Functions:** [__base64_decode](#__base64_decode)
 
 **Side Effect:** None
 
