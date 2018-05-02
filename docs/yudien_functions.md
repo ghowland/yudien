@@ -64,6 +64,7 @@
     1. [__array_contains - Array Contains](#__array_contains)
     3. [__array_map_remap - Array Map Remap](#__array_map_remap)
     3. [__array_map_find - Array Map Find](#__array_map_find)
+    3. [__array_map_to_map - Array Map To Map](#__array_map_to_map)
     4. [__array_divide - Array Divide](#__array_divide)
 9. [Time](#time)
     1. [__string_to_time - String to Time](#__string_to_time)
@@ -1901,6 +1902,35 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find.{age=10}
 
 ```
 {age=10,name=Joe}
+```
+
+**Side Effect:** None
+
+### __array_map_to_map ::: Array Map Find <a name="__array_map_to_map"></a>
+
+Takes an array of maps, and returns a map where the key is the specified arg0 string key in all maps in the array
+
+**Go:** UDN_ArrayMapToMap
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. String :: Key to get from array maps, and key to set in result map
+  1. List of Maps (optional) :: Can be passed in as arg1 instead of input
+
+**Output:** Map
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_to_map.name
+```
+
+**Result:**
+
+```
+{Joe={age=10,name=Joe},Bob={age=20,name=Bob}}
 ```
 
 **Side Effect:** None

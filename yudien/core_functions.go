@@ -1401,6 +1401,25 @@ func UDN_ArrayMapFind(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	return result
 }
 
+func UDN_ArrayMapToMap(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_value := input.([]map[string]interface{})
+
+	// Get the remapping information
+	map_key := GetResult(args[0], type_string).(string)
+
+	if len(args) > 1 {
+		input_value = GetResult(args[1], type_array).([]map[string]interface{})
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "Array Map To Map: %s in %d Record(s)\n", map_key, len(input_value))
+
+	result := UdnResult{}
+	result.Result = MapArrayToMap(input_value, map_key)
+
+
+	return result
+}
+
 func UDN_ArrayRemove(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// Get the remapping information
 	array_value_potential := MapGet(args, udn_data)
@@ -1681,10 +1700,11 @@ func UDN_Base64Decode(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 		input = args[0]
 	}
 
-	decoded := base64.URLEncoding.EncodeToString([]byte(input.(string)))
+	decoded_bytes, _ := base64.URLEncoding.DecodeString(input.(string))
+	decoded := string(decoded_bytes)
 
 	result := UdnResult{}
-	result.Result = decoded
+	result.Result = JsonDump(decoded)
 
 	UdnLogLevel(udn_schema, log_trace, "Base64 Decode: Result: %v\n", decoded)
 	UdnLogLevel(udn_schema, log_trace, "Base64 Decode: Result: %s\n", SnippetData(decoded, 120))
@@ -1700,10 +1720,10 @@ func UDN_Base64Encode(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 		input = args[0]
 	}
 
-	result_string, _ := base64.URLEncoding.DecodeString(input.(string))
+	encoded := base64.URLEncoding.EncodeToString([]byte(input.(string)))
 
 	result := UdnResult{}
-	result.Result = JsonDump(result_string)
+	result.Result = encoded
 
 	UdnLogLevel(udn_schema, log_trace, "Base64 Encode: Result: %v\n", result.Result)
 
