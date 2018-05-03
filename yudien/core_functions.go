@@ -856,6 +856,9 @@ func UDN_MapTemplateKey(db *sql.DB, udn_schema map[string]interface{}, udn_start
 		// Add this key to "key" value, so we can use it in our template as well
 		template_map["key"] = k
 
+		UdnLogLevel(udn_schema, log_trace, "Map Template Key: Template Map: %s\n", SnippetData(template_map, 60))
+
+
 
 		// Use the actual_input, which may be input or arg_1
 		input_template := NewTextTemplateMap()
@@ -1421,28 +1424,28 @@ func UDN_ArrayMapFind(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 
 	// Find and return the first item that matches
 	for _, item := range input.([]map[string]interface{}) {
-		all_matched := true
+		all_keys_matched := true
 
 		// Remap all the old map keys to new map keys in the new map
 		for key, value := range find_map {
-			if item[key] != value {
-				all_matched = false
-				break
-			}
-
-			if !all_matched {
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find: Key %s: %s == %s\n", key, SnippetData(item[key], 20), SnippetData(value, 20))
+			if CompareUdnData(item[key], value) == 0 {
+				all_keys_matched = false
 				break
 			}
 		}
 
-		if all_matched {
+		if all_keys_matched {
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find: Found: %s\n", SnippetData(item, 200))
 			found_value = true
 			result.Result = item
+			break
 		}
 	}
 
 	// If we didn't find the record, we return nil
 	if !found_value {
+		UdnLogLevel(udn_schema, log_trace, "Array Map Find: No Matches Found\n")
 		result.Result = nil
 	}
 
