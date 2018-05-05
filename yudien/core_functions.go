@@ -1452,6 +1452,53 @@ func UDN_ArrayMapFind(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	return result
 }
 
+
+func UDN_ArrayMapFindUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Get the remapping information
+	find_map := GetResult(args[0], type_map).(map[string]interface{})
+	update_map := GetResult(args[1], type_map).(map[string]interface{})
+
+	UdnLogLevel(udn_schema, log_trace, "Array Map Find Update: %v in %d Record(s): Update: %v\n", find_map, len(input.([]map[string]interface{})), SnippetData(update_map, 40))
+
+	found_value := false
+
+	// Find and return the first item that matches
+	for _, item := range input.([]map[string]interface{}) {
+		all_keys_matched := true
+
+		// Remap all the old map keys to new map keys in the new map
+		for key, value := range find_map {
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find Update: Key %s: %s == %s\n", key, SnippetData(item[key], 20), SnippetData(value, 20))
+			if CompareUdnData(item[key], value) == 0 {
+				all_keys_matched = false
+				break
+			}
+		}
+
+		if all_keys_matched {
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find Update: Found: %s\n", SnippetData(item, 200))
+
+			// Update the map
+			for k, v := range update_map {
+				item[k] = v
+			}
+
+			// We have found at least 1 item
+			found_value = true
+		}
+	}
+
+	// If we didn't find the record, we return nil
+	if !found_value {
+		UdnLogLevel(udn_schema, log_trace, "Array Map Find: No Matches Found\n")
+	}
+
+	result := UdnResult{}
+	result.Result = input
+
+	return result
+}
+
 func UDN_ArrayMapToMap(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_value := input.([]map[string]interface{})
 

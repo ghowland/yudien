@@ -65,6 +65,7 @@
     1. [__array_contains - Array Contains](#__array_contains)
     3. [__array_map_remap - Array Map Remap](#__array_map_remap)
     3. [__array_map_find - Array Map Find](#__array_map_find)
+    3. [__array_map_find_update - Array Map Find Update](#__array_map_find_update)
     3. [__array_map_to_map - Array Map To Map](#__array_map_to_map)
     4. [__array_divide - Array Divide](#__array_divide)
 9. [Time](#time)
@@ -1915,7 +1916,7 @@ __input.[{age=10},{age=20}].__array_map_remap.{age=8}
 
 Takes an array of maps, and returns the first entry that matches all key values of the arg0 map, or nil
 
-**Go:** UDN_ArrayMapRemap
+**Go:** UDN_ArrayMapFind
 
 **Input:** Array of Maps
 
@@ -1935,6 +1936,36 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find.{age=10}
 
 ```
 {age=10,name=Joe}
+```
+
+**Side Effect:** None
+
+
+### __array_map_find_update ::: Array Map Find Update <a name="__array_map_find_update"></a>
+
+Takes an array of maps, and matches it against all the arguments in the first map.  For all elements that match, they are updated with the second map.  The entire array is returned.
+
+**Go:** UDN_ArrayMapFindUpdate
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Map :: This is a key/value map to check against the array of maps, returning the first map which matches all keys/values.
+  1. Map :: This map is used to update all maps that match key/values in arg0
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find_update.{age=10}.{selected=selected}
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe,selected=selected},{age=20,name=Bob}]
 ```
 
 **Side Effect:** None
