@@ -351,6 +351,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 		"filter":         filter,
 		"join":           options["join"],
 		"sort":           options["sort"],
+		"limit":           options["limit"],
 		//"sort_reverse":	  []bool{true},
 	}
 
