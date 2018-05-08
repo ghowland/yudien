@@ -1970,6 +1970,42 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find_update.{age=10}.{
 
 **Side Effect:** None
 
+
+### __array_map_template ::: Array Map Template <a name="__array_map_template"></a>
+
+Takes an array of maps, iterates over each map, and performs N templates updating keys with the map's contents (key/values)
+
+**Go:** UDN_ArrayMapFindUpdate
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. String :: This is the map key to update/set
+  1. String :: This is the text/template data, uses the map's data
+
+  2. String (optional) :: This is the map key to update/set
+  3. String (optional) :: This is the text/template data, uses the map's data
+
+  Repeats in pairs forever.
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_template.label.'{{index .Map "name"}}: {{index .Map "age"}}'
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe,label='Joe: 10',selected=selected},{age=20,name=Bob,label='Bob: 20'}]
+```
+
+**Side Effect:** None
+
+
 ### __array_map_to_map ::: Array Map Find <a name="__array_map_to_map"></a>
 
 Takes an array of maps, and returns a map where the key is the specified arg0 string key in all maps in the array
