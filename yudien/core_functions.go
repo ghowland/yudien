@@ -1523,14 +1523,14 @@ func UDN_ArrayMapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 			//item_template := template.Must(template.New("text").Delims("<<<", ">>>").Parse(template_str))
 			item_template := template.Must(template.New("text").Parse(template_str))
 
-			item := StringFile{}
-			err := item_template.Execute(&item, input_template)
+			result_str := StringFile{}
+			err := item_template.Execute(&result_str, input_template)
 			if err != nil {
 				log.Panic(err)
 			}
 
 			// Save the resulting templated string back into the input array of maps
-			item[key_str] = item.String
+			item[key_str] = result_str.String
 		}
 	}
 
