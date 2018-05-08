@@ -1499,6 +1499,44 @@ func UDN_ArrayMapFindUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_s
 	return result
 }
 
+
+// Update all map's key's values with a template statement from each map's key/values
+func UDN_ArrayMapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+
+	result := UdnResult{}
+
+	if len(args) % 2 != 0 {
+		UdnLogLevel(udn_schema, log_trace, "ERROR: ArrayMapTemplate: Args should be in pairs of 2: Length: %d\n", len(args))
+		result.Result = input
+		return result
+	}
+
+	for count := 0 ; count < len(args) / 2 ; count ++ {
+		key_str := GetResult(args[count * 2], type_string).(string)
+		template_str := GetResult(args[count * 2 + 1], type_string).(string)
+
+		// Use the actual_input, which may be input or arg_1
+		input_template := NewTextTemplateMap()
+		input_template.Map = input.([]map[string]interface{})[count]
+
+		//item_template := template.Must(template.New("text").Delims("<<<", ">>>").Parse(template_str))
+		item_template := template.Must(template.New("text").Parse(template_str))
+
+		item := StringFile{}
+		err := item_template.Execute(&item, input_template)
+		if err != nil {
+			log.Panic(err)
+		}
+
+		// Save the resulting templated string back into the input array of maps
+		input.([]map[string]interface{})[count][key_str] = item.String
+	}
+
+	result.Result = input
+
+	return result
+}
+
 func UDN_ArrayMapToMap(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_value := input.([]map[string]interface{})
 

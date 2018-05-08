@@ -233,6 +233,7 @@ func InitUdn() {
 		"__array_map_find":  UDN_ArrayMapFind, // Finds a single map element, and returns the result in a map of {key=key,value=value}
 		"__array_map_find_update":  UDN_ArrayMapFindUpdate, // Finds all map elements that match the find map, and updates them with a passed in map, so we can find the map in-place of matching records.  Returns the array of maps
 		"__array_map_to_map":  UDN_ArrayMapToMap, // Map an array of maps into a single map, using one of the keys
+		"__array_map_template":  UDN_ArrayMapTemplate, // Update all map's key's values with a template statement from each map's key/values
 
 		"__map_key_delete": UDN_MapKeyDelete, // Each argument is a key to remove
 		"__map_key_set":    UDN_MapKeySet,    // Sets N keys, like __format, but with no formatting
