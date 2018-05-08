@@ -481,7 +481,7 @@ func DatamanDelete(collection_name string, record_id int64, options map[string]i
 		return record
 	}
 
-	// For the given entry, check there are any dependencies
+	// For the given entry, check if there are any dependencies
 	dependency_list := make([]map[string]interface{}, 0, 10)
 	FindDeleteDependency(schema_id, table_id, record_id, &dependency_list)
 
@@ -510,9 +510,9 @@ func DatamanDelete(collection_name string, record_id int64, options map[string]i
 	return record
 }
 
-func DatamanDeleteFilter(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
+//func DatamanDeleteFilter(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
 	// Add function when necessary - currently UDN_DataDeleteFilter runs DatamanDelete on each entry in the filtered list
-}
+//}
 
 func FindDeleteDependency(schema_id int64, schema_table_id int64, record_id int64, dependency_list *[]map[string]interface{}) {
 	// Dependencies are formatted as a array of map[string]interface{}
