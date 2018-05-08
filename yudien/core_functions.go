@@ -3282,11 +3282,15 @@ func UDN_HttpRequest(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	method := args[0].(string)
 	url := args[1].(string)
 
-	//TODO make it configurable
-	timeout := time.Duration(10 * time.Second)
-	client := http.Client{
-		Timeout: timeout,
-	}
+    timeout := time.Duration(10 * time.Second)
+    if len(args) == 3 {
+        if second, err := strconv.Atoi(args[2].(string)); err == nil {
+            timeout = time.Duration(second) * time.Second
+        }
+    }
+    client := http.Client{
+        Timeout: timeout,
+    }
 
 	var request *http.Request
 
