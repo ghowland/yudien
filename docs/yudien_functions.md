@@ -66,6 +66,7 @@
     3. [__array_map_remap - Array Map Remap](#__array_map_remap)
     3. [__array_map_find - Array Map Find](#__array_map_find)
     3. [__array_map_find_update - Array Map Find Update](#__array_map_find_update)
+    3. [__array_map_template - Array Map Template](#__array_map_template)
     3. [__array_map_to_map - Array Map To Map](#__array_map_to_map)
     4. [__array_divide - Array Divide](#__array_divide)
 9. [Time](#time)
