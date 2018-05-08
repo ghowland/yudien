@@ -486,7 +486,6 @@ func DatamanDelete(collection_name string, record_id int64, options map[string]i
 	FindDeleteDependency(schema_id, table_id, record_id, &dependency_list)
 
 	UdnLogLevel(nil, log_debug, "\nDependency List: %v\n\n", dependency_list)
-	DatamanNullRaw("web_site_map_item", "web_site_map_id", 17, make(map[string]interface{}))
 
 	if len(dependency_list) > 0 {
 		// Go through the list of dependencies backwards and perform NULL or delete as needed
@@ -512,53 +511,7 @@ func DatamanDelete(collection_name string, record_id int64, options map[string]i
 }
 
 func DatamanDeleteFilter(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
-	// Contains updated functionality of DatamanFilter where multiple constraints can be used as per dataman specs
-
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
-
-	// filter should be a map[string]interface{} for single filters and []interface{} for multi-filters
-	// dataman handles all cases so it is fine for filter to be interface{}
-	// ex: single filter:
-	//     {field1=value1}  (type: map[string]interface{})
-	// ex: multi filter:
-	//     [{field1=value1}, "AND", {field2=value2}] (type: []interface{})
-	//     [{field1=value1}, "AND", [{field2=value2}, "AND", {field3=value3}]]
-	UdnLogLevel(nil, log_debug, "DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
-	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
-
-	filter_map := map[string]interface{} {
-		"db":             datasource_database,
-		"shard_instance": "public",
-		"collection":     collection_name,
-		"filter":         filter,
-		"join":           options["join"],
-		"sort":           options["sort"],
-		//"sort_reverse":	  []bool{true},
-	}
-
-	UdnLogLevel(nil, log_debug, "Dataman Filter: %v\n\n", filter_map)
-	UdnLogLevel(nil, log_debug, "Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
-
-
-	dataman_query := &query.Query{query.Filter, filter_map}
-
-	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
-
-	if result.Error != "" {
-		UdnLogLevel(nil, log_error, "Dataman ERROR: %v\n", result.Error)
-	} else {
-		UdnLogLevel(nil, log_debug, "Dataman FILTER: %v\n", result.Return)
-	}
-
-
-	// Add all the joined fields as a flat namespace to the original table
-	for _, record := range result.Return {
-		if options["join"] != nil {
-			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
-		}
-	}
-
-	return result.Return
+	// Add function when necessary - currently UDN_DataDeleteFilter runs DatamanDelete on each entry in the filtered list
 }
 
 func FindDeleteDependency(schema_id int64, schema_table_id int64, record_id int64, dependency_list *[]map[string]interface{}) {
