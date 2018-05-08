@@ -1511,25 +1511,27 @@ func UDN_ArrayMapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 		return result
 	}
 
-	for count := 0 ; count < len(args) / 2 ; count ++ {
-		key_str := GetResult(args[count * 2], type_string).(string)
-		template_str := GetResult(args[count * 2 + 1], type_string).(string)
+	for _, item := range input.([]map[string]interface{}) {
+		for count := 0 ; count < len(args) / 2 ; count ++ {
+			key_str := GetResult(args[count * 2], type_string).(string)
+			template_str := GetResult(args[count * 2 + 1], type_string).(string)
 
-		// Use the actual_input, which may be input or arg_1
-		input_template := NewTextTemplateMap()
-		input_template.Map = input.([]map[string]interface{})[count]
+			// Use the actual_input, which may be input or arg_1
+			input_template := NewTextTemplateMap()
+			input_template.Map = item
 
-		//item_template := template.Must(template.New("text").Delims("<<<", ">>>").Parse(template_str))
-		item_template := template.Must(template.New("text").Parse(template_str))
+			//item_template := template.Must(template.New("text").Delims("<<<", ">>>").Parse(template_str))
+			item_template := template.Must(template.New("text").Parse(template_str))
 
-		item := StringFile{}
-		err := item_template.Execute(&item, input_template)
-		if err != nil {
-			log.Panic(err)
+			item := StringFile{}
+			err := item_template.Execute(&item, input_template)
+			if err != nil {
+				log.Panic(err)
+			}
+
+			// Save the resulting templated string back into the input array of maps
+			item[key_str] = item.String
 		}
-
-		// Save the resulting templated string back into the input array of maps
-		input.([]map[string]interface{})[count][key_str] = item.String
 	}
 
 	result.Result = input
