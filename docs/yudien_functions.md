@@ -2380,13 +2380,14 @@ Sends a http request with a given method (POST|PUT|DELETE|GET) to a url endpoint
 
   0. string :: request method, should be one of "POST","GET","DELETE","PUT"
   1. endpoint url :: the url that the request goes to
+  2. (Optional) timeout seconds :: the seconds after which the request will be timeout. By default, is 10 secs
 
 **Output:** if error occurrs, returns nothing. If a "GET" request, returns the decoded json(application/json) or text string(other content-type), otherwise returns the response status code.
 
 **Example:**
 
 ```
-__http_request.'GET'.'http://eventsum.infra.prod.wish.com/detail?event_id=3002'
+__http_request.'GET'.'http://eventsum.infra.prod.wish.com/detail?event_id=3002'.'10'
 ```
 
 **Result:**
