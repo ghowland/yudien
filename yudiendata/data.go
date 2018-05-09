@@ -185,7 +185,6 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 	record := result.Return[0]
 	if record != nil {
 		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, record_id)
-		record["_record_label_quoted"] = fmt.Sprintf("'%s'", record["_record_label"])
 	}
 
 	// Add all the joined fields as a flat namespace to the original table
@@ -318,7 +317,6 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	if result.Return != nil {
 		record := result.Return[0]
 		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
-		record["_record_label_quoted"] = fmt.Sprintf("'%s'", record["_record_label"])
 		UdnLogLevel(nil, log_trace, "Dataman SET: Result Record: JSON: %v\n", record)
 
 		return record
@@ -377,7 +375,6 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	// Add all the joined fields as a flat namespace to the original table
 	for _, record := range result.Return {
 		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
-		record["_record_label_quoted"] = fmt.Sprintf("'%s'", record["_record_label"])
 		if options["join"] != nil {
 			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
 		}
@@ -429,7 +426,6 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 	// Add all the joined fields as a flat namespace to the original table
 	for _, record := range result.Return {
 		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
-		record["_record_label_quoted"] = fmt.Sprintf("'%s'", record["_record_label"])
 		if options["join"] != nil {
 			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
 		}
