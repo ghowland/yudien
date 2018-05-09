@@ -506,6 +506,7 @@ func DatamanDelete(collection_name string, record_id int64, options map[string]i
 	}
 
 	// After resolving all dependencies, delete the current entry
+	//TODO(z):Return all deleted/NULLed dependencies instead of only the specified one (needed?)
 	record = DatamanDeleteRaw(collection_name, record_id,  options)
 	return record
 }
