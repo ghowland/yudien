@@ -3279,11 +3279,14 @@ func UDN_HttpRequest(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 		return result
 	}
 
-	method := args[0].(string)
-	url := args[1].(string)
+	method := GetResult(args[0], type_string).(string)
+	url := GetResult(args[1], type_string).(string)
 
-	//TODO make it configurable
-	timeout := time.Duration(10 * time.Second)
+	timeout_secs := 10.0
+	if len(args) > 2 {
+		timeout_secs = GetResult(args[2], type_float).(float64)
+	}
+	timeout := time.Duration(timeout_secs) * time.Second
 	client := http.Client{
 		Timeout: timeout,
 	}
