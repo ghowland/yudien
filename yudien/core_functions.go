@@ -3141,6 +3141,10 @@ func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 	for _, operand := range operands {
 		switch operand.(type) {
 		case int, int32, int64:
+		case string:
+			if _, err := strconv.Atoi(operand.(string)); err != nil {
+				all_integer = false
+			}
 		default:
 			all_integer = false
 		}
@@ -3199,6 +3203,7 @@ func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 		} else {
 			result.Result = operands[0].(float64)
 		}
+
 	case "+", "add": // TODO(z): make operations variadic when applicable
 		if num_of_operands < 2 {
 			return result
