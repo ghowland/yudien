@@ -1539,6 +1539,34 @@ func UDN_ArrayMapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 	return result
 }
 
+func UDN_ArrayMapKeySet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+
+	result := UdnResult{}
+
+	if len(args) % 2 != 0 {
+		UdnLogLevel(udn_schema, log_trace, "ERROR: ArrayMapKeySet: Args should be in pairs of 2: Length: %d\n", len(args))
+		result.Result = input
+		return result
+	}
+
+	for _, item := range input.([]map[string]interface{}) {
+		for count := 0 ; count < len(args) / 2 ; count ++ {
+			key_str := GetResult(args[count * 2], type_string).(string)
+			value := args[count * 2 + 1]
+
+			// Save the value into the item's keys
+			item[key_str] = value
+		}
+	}
+
+	result.Result = input
+
+	return result
+}
+
+
+
+
 func UDN_ArrayMapToMap(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_value := input.([]map[string]interface{})
 

@@ -68,6 +68,7 @@
     3. [__array_map_find_update - Array Map Find Update](#__array_map_find_update)
     3. [__array_map_template - Array Map Template](#__array_map_template)
     3. [__array_map_to_map - Array Map To Map](#__array_map_to_map)
+    3. [__array_map_key_set - Array Map Key Set](#__array_map_key_set)
     4. [__array_divide - Array Divide](#__array_divide)
 9. [Time](#time)
     1. [__string_to_time - String to Time](#__string_to_time)
@@ -2032,6 +2033,42 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_to_map.name
 
 ```
 {Joe={age=10,name=Joe},Bob={age=20,name=Bob}}
+```
+
+**Side Effect:** None
+
+
+### __array_map_key_set ::: Array Map Key Set <a name="__array_map_key_set"></a>
+
+Takes an array of maps, sets a variable number of key/value pairs
+
+**Go:** UDN_ArrayMapToMap
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. String :: Key to set in each map
+  1. Any :: Value to be set into the key
+
+  2. String (optional) :: Key to set in each map
+  3. Any (optional) :: Value to be set into the key
+
+Can repeat the pairs of key/values.
+
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_key_set.uuid.1234
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe,uuid=1234},{age=20,name=Bob,uuid=1234}]
 ```
 
 **Side Effect:** None
