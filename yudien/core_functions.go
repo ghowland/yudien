@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"encoding/base64"
 	"github.com/google/go-cmp/cmp"
+	"math"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -2010,6 +2011,56 @@ func UDN_DataFilterFull(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	return result
 }
 
+func UDN_DataDelete(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Data Delete: %v\n", args)
+
+	collection_name := GetResult(args[0], type_string).(string)
+	record_id := GetResult(args[1], type_int).(int64)
+
+	options := make(map[string]interface{})
+	if len(args) > 2 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	result_map := DatamanDelete(collection_name, record_id, options)
+
+	result := UdnResult{}
+	result.Result = result_map
+
+	return result
+}
+
+func UDN_DataDeleteFilter(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// DataDelete using filter - can have multiple deletes (deletes are performed one-by-one)
+	UdnLogLevel(udn_schema, log_trace, "Data Delete Filter: %v\n", args)
+
+	collection_name := GetResult(args[0], type_string).(string)
+
+	filter := args[1] // filter could be either map[string]interface{} for single filters or []interface{} for multifilters
+
+	// Optionally, options
+	options := make(map[string]interface{})
+	if len(args) >= 3 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	// Find all entries to be delete
+	delete_list := DatamanFilterFull(collection_name, filter, options)
+	result_array := make([]map[string]interface{}, 0, 10)
+
+	// call the singular DataDelete on each element
+	for _, element := range delete_list {
+		//TODO(z): For future speed improvements if needed, group deletes together if necessary
+		result_map := DatamanDelete(collection_name, element["_id"].(int64), make(map[string]interface{}))
+		result_array = AppendArrayMap(result_array, result_map)
+	}
+
+	result := UdnResult{}
+	result.Result = result_array
+
+	return result
+}
+
 func UDN_MapKeyDelete(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Map Key Delete: %v\n", args)
 
@@ -2837,7 +2888,7 @@ func UDN_NumberToString(db *sql.DB, udn_schema map[string]interface{}, udn_start
 		// check given precision (int)
 		switch args[0].(type) {
 		case string:
-			precision, err := strconv.Atoi(args[0].(string))
+			precision, err := strconv.Atoi(GetResult(args[0], type_string).(string))
 
 			if err == nil {
 				prec = precision
@@ -2848,12 +2899,8 @@ func UDN_NumberToString(db *sql.DB, udn_schema map[string]interface{}, udn_start
 				return result
 			}
 
-		case int:
-			prec = args[0].(int)
-		case int64:
-			prec = int(args[0].(int64))
-		case float64:
-			prec = int(args[0].(float64))
+		case int, int64, float64:
+			prec = GetResult(args[0], type_int).(int)
 		default:
 			// args[0] not (int/int64/float64/string), return the input converted to string
 			result.Result = fmt.Sprintf("%v", input)
@@ -2866,26 +2913,27 @@ func UDN_NumberToString(db *sql.DB, udn_schema map[string]interface{}, udn_start
 
 		// Convert given number to string with specified precision
 		switch input.(type) {
-		case int:
-			num64 := int64(input.(int))
-			num_string := strconv.FormatFloat(float64(num64), 'f', prec, 64)
-			result.Result = num_string
-		case int64:
-			num_string := strconv.FormatFloat(float64(input.(int64)), 'f', prec, 64)
-			result.Result = num_string
-		case float64:
-			num_string := strconv.FormatFloat(input.(float64), 'f', prec, 64)
-			result.Result = num_string
+		case int, int64, float64:
+			result.Result = strconv.FormatFloat(GetResult(input, type_float).(float64), 'f', prec, 64)
 		default:
 			// Do nothing
 		}
-
 	} else {
 		// No precision is specified, 0 or > 2 arguments
 		// return input converted to string.
-		result.Result = fmt.Sprintf("%v", input)
+		switch input.(type) {
+		case int, int64, float64:
+			//check if the input is a whole number, if it is, convert it to int.
+			if GetResult(input, type_float).(float64) == math.Trunc(GetResult(input, type_float).(float64)) {
+				result.Result = fmt.Sprintf("%d", GetResult(input, type_int).(int64))
+			} else {
+				result.Result = strconv.FormatFloat(GetResult(input, type_float).(float64), 'f', -1, 64)
+			}
+		default:
+			//Otherwise, just print it out
+			result.Result = fmt.Sprintf("%v", input)
+		}
 	}
-
 	return result
 }
 
@@ -3141,6 +3189,10 @@ func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 	for _, operand := range operands {
 		switch operand.(type) {
 		case int, int32, int64:
+		case string:
+			if _, err := strconv.Atoi(operand.(string)); err != nil {
+				all_integer = false
+			}
 		default:
 			all_integer = false
 		}
@@ -3199,6 +3251,7 @@ func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 		} else {
 			result.Result = operands[0].(float64)
 		}
+
 	case "+", "add": // TODO(z): make operations variadic when applicable
 		if num_of_operands < 2 {
 			return result
