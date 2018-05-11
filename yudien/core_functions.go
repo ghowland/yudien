@@ -2011,6 +2011,56 @@ func UDN_DataFilterFull(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	return result
 }
 
+func UDN_DataDelete(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Data Delete: %v\n", args)
+
+	collection_name := GetResult(args[0], type_string).(string)
+	record_id := GetResult(args[1], type_int).(int64)
+
+	options := make(map[string]interface{})
+	if len(args) > 2 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	result_map := DatamanDelete(collection_name, record_id, options)
+
+	result := UdnResult{}
+	result.Result = result_map
+
+	return result
+}
+
+func UDN_DataDeleteFilter(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// DataDelete using filter - can have multiple deletes (deletes are performed one-by-one)
+	UdnLogLevel(udn_schema, log_trace, "Data Delete Filter: %v\n", args)
+
+	collection_name := GetResult(args[0], type_string).(string)
+
+	filter := args[1] // filter could be either map[string]interface{} for single filters or []interface{} for multifilters
+
+	// Optionally, options
+	options := make(map[string]interface{})
+	if len(args) >= 3 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	// Find all entries to be delete
+	delete_list := DatamanFilterFull(collection_name, filter, options)
+	result_array := make([]map[string]interface{}, 0, 10)
+
+	// call the singular DataDelete on each element
+	for _, element := range delete_list {
+		//TODO(z): For future speed improvements if needed, group deletes together if necessary
+		result_map := DatamanDelete(collection_name, element["_id"].(int64), make(map[string]interface{}))
+		result_array = AppendArrayMap(result_array, result_map)
+	}
+
+	result := UdnResult{}
+	result.Result = result_array
+
+	return result
+}
+
 func UDN_MapKeyDelete(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Map Key Delete: %v\n", args)
 
