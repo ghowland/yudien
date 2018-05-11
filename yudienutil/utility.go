@@ -315,24 +315,6 @@ func AppendArray(slice []interface{}, data ...interface{}) []interface{} {
 	return slice
 }
 
-func AppendArrayMap(slice []map[string]interface{}, data ...map[string]interface{}) []map[string]interface{} {
-	// Same as AppendArray but for map[string]interface{}
-
-	m := len(slice)
-	n := m + len(data)
-
-	if n > cap(slice) { // if necessary, reallocate
-		// allocate double what's needed, for future growth.
-		newSlice := make([]map[string]interface{}, (n+1)*2)
-		copy(newSlice, slice)
-		slice = newSlice
-	}
-	slice = slice[0:n]
-	copy(slice[m:n], data)
-
-	return slice
-}
-
 func MapKeys(data map[string]interface{}) []string {
 	// Get the slice of keys
 	keys := make([]string, len(data))
