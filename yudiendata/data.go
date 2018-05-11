@@ -123,13 +123,19 @@ func GetDatasourceInstance(options map[string]interface{}) (*storagenode.Datasou
 	datasource_instance := DatasourceInstance["_default"]
 	datasource_database := DatasourceDatabase["_default"]
 
+	selected_db := "_default"
+
 	// If there is a specified option to select an explicit Database
 	if options["db"] != nil {
 		if DatasourceInstance[options["db"].(string)] != nil {
 			datasource_instance = DatasourceInstance[options["db"].(string)]
 			datasource_database = DatasourceDatabase[options["db"].(string)]
+
+			selected_db = options["db"].(string)
 		}
 	}
+
+	UdnLogLevel(nil, log_trace, "Data Source Connection: %s\n", selected_db)
 
 	return datasource_instance, datasource_database
 }
