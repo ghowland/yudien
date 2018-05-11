@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"encoding/base64"
 	"github.com/google/go-cmp/cmp"
+	"math"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -2837,7 +2838,7 @@ func UDN_NumberToString(db *sql.DB, udn_schema map[string]interface{}, udn_start
 		// check given precision (int)
 		switch args[0].(type) {
 		case string:
-			precision, err := strconv.Atoi(args[0].(string))
+			precision, err := strconv.Atoi(GetResult(args[0], type_string).(string))
 
 			if err == nil {
 				prec = precision
@@ -2848,12 +2849,8 @@ func UDN_NumberToString(db *sql.DB, udn_schema map[string]interface{}, udn_start
 				return result
 			}
 
-		case int:
-			prec = args[0].(int)
-		case int64:
-			prec = int(args[0].(int64))
-		case float64:
-			prec = int(args[0].(float64))
+		case int, int64, float64:
+			prec = GetResult(args[0], type_int).(int)
 		default:
 			// args[0] not (int/int64/float64/string), return the input converted to string
 			result.Result = fmt.Sprintf("%v", input)
@@ -2866,26 +2863,27 @@ func UDN_NumberToString(db *sql.DB, udn_schema map[string]interface{}, udn_start
 
 		// Convert given number to string with specified precision
 		switch input.(type) {
-		case int:
-			num64 := int64(input.(int))
-			num_string := strconv.FormatFloat(float64(num64), 'f', prec, 64)
-			result.Result = num_string
-		case int64:
-			num_string := strconv.FormatFloat(float64(input.(int64)), 'f', prec, 64)
-			result.Result = num_string
-		case float64:
-			num_string := strconv.FormatFloat(input.(float64), 'f', prec, 64)
-			result.Result = num_string
+		case int, int64, float64:
+			result.Result = strconv.FormatFloat(GetResult(input, type_float).(float64), 'f', prec, 64)
 		default:
 			// Do nothing
 		}
-
 	} else {
 		// No precision is specified, 0 or > 2 arguments
 		// return input converted to string.
-		result.Result = fmt.Sprintf("%v", input)
+		switch input.(type) {
+		case int, int64, float64:
+			//check if the input is a whole number, if it is, convert it to int.
+			if GetResult(input, type_float).(float64) == math.Trunc(GetResult(input, type_float).(float64)) {
+				result.Result = fmt.Sprintf("%d", GetResult(input, type_int).(int64))
+			} else {
+				result.Result = strconv.FormatFloat(GetResult(input, type_float).(float64), 'f', -1, 64)
+			}
+		default:
+			//Otherwise, just print it out
+			result.Result = fmt.Sprintf("%v", input)
+		}
 	}
-
 	return result
 }
 
