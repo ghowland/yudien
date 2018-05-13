@@ -1473,11 +1473,17 @@ func UDN_ArrayMapFind(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 
 
 func UDN_ArrayMapFindUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	result := UDN_ArrayMapFilterUpdate(db, udn_schema, udn_start, args, input, udn_data)
+
+	return result
+}
+
+func UDN_ArrayMapFilterUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// Get the remapping information
-	find_map := GetResult(args[0], type_map).(map[string]interface{})
+	filter_map := GetResult(args[0], type_map).(map[string]interface{})
 	update_map := GetResult(args[1], type_map).(map[string]interface{})
 
-	UdnLogLevel(udn_schema, log_trace, "Array Map Find Update: %v in %d Record(s): Update: %v\n", find_map, len(input.([]map[string]interface{})), SnippetData(update_map, 40))
+	UdnLogLevel(udn_schema, log_trace, "Array Map Find Update: %v in %d Record(s): Update: %v\n", filter_map, len(input.([]map[string]interface{})), SnippetData(update_map, 40))
 
 	found_value := false
 
@@ -1486,7 +1492,7 @@ func UDN_ArrayMapFindUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_s
 		all_keys_matched := true
 
 		// Remap all the old map keys to new map keys in the new map
-		for key, value := range find_map {
+		for key, value := range filter_map {
 			UdnLogLevel(udn_schema, log_trace, "Array Map Find Update: Key %s: %s == %s\n", key, SnippetData(item[key], 20), SnippetData(value, 20))
 			if CompareUdnData(item[key], value) == 0 {
 				all_keys_matched = false
@@ -1511,7 +1517,7 @@ func UDN_ArrayMapFindUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_s
 
 	// If we didn't find the record, we return nil
 	if !found_value {
-		UdnLogLevel(udn_schema, log_trace, "Array Map Find: No Matches Found\n")
+		UdnLogLevel(udn_schema, log_trace, "Array Map Find Update: No Matches Found\n")
 	}
 
 	result := UdnResult{}
@@ -1520,6 +1526,158 @@ func UDN_ArrayMapFindUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_s
 	return result
 }
 
+func UDN_ArrayMapFilterIn(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Get the remapping information
+	filter_map := GetResult(args[0], type_map).(map[string]interface{})
+
+	UdnLogLevel(udn_schema, log_trace, "Array Map Find In: %v in %d Record(s)\n", filter_map, len(input.([]map[string]interface{})))
+
+	found_value := false
+
+	result_array := make([]map[string]interface{}, 0)
+
+	// Find and return the first item that matches
+	for _, item := range input.([]map[string]interface{}) {
+		any_keys_matched := true
+
+		// Remap all the old map keys to new map keys in the new map
+		for key, value := range filter_map {
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find In: Key %s: %s == %s\n", key, SnippetData(item[key], 20), SnippetData(value, 20))
+			if CompareUdnData(item[key], value) == 0 {
+				any_keys_matched = false
+				break
+			}
+		}
+
+		if any_keys_matched {
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find In: Matched: %s\n", SnippetData(item, 200))
+
+			// Add the item to the result array
+			result_array = append(result_array, item)
+
+			// We have found at least 1 item
+			found_value = true
+
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find In: Found: After: %s\n", SnippetData(item, 200))
+		}
+	}
+
+	// If we didn't find the record, we return nil
+	if !found_value {
+		UdnLogLevel(udn_schema, log_trace, "Array Map Find In: No Matches Found\n")
+	}
+
+	result := UdnResult{}
+	result.Result = result_array
+
+	return result
+}
+
+func UDN_ArrayMapFilterContainsAny(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Get the remapping information
+	filter_map := GetResult(args[0], type_map).(map[string]interface{})
+	options_map := make(map[string]interface{})
+	if len(args) > 1 {
+		options_map = GetResult(args[1], type_map).(map[string]interface{})
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "Array Map Find Contains Any: %v in %d Record(s)\n", filter_map, len(input.([]map[string]interface{})))
+
+	found_value := false
+
+	result_array := make([]map[string]interface{}, 0)
+
+	// Find and return the first item that matches
+	for _, item := range input.([]map[string]interface{}) {
+		// If we have more than one args, and arent explicitly turning "all" off, then assume we want to match them all (any of them)
+		if len(filter_map) > 1 && options_map["all"] != nil && options_map["all"] != false {
+			options_map["all"] = true
+		}
+
+		// Each record matches at least 1 key
+		any_keys_matched := false
+
+		// We need to match
+		any_keys_matched_from_all := true
+
+		// Remap all the old map keys to new map keys in the new map
+		for key, value := range filter_map {
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find Contains Any: Key %s: %s == %s\n", key, SnippetData(item[key], 20), SnippetData(value, 20))
+
+			value_list := value.([]interface{})
+
+			switch item[key].(type) {
+			case []interface{}:
+				found_item_match := false
+
+				for _, item_value := range item {
+
+					found_value_match := false
+					for _, value_value := range value_list {
+						if CompareUdnData(value_value, item_value) == 0 {
+							found_value_match = true
+							any_keys_matched = true
+							break
+						}
+
+						if found_value_match {
+							found_item_match = true
+							break
+						} else {
+							// We didn't match any of the values, so not all records are met
+							any_keys_matched_from_all = false
+
+							// Dont continue if we are
+							if options_map["all"] != nil && options_map["all"] == true {
+								break
+							}
+						}
+					}
+				}
+
+				if found_item_match {
+
+				}
+			}
+
+			if CompareUdnData(item[key], value) == 0 {
+				any_keys_matched = false
+				break
+			}
+		}
+
+		if any_keys_matched {
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find Contains Any: Matched: %s\n", SnippetData(item, 200))
+
+			if options_map["all"] != nil && options_map["all"] == true {
+				UdnLogLevel(udn_schema, log_trace, "Array Map Find Contains Any: Matched: All Matched: %v\n", any_keys_matched_from_all)
+				// If we got an "any" match, from every one of our filter keys
+				if any_keys_matched_from_all {
+					// Add the item to the result array
+					result_array = append(result_array, item)
+				}
+			} else {
+				// Add the item to the result array
+				result_array = append(result_array, item)
+			}
+
+			// We have found at least 1 item
+			found_value = true
+
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find Contains Any: Found: After: %s\n", SnippetData(item, 200))
+		}
+	}
+
+	// If we didn't find the record, we return nil
+	if !found_value {
+		UdnLogLevel(udn_schema, log_trace, "Array Map Find Contains Any: No Matches Found\n")
+	}
+
+	result := UdnResult{}
+	result.Result = result_array
+
+	return result
+}
 
 // Update all map's key's values with a template statement from each map's key/values
 func UDN_ArrayMapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {

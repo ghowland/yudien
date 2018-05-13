@@ -67,7 +67,10 @@
     1. [__array_contains - Array Contains](#__array_contains)
     3. [__array_map_remap - Array Map Remap](#__array_map_remap)
     3. [__array_map_find - Array Map Find](#__array_map_find)
-    3. [__array_map_find_update - Array Map Find Update](#__array_map_find_update)
+    3. [__array_map_find_update - Array Map Find Update - Depricated use __array_map_filter_update](#__array_map_find_update)
+    3. [__array_map_filter_update - Array Map Filter Update](#__array_map_filter_update)
+    3. [__array_map_filter_in - Array Map Filter Update](#__array_map_filter_in)
+    3. [__array_map_filter_contains_any - Array Map Filter Update](#__array_map_filter_contains_any)
     3. [__array_map_template - Array Map Template](#__array_map_template)
     3. [__array_map_to_map - Array Map To Map](#__array_map_to_map)
     3. [__array_map_key_set - Array Map Key Set](#__array_map_key_set)
@@ -2002,7 +2005,7 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find.{age=10}
 **Side Effect:** None
 
 
-### __array_map_find_update ::: Array Map Find Update <a name="__array_map_find_update"></a>
+### __array_map_find_update ::: Array Map Find Update - Depricated use __array_map_filter_update <a name="__array_map_find_update"></a>
 
 Takes an array of maps, and matches it against all the arguments in the first map.  For all elements that match, they are updated with the second map.  The entire array is returned.
 
@@ -2030,6 +2033,106 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find_update.{age=10}.{
 ```
 
 **Side Effect:** None
+
+### __array_map_filter_update ::: Array Map Filter Update <a name="__array_map_filter_update"></a>
+
+Takes an array of maps, and matches it against all the arguments in the first map.  For all elements that match, they are updated with the second map.  The entire array is returned.
+
+**Go:** UDN_ArrayMapFilterUpdate
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Map :: This is a key/value map to check against the array of maps, returning the first map which matches all keys/values.
+  1. Map :: This map is used to update all maps that match key/values in arg0
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_update.{age=10}.{selected=selected}
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe,selected=selected},{age=20,name=Bob}]
+```
+
+**Side Effect:** None
+
+
+### __array_map_filter_in ::: Array Map Filter In <a name="__array_map_filter_in"></a>
+
+Takes an array of maps, and matches against a set of filtered elements, which must all be inside of the array of options available in the arg0 array.
+
+**Go:** UDN_ArrayMapFindIn
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Array :: This is an array of elements, which the corresponding key in the input array map must be inside of to match the filter.
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_in.{age=[10,15]}
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe}]
+```
+
+**Side Effect:** None
+
+### __array_map_contains_any ::: Array Map Filter Contains Any <a name="__array_map_contains_any"></a>
+
+Takes an array of maps, and matches against a set of filtered elements, which must all be inside of the array of options available in the arg0 array.
+
+**Go:** UDN_ArrayMapFindContainsAny
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Array :: This is an array of elements, which the corresponding key in the input array map, whose value is an any, that contains at least 1 of the items in the corresponding key in the filter map's array.
+  1. Map (optional) :: This is an Options map.  Current options:  "all" (boolean).  If true, every filter Contains List must be matched on each key.  If false (0), only 1 set of Contains List must be matched to match the filter.
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains_any.{age=[10,20],name=[Bob]}
+```
+
+**Result:**
+
+```
+[{age=20,name=Bob}]
+```
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains_any.{age=[10],name=[Bob]}.{all=0}
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe},{age=20,name=Bob}]
+```
+
+**Side Effect:** None
+
 
 
 ### __array_map_template ::: Array Map Template <a name="__array_map_template"></a>

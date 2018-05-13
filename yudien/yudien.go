@@ -233,11 +233,14 @@ func InitUdn() {
 		"__array_remove":    UDN_ArrayRemove, // Removes the first instance of an element in an array.  Recquires exact match
 		"__array_index":     UDN_ArrayIndex, // Gets the index of the first instance of an element in an array.  Requires exact match
 		"__array_contains":  UDN_ArrayContains, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
-		"__array_map_find":  UDN_ArrayMapFind, // Finds a single map element, and returns the result in a map of {key=key,value=value}
-		"__array_map_find_update":  UDN_ArrayMapFindUpdate, // Finds all map elements that match the find map, and updates them with a passed in map, so we can find the map in-place of matching records.  Returns the array of maps
 		"__array_map_to_map":  UDN_ArrayMapToMap, // Map an array of maps into a single map, using one of the keys
 		"__array_map_template":  UDN_ArrayMapTemplate, // Update all map's key's values with a template statement from each map's key/values
 		"__array_map_key_set":  UDN_ArrayMapKeySet, // Update all map's with specified keys/values
+		"__array_map_find":  UDN_ArrayMapFind, // Finds a single map element, and returns the result in a map of {key=key,value=value}
+		"__array_map_find_update":  UDN_ArrayMapFindUpdate, //TODO(g): Remove once we transition everything to FilterUpdate, was incorrectly named as the first of it's kind. -- --  Finds all map elements that match the find map, and updates them with a passed in map, so we can find the map in-place of matching records.  Returns the array of maps
+		"__array_map_filter_update":  UDN_ArrayMapFilterUpdate, //TODO(g): Update to FilterUpdate and replace code that uses it.  Unless worth having 2 functions.  Want to keep the name spaces and argument order/types similar accross all of them to avoid the PHP curse.  -- -- Finds all map elements that match the find map, and updates them with a passed in map, so we can find the map in-place of matching records.  Returns the array of maps
+		"__array_map_filter_in":  UDN_ArrayMapFilterIn, // Returns all maps in an array, which keys were in the set of the array elements
+		"__array_map_filter_contains_any":  UDN_ArrayMapFilterContainsAny, // Returns all maps in an array, which keys values contains any of the possible array elements.  This works on arrays (, maps (match key/value), or single items (match)
 
 		"__map_key_delete": UDN_MapKeyDelete, // Each argument is a key to remove
 		"__map_key_set":    UDN_MapKeySet,    // Sets N keys, like __format, but with no formatting
