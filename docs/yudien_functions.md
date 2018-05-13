@@ -10,6 +10,8 @@
     7. [__set_temp - Set Temp Data](#__set_temp)
     8. [__increment - Increment Value](#__increment)
     9. [__decrement - Decrement Value](#__decrement)
+    9. [__true - True](#__true)
+    9. [__false - False](#__false)
 2. [Database](#database)
     1. [__data_get - Dataman Get](#__data_get)
     2. [__data_set - Dataman Set](#__data_set)
@@ -455,6 +457,63 @@ __input.100.__decrement.2
 **Side Effect:** None
 
 **Related Functions:** [__increment](#__increment)
+
+
+### __true ::: True <a name="__true"></a>
+
+ Returns `true` value
+
+**Go:** UDN_True
+
+**Input:** None
+
+**Args:** None
+
+**Output:** boolean - `true`
+
+**Example:**
+
+```
+__true
+```
+
+**Result:**
+
+```
+true
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__false](#__false)
+
+### __false ::: False <a name="__false"></a>
+
+ Returns `false` value
+
+**Go:** UDN_False
+
+**Input:** None
+
+**Args:** None
+
+**Output:** boolean - `false`
+
+**Example:**
+
+```
+__false
+```
+
+**Result:**
+
+```
+false
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__true](#__true)
 
 
 ## Database  <a name="database"></a>

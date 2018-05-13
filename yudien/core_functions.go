@@ -548,6 +548,24 @@ func UDN_DebugOutput(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	return result
 }
 
+func UDN_True(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Return True\n")
+
+	result := UdnResult{}
+	result.Result = true
+
+	return result
+}
+
+func UDN_False(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Return False\n")
+
+	result := UdnResult{}
+	result.Result = false
+
+	return result
+}
+
 func UDN_TestReturn(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Test Return data: %s\n", args[0])
 
@@ -1486,6 +1504,8 @@ func UDN_ArrayMapFindUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_s
 
 			// We have found at least 1 item
 			found_value = true
+
+			UdnLogLevel(udn_schema, log_trace, "Array Map Find Update: Found: After: %s\n", SnippetData(item, 200))
 		}
 	}
 

@@ -209,6 +209,9 @@ func InitUdn() {
 		"__format":         UDN_MapStringFormat,              //TODO(g): Updates a map with keys and string formats.  Uses the map to format the strings.  Takes N args, doing each arg in sequence, for order control
 		"__template_short": UDN_StringTemplateFromValueShort, // Like __template, but uses {{{fieldname}}} instead of {{index .Max "fieldname"}}, using strings.Replace instead of text/template
 
+		"__true":          UDN_True,
+		"__false":          UDN_False,
+
 		//TODO(g): DEPRICATE.  Longer name, same function.
 		"__template_string": UDN_StringTemplateFromValue, // Templates the string passed in as arg_0
 
