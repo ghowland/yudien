@@ -70,8 +70,8 @@
     3. [__array_map_find_update - Array Map Find Update - Depricated use __array_map_filter_update](#__array_map_find_update)
     3. [__array_map_filter_update - Array Map Filter Update](#__array_map_filter_update)
     3. [__array_map_filter_in - Array Map Filter Update](#__array_map_filter_in)
-    3. [__array_map_filter_contains_any - Array Map Filter Update](#__array_map_filter_contains_any)
-    3. [__array_map_filter_match - Array Map Match](#__array_map_filter_match)
+    3. [__array_map_filter_contains - Array Map Filter Update](#__array_map_filter_contains)
+    3. [__array_map_filter_array_contains - Array Map Match](#__array_map_filter_array_contains)
     3. [__array_map_template - Array Map Template](#__array_map_template)
     3. [__array_map_to_map - Array Map To Map](#__array_map_to_map)
     3. [__array_map_key_set - Array Map Key Set](#__array_map_key_set)
@@ -2093,7 +2093,7 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_in.{age=[10,15]
 
 **Side Effect:** None
 
-### __array_map_filter_contains_any ::: Array Map Filter Contains Any <a name="__array_map_filter_contains_any"></a>
+### __array_map_filter_contains ::: Array Map Filter Contains Any <a name="__array_map_filter_contains"></a>
 
 Takes an array of maps, and matches against a set of filtered elements, which must all be inside of the array of options available in the arg0 array.
 
@@ -2111,7 +2111,7 @@ Takes an array of maps, and matches against a set of filtered elements, which mu
 **Example:**
 
 ```
-__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains_any.{age=[10,20],name=[Bob]}
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains.{age=[10,20],name=[Bob]}
 ```
 
 **Result:**
@@ -2123,7 +2123,7 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains_any.{a
 **Example:**
 
 ```
-__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains_any.{age=[10],name=[Bob]}.{all=0}
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains.{age=[10],name=[Bob]}.{all=0}
 ```
 
 **Result:**
@@ -2134,7 +2134,7 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains_any.{a
 
 **Side Effect:** None
 
-### __array_map_filter_match::: Array Map Filter Match <a name="__array_map_filter_match"></a>
+### __array_map_filter_array_contains ::: Array Map Filter Array Contains <a name="__array_map_filter_array_contains"></a>
 
 Takes an array of maps, and matches a list against a list, to see if any of the items match, as the default match filter
 
@@ -2152,7 +2152,7 @@ Takes an array of maps, and matches a list against a list, to see if any of the 
 **Example:**
 
 ```
-__input.[{age=10,name=Joe,groups[ops,eng,admin]},{age=20,name=Bob,groups=[ops]}].__array_map_filter_contains_any.{groups=[admin,eng]}
+__input.[{age=10,name=Joe,groups[ops,eng,admin]},{age=20,name=Bob,groups=[ops]}].__array_map_filter_contains.{groups=[admin,eng]}
 ```
 
 **Result:**
