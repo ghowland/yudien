@@ -2080,21 +2080,28 @@ func UDN_ArrayContains(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	UdnLogLevel(udn_schema, log_trace, "Array Contains: %v  IN  %v\n", array_input, array_value)
 	UdnLogLevel(udn_schema, log_trace, "Array Contains: Array Value Length: %d\n", len(array_value))
 
-	found_all := true
+	found_all := false
 	for _, input_item := range array_input {
 		found_item := false
+		not_found_item := true
+
 		for _, value := range array_value {
+			UdnLogLevel(udn_schema, log_trace, "Array Contains: Compare: %s == %s\n", SnippetData(value, 20), SnippetData(input_item, 20))
+
 			//TODO(g): Is this a good enough comparison?  What about map to map?  Content of the map?
 			if cmp.Equal(value, input_item) {
 				UdnLogLevel(udn_schema, log_trace, "Array Contains: Value: %s\n", JsonDump(value))
-				UdnLogLevel(udn_schema, log_trace, "Array Contains: Input: %s\n", JsonDump(input))
+				UdnLogLevel(udn_schema, log_trace, "Array Contains: Input: %s\n", JsonDump(input_item))
 				found_item = true
 				break
+			} else {
+				//TODO(g): Allow options later for what is allowed
+				not_found_item = false
 			}
 		}
 
 		// If we didnt find this item, we didnt find them all, fail and return
-		if !found_item {
+		if found_item && !not_found_item {
 			found_all = false
 			break
 		}
@@ -2102,6 +2109,42 @@ func UDN_ArrayContains(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 
 	result := UdnResult{}
 	result.Result = found_all
+
+	return result
+}
+
+
+func UDN_ArrayContainsAny(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Get the remapping information
+	array_value_potential := MapGet(args, udn_data)
+
+	// Force we want to check into an array
+	array_value := GetResult(array_value_potential, type_array).([]interface{})
+
+	// Force the input into an array
+	array_input := GetResult(input, type_array).([]interface{})
+
+	UdnLogLevel(udn_schema, log_trace, "Array Contains Any: %v  IN  %v\n", array_input, array_value)
+	UdnLogLevel(udn_schema, log_trace, "Array Contains Any: Array Value Length: %d\n", len(array_value))
+
+	found_any := false
+	for _, input_item := range array_input {
+		for _, value := range array_value {
+			UdnLogLevel(udn_schema, log_trace, "Array Contains: Compare: %s == %s\n", SnippetData(value, 20), SnippetData(input_item, 20))
+
+			//TODO(g): Is this a good enough comparison?  What about map to map?  Content of the map?
+			if cmp.Equal(value, input_item) {
+				UdnLogLevel(udn_schema, log_trace, "Array Contains Any: Value: %s\n", JsonDump(value))
+				UdnLogLevel(udn_schema, log_trace, "Array Contains Any: Input: %s\n", JsonDump(input_item))
+
+				found_any = true
+				break
+			}
+		}
+	}
+
+	result := UdnResult{}
+	result.Result = found_any
 
 	return result
 }

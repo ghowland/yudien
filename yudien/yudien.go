@@ -233,6 +233,7 @@ func InitUdn() {
 		"__array_remove":    UDN_ArrayRemove, // Removes the first instance of an element in an array.  Recquires exact match
 		"__array_index":     UDN_ArrayIndex, // Gets the index of the first instance of an element in an array.  Requires exact match
 		"__array_contains":  UDN_ArrayContains, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
+		"__array_contains_any":  UDN_ArrayContainsAny, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
 		"__array_map_to_map":  UDN_ArrayMapToMap, // Map an array of maps into a single map, using one of the keys
 		"__array_map_template":  UDN_ArrayMapTemplate, // Update all map's key's values with a template statement from each map's key/values
 		"__array_map_key_set":  UDN_ArrayMapKeySet, // Update all map's with specified keys/values
