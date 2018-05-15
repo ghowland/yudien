@@ -58,6 +58,7 @@
     3. [__map_copy - Map Copy](#__map_copy)
     4. [__map_update - Map Update](#__map_update)
     4. [__map_template_key - Map Template Key](#__map_template_key)
+    4. [__map_filter_key - Map Filter Keys](#__map_filter_key)
     5. [__group_by - Group By](#__group_by)
 8. [Array](#array)
     1. [__array_append - Array Append](#__array_append)
@@ -1707,6 +1708,36 @@ __input.{name=Bob}.__map_template_key.'{{uuid}}_{{key}}'.{uuid=1234}
 
 **Side Effect:** None
 
+### __map_filter_key ::: Map Filter Key <a name="__map_filter_key"></a>
+
+Returns a new map, which has a filtered set of keys based on an array of strings passed in as arg0.
+
+This is useful for things such as prefixing a UUID in front of keys, so that they can be injected into HTML pages.
+
+**Go:** UDN_MapTemplateKey
+
+**Input:** Map
+
+**Args:**
+
+  0. Array of Strings :: Keys to match for filtering map keys
+
+**Output:** Map
+
+**Example:**
+
+```
+__input.{item1=Something1,item2=Something2,item3=Something3}.__map_filter_key.[item2,item3]
+```
+
+**Result:**
+
+```
+{item2=Something2,item3=Something3}
+```
+
+**Side Effect:** None
+
 ### __group_by ::: Group by on a list of Maps  <a name="__group_by"></a>
 
 Given a list of maps, group by an aggregate field
@@ -2144,8 +2175,9 @@ Takes an array of maps, and matches a list against a list, to see if any of the 
 
 **Args:**
 
-  0. Array :: This is an array of elements, which the corresponding key in the input array map, whose value is an any, that contains at least 1 of the items in the corresponding key in the filter map's array.
-  1. Map (optional) :: This is an Options map.  Current options:  "all" (boolean).  If true, every filter Contains List must be matched on each key.  If false (0), only 1 set of Contains List must be matched to match the filter.
+  0. String :: Key in each of the maps which contains an array, that we will test
+  1. Array :: This is an array of elements, which the corresponding key in the input array map, whose value is an any, that contains at least 1 of the items in the corresponding key in the filter map's array.
+  2. Map (optional) :: This is an Options map.  Current options:  "all" (boolean).  If true, every filter Contains List must be matched on each key.  If false (0), only 1 set of Contains List must be matched to match the filter.
 
 **Output:** Array of Maps
 

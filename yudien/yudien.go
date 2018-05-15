@@ -249,6 +249,8 @@ func InitUdn() {
 		"__map_copy":       UDN_MapCopy,      // Make a copy of the current map, in a new map
 		"__map_update":     UDN_MapUpdate,    // Input map has fields updated with arg0 map
 		"__map_template_key":     UDN_MapTemplateKey,    // When we want to re-key a map, such as prefixing a UUID in front of the keys for replacement in an HTML document
+		"__map_filter_array_contains":     UDN_MapFilterArrayContains,    // Filters elements in a map, if one of their keys contains at array we are comparing for containing values of another array
+		"__map_filter_key":     UDN_MapFilterKey,    // Filters elements in a map based on their keys.  If their keys appear in a list, they are in the resulting map.  Otherwise they are filtered out.
 
 		"__render_data": UDN_RenderDataWidgetInstance, // Renders a Data Widget Instance:  arg0 = web_data_widget_instance.id, arg1 = widget_instance map update
 
