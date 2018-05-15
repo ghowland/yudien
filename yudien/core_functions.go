@@ -911,9 +911,9 @@ func UDN_HtmlEncode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	input_str := GetResult(input, type_string).(string)
 
 	// Replace all the characters with their fixed HTML alternatives
+	input_str = strings.Replace(input_str, "&", "&amp;", -1)
 	input_str = strings.Replace(input_str, "<", "&lt;", -1)
 	input_str = strings.Replace(input_str, ">", "&gt;", -1)
-	input_str = strings.Replace(input_str, "&", "&amp;", -1)
 
 	result := UdnResult{}
 	result.Result = input_str
