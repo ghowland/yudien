@@ -2080,28 +2080,21 @@ func UDN_ArrayContains(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	UdnLogLevel(udn_schema, log_trace, "Array Contains: %v  IN  %v\n", array_input, array_value)
 	UdnLogLevel(udn_schema, log_trace, "Array Contains: Array Value Length: %d\n", len(array_value))
 
-	found_all := false
+	found_all := true
 	for _, input_item := range array_input {
 		found_item := false
-		not_found_item := true
-
 		for _, value := range array_value {
-			UdnLogLevel(udn_schema, log_trace, "Array Contains: Compare: %s == %s\n", SnippetData(value, 20), SnippetData(input_item, 20))
-
 			//TODO(g): Is this a good enough comparison?  What about map to map?  Content of the map?
 			if cmp.Equal(value, input_item) {
 				UdnLogLevel(udn_schema, log_trace, "Array Contains: Value: %s\n", JsonDump(value))
-				UdnLogLevel(udn_schema, log_trace, "Array Contains: Input: %s\n", JsonDump(input_item))
+				UdnLogLevel(udn_schema, log_trace, "Array Contains: Input: %s\n", JsonDump(input))
 				found_item = true
 				break
-			} else {
-				//TODO(g): Allow options later for what is allowed
-				not_found_item = false
 			}
 		}
 
 		// If we didnt find this item, we didnt find them all, fail and return
-		if found_item && !not_found_item {
+		if !found_item {
 			found_all = false
 			break
 		}
@@ -2112,7 +2105,6 @@ func UDN_ArrayContains(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 
 	return result
 }
-
 
 func UDN_ArrayContainsAny(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// Get the remapping information
