@@ -2321,18 +2321,30 @@ func UDN_JsonEncodeData(db *sql.DB, udn_schema map[string]interface{}, udn_start
 func UDN_Base64Decode(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Base64 Decode: %v   Input: %v\n", args, SnippetData(input, 300))
 
+	result := UdnResult{}
+
 	// Use the argument instead of input, if it exists
 	if len(args) != 0 {
 		input = args[0]
 	}
 
-	decoded_bytes, _ := base64.URLEncoding.DecodeString(input.(string))
-	decoded := string(decoded_bytes)
+	if input == nil {
+		UdnLogLevel(udn_schema, log_trace, "ERROR: Base64 Decode: Returning input: Input is nil%s\n")
+		result.Result = input
+		return result
+	}
 
-	result := UdnResult{}
+	decoded_bytes, err := base64.URLEncoding.DecodeString(input.(string))
+	if err != nil {
+		UdnLogLevel(udn_schema, log_trace, "ERROR: Base64 Decode: Returning input: Error: %s\n", err)
+		result.Result = input
+		return result
+	}
+
+	decoded := string(decoded_bytes)
 	result.Result = JsonDump(decoded)
 
-	UdnLogLevel(udn_schema, log_trace, "Base64 Decode: Result: %v\n", decoded)
+	//UdnLogLevel(udn_schema, log_trace, "Base64 Decode: Result: %v\n", decoded)
 	UdnLogLevel(udn_schema, log_trace, "Base64 Decode: Result: %s\n", SnippetData(decoded, 120))
 
 	return result
@@ -2516,6 +2528,35 @@ func UDN_DataDeleteFilter(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 
 	result := UdnResult{}
 	result.Result = result_array
+
+	return result
+}
+
+func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_val := GetResult(input, type_map).(map[string]interface{})
+
+	if len(args) > 0 {
+		input_val = GetResult(args[0], type_map).(map[string]interface{})
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "Change: Submit: Input: %v\n", input_val)
+
+	// Make a submit map, and add in hierarchy deeper maps of:  DB -> table -> record PKEY -> fields -> values
+	//submit_map := make(map[string]interface{})
+
+	for key, value := range input_val {
+		parts := strings.Split(key, ".")
+
+		database := parts[0]
+		table := parts[1]
+		record_pkey := parts[2]
+		field := parts[3]
+
+		UdnLogLevel(nil, log_trace,"Change: Submit: DB: %s  Table: %s  Record: %s  Field: %s  =  %v\n", database, table, record_pkey, field, value)
+	}
+
+	result := UdnResult{}
+	result.Result = input_val
 
 	return result
 }

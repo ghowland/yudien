@@ -265,6 +265,7 @@ func InitUdn() {
 		//TODO(g): Make these the new defaults, which use CM
 		"__change_get":    UDN_DataGet,    // Dataman Get
 		"__change_set":    UDN_DataSet,    // Dataman Set
+		"__change_submit":    UDN_ChangeDataSubmit,    // This accepts dotted notation and figures out what records/fields are being effected.  Example:  {"opsdb.schema_table_field.1050.name":"_id"}
 		"__change_filter": UDN_DataFilter, // Dataman Filter
 		"__change_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
 		//"__change_delete":    UDN_DataDelete,    // Dataman Get
