@@ -839,15 +839,20 @@ func UDN_MapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 func UDN_MapUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	update_map := GetResult(args[0], type_map).(map[string]interface{})
 
+	input_map := GetResult(input, type_map).(map[string]interface{})
+	if len(args) > 0 {
+		input_map = GetResult(args[1], type_map).(map[string]interface{})
+	}
+
 	// Update the input map's fields with the arg0 map
-	UdnLogLevel(udn_schema, log_trace, "Map Update: %s  Over Input: %s\n", SnippetData(update_map, 60), SnippetData(input, 60))
+	UdnLogLevel(udn_schema, log_trace, "Map Update: %s  Over Input: %s\n", SnippetData(update_map, 60), SnippetData(input_map, 60))
 
 	for k, v := range update_map {
-		input.(map[string]interface{})[k] = v
+		input_map[k] = v
 	}
 
 	result := UdnResult{}
-	result.Result = input
+	result.Result = input_map
 
 	UdnLogLevel(udn_schema, log_debug, "Map Update: Result: %v", input)
 
@@ -900,7 +905,7 @@ func UDN_MapTemplateKey(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	result := UdnResult{}
 	result.Result = output_map
 
-	UdnLogLevel(udn_schema, log_debug, "Map Update: Result: %v", input)
+	UdnLogLevel(udn_schema, log_debug, "Map Template Key: Result: %s", JsonDump(output_map))
 
 	return result
 }
@@ -2582,7 +2587,7 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 	UdnLogLevel(nil, log_trace,"Change: Submit: Collected: %s\n", JsonDump(submit_map))
 
 	// Submit the records, collect all the errors
-	result_map_array := make([]map[string]interface{}, 0)
+	error_map := make(map[string]interface{})
 
 	for database, database_map := range submit_map {
 		for table, table_map := range database_map.(map[string]interface{}) {
@@ -2594,7 +2599,14 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 
 				result_map := DatamanSet(table, record_map.(map[string]interface{}), option_map)
 
-				result_map_array = append(result_map_array, result_map)
+				// If we have any errors, add them to the error_map
+				if result_map["_error"] != nil {
+					for field, error_value := range result_map["error"].(map[string]interface{}) {
+						field_label := fmt.Sprintf("%s.%s.%s.%s", database, table, record, field)
+
+						error_map[field_label] = error_value
+					}
+				}
 			}
 
 		}
@@ -2603,7 +2615,7 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 
 	// Return the error map:  Field Labels -> Error Message for User correction
 	result := UdnResult{}
-	result.Result = result_map_array
+	result.Result = error_map
 
 	return result
 }
@@ -3158,10 +3170,14 @@ func IfResult(value interface{}) bool {
 	case []interface{}:
 		if len(value.([]interface{})) == 0 {
 			return false
+		} else {
+			return true
 		}
 	case map[string]interface{}:
 		if len(value.(map[string]interface{})) == 0 {
 			return false
+		} else {
+			return true
 		}
 	}
 
@@ -3310,8 +3326,10 @@ func UDN_ElseIfCondition(db *sql.DB, udn_schema map[string]interface{}, udn_star
 func UDN_Not(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Not: %v\n", SnippetData(input, 60))
 
+	is_true := IfResult(input)
+
 	value := "0"
-	if input != nil && input != "0" {
+	if !is_true {
 		value = "1"
 	}
 

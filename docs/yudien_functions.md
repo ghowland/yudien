@@ -1658,7 +1658,8 @@ Creates a new Map which is a copy/clone of the current one, so you can modify it
 
 **Args:**
 
-  0. String (variadic) :: Key/field to delete in the Map
+  0. Map :: Update map to overlay on top of input
+  1. Map (optional) :: Override the input map, passing in an arg1 map
 
 **Output:** Map
 
