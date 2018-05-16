@@ -341,7 +341,9 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		return record
 	} else {
 		UdnLogLevel(nil, log_trace, "Dataman SET: Failed Result: nil: %v\n", result.ValidationError.(map[string]interface{}))
-		return result.ValidationError.(map[string]interface{})
+		record := make(map[string]interface{})
+		record["_error"] = result.ValidationError
+		return record
 	}
 }
 
