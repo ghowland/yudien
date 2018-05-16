@@ -251,7 +251,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	// ng any values
 	//TODO(g):REMOVE: This is fixing up implementation problems in Dataman, which Thomas will fix...
 	if record["_id"] != nil && record["_id"] != "" {
-		//fmt.Printf("Ensuring all fields are present (HACK): %s: %v\n", collection_name, record["_id"])
+		UdnLogLevel(nil, log_error, "Ensuring all fields are present (HACK): %s: %v\n", collection_name, record["_id"])
 
 		// Record ID will be an integer
 		var record_id int64
@@ -260,12 +260,17 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		case string:
 			record_id, err = strconv.ParseInt(record["_id"].(string), 10, 32)
 			if err != nil {
-				UdnLogLevel(nil, log_error,"Record _id is not an integer: %s: %s", collection_name, record)
+				UdnLogLevel(nil, log_error,"Record _id is not an integer: %s: %v", collection_name, record)
 				delete(record, "_id")
 			}
 		default:
+			UdnLogLevel(nil, log_error,"Record _id type: %T", record["_id"])
 			record_id = GetResult(record["_id"], type_int).(int64)
 		}
+
+		record["_id"] = record_id
+
+		UdnLogLevel(nil, log_trace,"record_id type: %T\n", record_id)
 
 		options := make(map[string]interface{})
 
@@ -288,6 +293,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		}
 	} else {
 		// This is a new record, we just tested for it above, remove empty string _id
+		UdnLogLevel(nil, log_debug, "Removing _id: %s: %v\n", collection_name, record)
 		delete(record, "_id")
 	}
 
@@ -308,13 +314,19 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	}
 
 	UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
-	//fmt.Printf("Dataman SET: Record: JSON: %v\n", JsonDump(record))
-	//fmt.Printf("Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
+	//UdnLogLevel(nil, log_trace, "Dataman SET: Record: JSON: %v\n", JsonDump(record))
+	UdnLogLevel(nil, log_trace, "Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
 
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
+
+	if result.ValidationError != "" {
+		UdnLogLevel(nil, log_error, "Dataman SET: Validation ERROR: %s\n", JsonDump(result.ValidationError))
+	}
+
+
 	//result_bytes, _ := json.Marshal(result)
-	//fmt.Printf("Dataman SET: %s\n", result_bytes)
+	//UdnLogLevel(nil, log_trace, "Dataman SET: %s\n", result_bytes)
 
 	if result.Error != "" {
 		UdnLogLevel(nil, log_error, "Dataman SET: ERROR: %v\n", result.Error)
@@ -323,11 +335,13 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	if result.Return != nil {
 		record := result.Return[0]
 		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+
 		UdnLogLevel(nil, log_trace, "Dataman SET: Result Record: JSON: %v\n", record)
 
 		return record
 	} else {
-		return nil
+		UdnLogLevel(nil, log_trace, "Dataman SET: Failed Result: nil: %v\n", result.ValidationError.(map[string]interface{}))
+		return result.ValidationError.(map[string]interface{})
 	}
 }
 

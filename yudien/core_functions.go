@@ -2542,7 +2542,7 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 	UdnLogLevel(udn_schema, log_trace, "Change: Submit: Input: %v\n", input_val)
 
 	// Make a submit map, and add in hierarchy deeper maps of:  DB -> table -> record PKEY -> fields -> values
-	//submit_map := make(map[string]interface{})
+	submit_map := make(map[string]interface{})
 
 	for key, value := range input_val {
 		parts := strings.Split(key, ".")
@@ -2552,11 +2552,58 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 		record_pkey := parts[2]
 		field := parts[3]
 
+		database_map := make(map[string]interface{})
+		table_map := make(map[string]interface{})
+		record_map := make(map[string]interface{})
+
+		if submit_map[database] == nil {
+			submit_map[database] = database_map
+		} else {
+			database_map = submit_map[database].(map[string]interface{})
+		}
+
+		if submit_map[database].(map[string]interface{})[table] == nil {
+			submit_map[database].(map[string]interface{})[table] = table_map
+		} else {
+			table_map = submit_map[database].(map[string]interface{})[table].(map[string]interface{})
+		}
+
+		if submit_map[database].(map[string]interface{})[table].(map[string]interface{})[record_pkey] == nil {
+			submit_map[database].(map[string]interface{})[table].(map[string]interface{})[record_pkey] = record_map
+		} else {
+			record_map = submit_map[database].(map[string]interface{})[table].(map[string]interface{})[record_pkey].(map[string]interface{})
+		}
+
+		record_map[field] = value
+
 		UdnLogLevel(nil, log_trace,"Change: Submit: DB: %s  Table: %s  Record: %s  Field: %s  =  %v\n", database, table, record_pkey, field, value)
 	}
 
+	UdnLogLevel(nil, log_trace,"Change: Submit: Collected: %s\n", JsonDump(submit_map))
+
+	// Submit the records, collect all the errors
+	result_map_array := make([]map[string]interface{}, 0)
+
+	for database, database_map := range submit_map {
+		for table, table_map := range database_map.(map[string]interface{}) {
+			for record, record_map := range table_map.(map[string]interface{}) {
+				UdnLogLevel(nil, log_trace,"Change: Submit: DB: %s  Table: %s  Record: %s  Map: %s\n", database, table, record, JsonDump(record_map))
+
+				option_map := make(map[string]interface{})
+				option_map["db"] = database
+
+				result_map := DatamanSet(table, record_map.(map[string]interface{}), option_map)
+
+				result_map_array = append(result_map_array, result_map)
+			}
+
+		}
+
+	}
+
+	// Return the error map:  Field Labels -> Error Message for User correction
 	result := UdnResult{}
-	result.Result = input_val
+	result.Result = result_map_array
 
 	return result
 }
