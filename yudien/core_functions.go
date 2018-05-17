@@ -1151,7 +1151,7 @@ func UDN_Execute(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 		udn_target = GetResult(args[0], type_string).(string)
 	}
 
-	UdnLogLevel(udn_schema, log_trace, "Execute: UDN String As Target: %v\n", udn_target)
+	//UdnLogLevel(udn_schema, log_trace, "Execute: UDN String As Target: %v\n", udn_target)
 
 	// Execute the Target against the input
 	result := UdnResult{}
@@ -1881,6 +1881,8 @@ func UDN_MapFilterArrayContains(db *sql.DB, udn_schema map[string]interface{}, u
 func UDN_MapFilterKey(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_map := GetResult(input, type_map).(map[string]interface{})
 
+	result := UdnResult{}
+
 	// Get the remapping information
 	filter_key_list := GetResult(args[0], type_array).([]interface{})
 	//options_map := make(map[string]interface{})
@@ -1889,6 +1891,12 @@ func UDN_MapFilterKey(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	//}
 
 	UdnLogLevel(udn_schema, log_trace, "Map Filter Key: %v in %d Record(s)\n", filter_key_list, len(input_map))
+
+	// If we have nothing to filter, then everything passes, skip it
+	if len(filter_key_list) == 0 {
+		result.Result = input_map
+		return result
+	}
 
 	found_value := false
 
@@ -1923,7 +1931,6 @@ func UDN_MapFilterKey(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 		UdnLogLevel(udn_schema, log_trace, "Map Filter Key: No Matches Found\n")
 	}
 
-	result := UdnResult{}
 	result.Result = result_map
 
 	return result
@@ -2546,9 +2553,15 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 
 	UdnLogLevel(udn_schema, log_trace, "Change: Submit: Input: %v\n", input_val)
 
+	// Submit the records, collect all the errors, which will be our result.Result
+	result := UdnResult{}
+	error_map := make(map[string]interface{})
+
 	// Make a submit map, and add in hierarchy deeper maps of:  DB -> table -> record PKEY -> fields -> values
 	submit_map := make(map[string]interface{})
 
+
+	// Compile the fields into records, which can be submitted
 	for key, value := range input_val {
 		parts := strings.Split(key, ".")
 
@@ -2584,15 +2597,64 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 		UdnLogLevel(nil, log_trace,"Change: Submit: DB: %s  Table: %s  Record: %s  Field: %s  =  %v\n", database, table, record_pkey, field, value)
 	}
 
-	UdnLogLevel(nil, log_trace,"Change: Submit: Collected: %s\n", JsonDump(submit_map))
+	//UdnLogLevel(nil, log_trace,"Change: Submit: Collected: %s\n", JsonDump(submit_map))
 
-	// Submit the records, collect all the errors
-	error_map := make(map[string]interface{})
 
+	// Check all our records for validation errors, and return early if they are any
 	for database, database_map := range submit_map {
 		for table, table_map := range database_map.(map[string]interface{}) {
-			for record, record_map := range table_map.(map[string]interface{}) {
-				UdnLogLevel(nil, log_trace,"Change: Submit: DB: %s  Table: %s  Record: %s  Map: %s\n", database, table, record, JsonDump(record_map))
+			options := make(map[string]interface{})
+
+			filter_map := make(map[string]interface{})
+			filter_map_array := make([]interface{}, 2)
+			filter_map_array[0] = "="
+			filter_map_array[1] = table
+			filter_map["name"] = filter_map_array
+
+			table_array := DatamanFilter("schema_table", filter_map, options)
+			table_data := table_array[0]
+
+			filter_map = make(map[string]interface{})
+			filter_map_array = make([]interface{}, 2)
+			filter_map_array[0] = "="
+			filter_map_array[1] = table_data["_id"]
+			filter_map["schema_table_id"] = filter_map_array
+
+			fields := DatamanFilter("schema_table_field", filter_map, options)
+
+			for record_pkey, record_map := range table_map.(map[string]interface{}) {
+				//UdnLogLevel(nil, log_trace, "Change: Submit: Validation: %s.%s.%s: %s\n", database, table, record_pkey, JsonDump(record_map))
+
+				for _, field_map := range fields {
+					field_name := field_map["name"].(string)
+
+					if _, ok := record_map.(map[string]interface{})[field_name]; ok {
+						//UdnLogLevel(nil, log_trace,"Change: Submit: Validate: DB: %s  Table: %s  Record: %s  Field: %s  =  %v\n", database, table, record_pkey, field_name, record_map.(map[string]interface{})[field_name])
+
+						error := ValidateField(database, table, record_pkey, field_name, record_map.(map[string]interface{})[field_name], field_map)
+
+						if error != "" {
+							field_key := fmt.Sprintf("%s.%s.%s.%s", database, table, record_pkey, field_name)
+
+							error_map[field_key] = error
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// If we found validation problems, return them now, so we dont submit something that fails our validation
+	if len(error_map) > 0 {
+		result.Result = error_map
+		return result
+	}
+
+	// Dataman Sets and Collect Validation Errors
+	for database, database_map := range submit_map {
+		for table, table_map := range database_map.(map[string]interface{}) {
+			for record_pkey, record_map := range table_map.(map[string]interface{}) {
+				UdnLogLevel(nil, log_trace,"Change: Submit: DB: %s  Table: %s  Record: %s  Map: %s\n", database, table, record_pkey, JsonDump(record_map))
 
 				option_map := make(map[string]interface{})
 				option_map["db"] = database
@@ -2602,21 +2664,17 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 				// If we have any errors, add them to the error_map
 				if result_map["_error"] != nil {
 					for field, error_value := range result_map["error"].(map[string]interface{}) {
-						field_label := fmt.Sprintf("%s.%s.%s.%s", database, table, record, field)
+						field_label := fmt.Sprintf("%s.%s.%s.%s", database, table, record_pkey, field)
 
 						error_map[field_label] = error_value
 					}
 				}
 			}
-
 		}
-
 	}
 
 	// Return the error map:  Field Labels -> Error Message for User correction
-	result := UdnResult{}
 	result.Result = error_map
-
 	return result
 }
 

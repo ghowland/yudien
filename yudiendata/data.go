@@ -1144,3 +1144,26 @@ func InitDatamanDatabase(database string, connect_string string, configfile stri
 
 	return datasource, &config, err
 }
+
+func ValidateField(database string, table string, record_pkey string, field_name string, value interface{}, field_map map[string]interface{}) string {
+	error := ""
+
+	UdnLogLevel(nil, log_trace, "Validation Field: %s.%s.%s.%s: %v\n", database, table, record_pkey, field_name, value)
+
+	// String
+	if field_map["argument_type_id"].(int64) == 2 {
+		value_str := GetResult(value, type_string).(string)
+
+		if field_map["length_minimum"] != nil && int64(len([]rune(value_str))) < field_map["length_minimum"].(int64) {
+			error = fmt.Sprintf("Must be longer than %d character(s)", field_map["length_minimum"])
+		}
+
+	}
+
+	if error != "" {
+		UdnLogLevel(nil, log_trace, "Validation Field: %s.%s.%s.%s: %v: ERROR: %s\n", database, table, record_pkey, field_name, value, error)
+	}
+
+	return error
+}
+
