@@ -841,6 +841,7 @@ func UDN_MapUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *Udn
 
 	input_map := GetResult(input, type_map).(map[string]interface{})
 	if len(args) > 0 {
+		UdnLogLevel(udn_schema, log_trace, "Map Update: args: %s\n", JsonDump(args))
 		input_map = GetResult(args[1], type_map).(map[string]interface{})
 	}
 
