@@ -18,6 +18,7 @@ import (
 	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
 	"time"
 	"github.com/jacksontj/dataman/src/datamantype"
+	"github.com/jacksontj/dataman/storagenode"
 )
 
 const (
@@ -716,7 +717,7 @@ NULL = Unknown, test for existence and update.  Assume it is desired to be creat
  */
 
 
-func DatamanEnsureDatabases(pgconnect string, database string, current_path string, new_path string) {
+func DatamanEnsureDatabases(pgconnect string, database string, current_path string, new_path interface{}) {
 
 	//TODO(g): Do multiple DBs in the future (schema), for now just limit it to opsdb, because thats all we need now
 	limited_database_search := "_default"
