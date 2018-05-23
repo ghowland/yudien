@@ -16,9 +16,7 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
-	"time"
 	"github.com/jacksontj/dataman/src/datamantype"
-	"github.com/jacksontj/dataman/storagenode"
 )
 
 const (
@@ -50,9 +48,14 @@ const ( // order matters for log levels
 )
 
 type DatabaseConfig struct {
-	ConnectOptions string `json:"connect_opts"`
+	Name string `json:"name"`
 	Database string `json:"database"`
 	Schema string `json:"schema"`
+	User string `json:"user"`
+	Password string `json:"password"`
+	Host string `json:"host"`
+	ConnectOptionsRaw string `json:"connect_opts"`
+	ConnectOptions string
 }
 
 var DefaultDatabase *DatabaseConfig
@@ -718,37 +721,45 @@ NULL = Unknown, test for existence and update.  Assume it is desired to be creat
  */
 
 
-func DatamanEnsureDatabases(pgconnect string, database string, current_path string, new_path interface{}) {
-
+func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}) {
 	//TODO(g): Do multiple DBs in the future (schema), for now just limit it to opsdb, because thats all we need now
-	limited_database_search := "_default"
+	//limited_database_search := "_default"
 
 
 	// Get the Hard coded OpsDB record from the database `schema` table
 	option_map := make(map[string]interface{})
 	filter_map := make(map[string]interface{})
-	filter_map["name"] = limited_database_search
+	filter_map["name"] = database_config.Name
 	schema_result := DatamanFilter("schema", filter_map, option_map)
 	schema_map := schema_result[0]
 
 	UdnLogLevel(nil, log_info, "Schema: %v\n\n", schema_map)
 
-	default_schema := DatasourceInstance["_default"].StoreSchema
+	default_schema := DatasourceInstance[database_config.Name].StoreSchema
 
 	//TODO(g): Remove when we have the Dataman capability to ALTER tables to set PKEYs
-	db, err := sql.Open("postgres", pgconnect)
+	UdnLogLevel(nil, log_info, "Direct Database Connect: %s\n\n", database_config.ConnectOptions)
+	db, err := sql.Open("postgres", database_config.ConnectOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
+	UdnLogLevel(nil, log_info, "Query Test: %v\n\n", Query(db, "SELECT * FROM schema"))
+
+	db_list := default_schema.ListDatabase(context.Background())
+	UdnLogLevel(nil, log_info, "Schema DB List: %s\n\n", JsonDump(db_list))
 
 
-	UdnLogLevel(nil, log_info, "\nList DB Start: %v\n\n", time.Now().String())
+
+	//UdnLogLevel(nil, log_info, "\nList DB Start: %v\n\n", time.Now().String())
 	//db_list := default_schema.ListDatabase(context.Background())
-	db_item := default_schema.GetDatabase(context.Background(), limited_database_search)
-	UdnLogLevel(nil, log_info, "\nList DB Stop: %v\n\n", time.Now().String())
+	//UdnLogLevel(nil, log_info, "\nList DB Stop: %v\n\n", time.Now().String())
 
+	UdnLogLevel(nil, log_info, "Get Database: %s (%s)\n\n", database_config.Name, database_config.Database)
+	db_item := default_schema.GetDatabase(context.Background(), database_config.Database)
+
+	UdnLogLevel(nil, log_info, "\n\nFound DB Item: %v\n\n", db_item)
 	UdnLogLevel(nil, log_info, "\n\nFound DB Item: %v\n\n", db_item.Name)
 
 	//shard_instance := default_schema.ListShardInstance(context.Background(), db_item.Name)
@@ -1090,56 +1101,62 @@ func SanitizeSQL(text string) string {
 	return text
 }
 
-func InitDataman(pgconnect string, database string, configfile string, databases map[string]DatabaseConfig) {
+func InitDataman(database_config DatabaseConfig, databases map[string]DatabaseConfig) {
+	configfile := database_config.Schema
 
-	datasource, config, err := InitDatamanDatabase(database, pgconnect, configfile)
+	datasource, config, err := InitDatamanDatabase(database_config)
 	if err != nil {
-		datasource, config, err = InitDatamanDatabase(database, pgconnect, "/etc/web6/schema.json")
-		if err != nil {
-			panic(fmt.Sprintf("Load schema configuration data: %s: %s", configfile, err.Error()))
-		}
+		panic(fmt.Sprintf("Load schema configuration data: %s: %s", configfile, err.Error()))
 	}
 
 	//TODO(g): Fix this, as this hardcodes everything to one.  Simple in the beginning, but maybe not useful now.  Maybe just the default?
-	DefaultDatabaseTarget = database
+	DefaultDatabaseTarget = database_config.Database
 
+	// Add this DB as the _default, because it is our default
 	DatasourceInstance["_default"] = datasource
 	DatasourceConfig["_default"] = config
-	DatasourceDatabase["_default"] = database
+	DatasourceDatabase["_default"] = database_config.Database
 
-	for database_name, database_data := range databases {
-		datasource, config, err = InitDatamanDatabase(database_data.Database, database_data.ConnectOptions, database_data.Schema)
+	// Also add this DB under it's own name, so that we can access it both ways
+	DatasourceInstance[database_config.Name] = datasource
+	DatasourceConfig[database_config.Name] = config
+	DatasourceDatabase[database_config.Name] = database_config.Database
+
+
+	// Initialize all our secondary databases
+	for _, database_data := range databases {
+		datasource, config, err = InitDatamanDatabase(database_config)
 
 		if err != nil {
 			panic(fmt.Sprintf("Load schema configuration data: %s: %s", database_data.Schema, err.Error()))
 		}
 
-		DatasourceInstance[database_name] = datasource
-		DatasourceConfig[database_name] = config
-		DatasourceDatabase[database_name] = database_data.Database
+		DatasourceInstance[database_data.Name] = datasource
+		DatasourceConfig[database_data.Name] = config
+		DatasourceDatabase[database_data.Name] = database_data.Database
 	}
 
 }
 
-func InitDatamanDatabase(database string, connect_string string, configfile string) (*storagenode.DatasourceInstance, *storagenode.DatasourceInstanceConfig, error) {
+func InitDatamanDatabase(database_config DatabaseConfig) (*storagenode.DatasourceInstance, *storagenode.DatasourceInstanceConfig, error) {
 	// Initialize the DefaultDatabase
 	config := storagenode.DatasourceInstanceConfig{
 		StorageNodeType: "postgres",
 		StorageConfig: map[string]interface{}{
-			"pg_string": connect_string,
+			"pg_string": database_config.ConnectOptions,
 		},
 	}
 
 	// This is the development location
-	schema_str, err := ioutil.ReadFile(configfile)
+	schema_str, err := ioutil.ReadFile(database_config.Schema)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Cannot read database config file: %s", configfile)
+		return nil, nil, fmt.Errorf("Cannot read database config file: %s", database_config.Schema)
 	}
 
 	var meta metadata.Meta
 	err = json.Unmarshal(schema_str, &meta)
 	if err != nil {
-		panic(fmt.Sprintf("Cannot parse JSON config data: %s: %s", configfile, err.Error()))
+		panic(fmt.Sprintf("Cannot parse JSON config data: %s: %s", database_config.Schema, err.Error()))
 	}
 
 	datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta)

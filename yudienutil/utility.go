@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"github.com/mitchellh/copystructure"
 	"reflect"
+	"text/template"
 )
 
 const (
@@ -712,4 +713,35 @@ func DeepCopy(v interface{}) interface{} {
         return v
     }
     return v_copy
+}
+
+func TemplateMap(template_map map[string]interface{}, text string) string {
+	new_template := NewTextTemplateMap()
+	new_template.Map = template_map
+
+	item_template := template.Must(template.New("text").Parse(text))
+
+	item := StringFile{}
+	err := item_template.Execute(&item, new_template)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	result := item.String
+
+	return result
+}
+
+func TemplateInterface(template_item interface{}, text string) string {
+	item_template := template.Must(template.New("text").Parse(text))
+
+	item := StringFile{}
+	err := item_template.Execute(&item, template_item)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	result := item.String
+
+	return result
 }
