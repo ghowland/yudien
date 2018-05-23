@@ -55,11 +55,11 @@ type DatabaseConfig struct {
 	Password string `json:"password"`
 	Host string `json:"host"`
 	ConnectOptionsRaw string `json:"connect_opts"`
-	ConnectOptions string
+	ConnectOptions string `json:"connect_opts_formatted"`
 }
 
 var DefaultDatabase *DatabaseConfig
-var AllDatabases = map[string]DatabaseConfig{}
+var AllDatabaseConfig = map[string]DatabaseConfig{}
 
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
@@ -738,14 +738,12 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 	default_schema := DatasourceInstance[database_config.Name].StoreSchema
 
 	//TODO(g): Remove when we have the Dataman capability to ALTER tables to set PKEYs
-	UdnLogLevel(nil, log_info, "Direct Database Connect: %s\n\n", database_config.ConnectOptions)
+	UdnLogLevel(nil, log_info, "Direct Database Connect: \"%s\"\n\n", database_config.ConnectOptions)
 	db, err := sql.Open("postgres", database_config.ConnectOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-
-	UdnLogLevel(nil, log_info, "Query Test: %v\n\n", Query(db, "SELECT * FROM schema"))
 
 	db_list := default_schema.ListDatabase(context.Background())
 	UdnLogLevel(nil, log_info, "Schema DB List: %s\n\n", JsonDump(db_list))
@@ -1116,11 +1114,13 @@ func InitDataman(database_config DatabaseConfig, databases map[string]DatabaseCo
 	DatasourceInstance["_default"] = datasource
 	DatasourceConfig["_default"] = config
 	DatasourceDatabase["_default"] = database_config.Database
+	AllDatabaseConfig["_default"] = database_config
 
 	// Also add this DB under it's own name, so that we can access it both ways
 	DatasourceInstance[database_config.Name] = datasource
 	DatasourceConfig[database_config.Name] = config
 	DatasourceDatabase[database_config.Name] = database_config.Database
+	AllDatabaseConfig[database_config.Name] = database_config
 
 
 	// Initialize all our secondary databases
@@ -1134,6 +1134,7 @@ func InitDataman(database_config DatabaseConfig, databases map[string]DatabaseCo
 		DatasourceInstance[database_data.Name] = datasource
 		DatasourceConfig[database_data.Name] = config
 		DatasourceDatabase[database_data.Name] = database_data.Database
+		AllDatabaseConfig[database_data.Name] = database_data
 	}
 
 }
