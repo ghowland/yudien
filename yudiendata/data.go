@@ -56,6 +56,7 @@ type DatabaseConfig struct {
 }
 
 var DefaultDatabase *DatabaseConfig
+var AllDatabases = map[string]DatabaseConfig{}
 
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
