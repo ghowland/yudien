@@ -268,10 +268,17 @@ func InitUdn() {
 		"__change_submit":    UDN_ChangeDataSubmit,    // This accepts dotted notation and figures out what records/fields are being effected.  Example:  {"opsdb.schema_table_field.1050.name":"_id"}
 		"__change_filter": UDN_DataFilter, // Dataman Filter
 		"__change_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
-		//"__change_delete":    UDN_DataDelete,    // Dataman Get
-		//"__change_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
+		//"__change_delete":    UDN_DataDelete,    // Dataman Delete
+		//"__change_delete_filter":    UDN_DataDeleteFilter,    // Dataman Delete Filter
 		//"__change_ensure_exists":    UDN_ChangeEnsureExists,    // Ensure that the specified data exists in the database.  Does not have Dataman equivalent functions, wrapper.
 		//"__change_ensure_not_exists":    UDN_ChangeEnsureNotExists,    // Ensure that the specified data DOES NOT exist in the database.  Does not have Dataman equivalent functions, wrapper.
+
+		"__safe_data_get":    UDN_SafeDataGet,    // Safe Dataman Get - Always connects to the correct database, and checks to ensure that
+		"__safe_data_filter": UDN_SafeDataFilter, // Safe Dataman Filter - Correct DB and added filter args guarantee restricted access
+		"__safe_data_filter_full": UDN_SafeDataFilterFull, // Safe Updated version of DatamanFilter that takes in JSON and allows multi-constraints
+		//"__safe_data_set":    UDN_SafeDataSet,    // Safe Dataman Set - Ensures this is the correct business before allowing the set
+		//"__safe_data_delete":    UDN_SafeDataDelete,    // Safe Dataman Delete
+		//"__safe_data_delete_filter":    UDN_SafeDataDeleteFilter,    // Safe Dataman Delete Filter
 
 
 		"__data_get":    UDN_DataGet,    // Dataman Get

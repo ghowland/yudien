@@ -2417,6 +2417,146 @@ func UDN_SetIndex(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnP
 	return result
 }
 
+func UDN_SafeDataGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Safe Data Get: %v\n", args)
+
+	result := UdnResult{}
+
+	safe_label := GetResult(args[0], type_string).(string)
+	record_id := GetResult(args[1], type_int).(int64)
+
+	options := make(map[string]interface{})
+	if len(args) > 2 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	// Get the safe label database and table name
+	//TODO(g): Cache this
+	safe_options := make(map[string]interface{})
+	safe_filter := make(map[string]interface{})
+	safe_filter["name"] = safe_label
+
+	safe_result := DatamanFilter("schema_query_safe", safe_filter, safe_options)
+	if len(safe_result) > 0 {
+		safe_record := safe_result[0]
+
+		schema_table := GetSchemaTable(safe_record["schema_table_id"].(int64))
+		schema := GetSchemaTable(schema_table["schema_id"].(int64))
+		datasource := GetSchemaTable(schema["datasource_id"].(int64))
+
+		// Ensure they are connecting to the same database, always
+		options["db"] = datasource["name"]
+
+		result_map := DatamanGet(schema_table["name"].(string), int(record_id), options)
+
+		//TODO(g):SECURITY: Enforce that this record contains the data_json filtering map
+
+		result.Result = result_map
+	} else {
+		result.Result = nil
+	}
+
+	return result
+}
+
+func UDN_SafeDataFilter(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Safe Data Get: %v\n", args)
+
+	result := UdnResult{}
+
+	safe_label := GetResult(args[0], type_string).(string)
+	filter_map := GetResult(args[1], type_map).(map[string]interface{})
+
+	options := make(map[string]interface{})
+	if len(args) > 2 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	// Get the safe label database and table name
+	//TODO(g): Cache this
+	safe_options := make(map[string]interface{})
+	safe_filter := make(map[string]interface{})
+	safe_filter["name"] = safe_label
+
+	safe_result := DatamanFilter("schema_query_safe", safe_filter, safe_options)
+	if len(safe_result) > 0 {
+		safe_record := safe_result[0]
+
+		schema_table := GetSchemaTable(safe_record["schema_table_id"].(int64))
+		schema := GetSchemaTable(schema_table["schema_id"].(int64))
+		datasource := GetSchemaTable(schema["datasource_id"].(int64))
+
+		// Ensure they are connecting to the same database, always
+		options["db"] = datasource["name"]
+
+		// Update the filter_map with the safe_record["data_json"]["filter"]
+		if safe_record["data_json"] != nil && safe_record["data_json"].(map[string]interface{})["filter"] != nil {
+			update_filter := safe_record["data_json"].(map[string]interface{})["filter"].(map[string]interface{})
+
+			for key, value := range update_filter {
+				filter_map[key] = value
+			}
+		}
+
+		result_map := DatamanFilter(schema_table["name"].(string), filter_map, options)
+
+		result.Result = result_map
+	} else {
+		result.Result = nil
+	}
+
+	return result
+}
+
+func UDN_SafeDataFilterFull(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Safe Data Get: %v\n", args)
+
+	result := UdnResult{}
+
+	safe_label := GetResult(args[0], type_string).(string)
+	filter := GetResult(args[1], type_array).([]interface{})
+
+	options := make(map[string]interface{})
+	if len(args) > 2 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	// Get the safe label database and table name
+	//TODO(g): Cache this
+	safe_options := make(map[string]interface{})
+	safe_filter := make(map[string]interface{})
+	safe_filter["name"] = safe_label
+
+	safe_result := DatamanFilter("schema_query_safe", safe_filter, safe_options)
+	if len(safe_result) > 0 {
+		safe_record := safe_result[0]
+
+		schema_table := GetSchemaTable(safe_record["schema_table_id"].(int64))
+		schema := GetSchemaTable(schema_table["schema_id"].(int64))
+		datasource := GetSchemaTable(schema["datasource_id"].(int64))
+
+		// Ensure they are connecting to the same database, always
+		options["db"] = datasource["name"]
+
+		// Update the filter_map with the safe_record["data_json"]["filter"]
+		if safe_record["data_json"] != nil && safe_record["data_json"].(map[string]interface{})["filter"] != nil {
+			update_filter := safe_record["data_json"].(map[string]interface{})["filter"].([]interface{})
+
+			for _, value := range update_filter {
+				filter = append(filter, value)
+			}
+		}
+
+		result_map := DatamanFilterFull(schema_table["name"].(string), filter, options)
+
+		result.Result = result_map
+	} else {
+		result.Result = nil
+	}
+
+	return result
+}
+
 func UDN_DataGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Data Get: %v\n", args)
 

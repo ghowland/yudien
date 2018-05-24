@@ -1205,3 +1205,42 @@ func ValidateField(database string, table string, record_pkey string, field_name
 	return error
 }
 
+
+
+func GetDatasource(record_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+
+	//TODO(g): Cache these
+	result_map := DatamanGet("datasource", int(record_id), options)
+
+	return result_map
+}
+
+func GetSchema(record_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+
+	//TODO(g): Cache these
+	result_map := DatamanGet("schema", int(record_id), options)
+
+	return result_map
+}
+
+func GetSchemaTable(record_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+
+	//TODO(g): Cache these
+	result_map := DatamanGet("schema_table", int(record_id), options)
+
+	return result_map
+}
+
+
+func GetSchemaTableField(record_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+
+	//TODO(g): Cache these
+	result_map := DatamanGet("schema_table_field", int(record_id), options)
+
+	return result_map
+}
+
