@@ -226,6 +226,11 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		delete(record, "_defaults")
 	}
 
+	// Delete the record label
+	if record["_record_label"] != nil {
+		delete(record, "_record_label")
+	}
+
 	// Fix data manually, for now
 	for k, v := range record {
 		if v == "true" {
@@ -722,6 +727,8 @@ NULL = Unknown, test for existence and update.  Assume it is desired to be creat
 
 
 func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}) {
+	UdnLogLevel(nil, log_info, "Dataman Ensure Database: Database Config: %v\n\n", database_config)
+
 	// Get the Hard coded OpsDB record from the database `schema` table
 	option_map := make(map[string]interface{})
 	filter_map := make(map[string]interface{})
@@ -730,6 +737,7 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 	schema_map := schema_result[0]
 
 	UdnLogLevel(nil, log_info, "Schema: %v\n\n", schema_map)
+
 
 	datasource := DatasourceInstance[database_config.Name].StoreSchema
 
@@ -741,7 +749,7 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 	}
 	defer db.Close()
 
-	// Make sure we see all the DBs in the Instance
+	//// Make sure we see all the DBs in the Instance
 	//db_list := datasource.ListDatabase(context.Background())
 	//UdnLogLevel(nil, log_info, "Schema DB List: %s\n\n", JsonDump(db_list))
 
@@ -821,6 +829,14 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 			UdnLogLevel(nil, log_info, "%s: Collection: MISSING: %s\n\n", db_item.Name, collection.Name)
 
 			missing_collection_array = append(missing_collection_array, collection.Name)
+
+			option_map := make(map[string]interface{})
+			record_map := make(map[string]interface{})
+			record_map["name"] = collection.Name
+			record_map["schema_id"] = schema_map["_id"]
+			record_map["data_json"] = JsonDump(collection)
+
+			DatamanSet("schema_table", record_map, option_map)
 		}
 	}
 
@@ -1126,7 +1142,7 @@ func InitDataman(database_config DatabaseConfig, databases map[string]DatabaseCo
 
 	// Initialize all our secondary databases
 	for _, database_data := range databases {
-		datasource, config, err = InitDatamanDatabase(database_config)
+		datasource, config, err = InitDatamanDatabase(database_data)
 
 		if err != nil {
 			panic(fmt.Sprintf("Load schema configuration data: %s: %s", database_data.Schema, err.Error()))
@@ -1139,6 +1155,7 @@ func InitDataman(database_config DatabaseConfig, databases map[string]DatabaseCo
 	}
 
 }
+
 
 func InitDatamanDatabase(database_config DatabaseConfig) (*storagenode.DatasourceInstance, *storagenode.DatasourceInstanceConfig, error) {
 	// Initialize the DefaultDatabase
