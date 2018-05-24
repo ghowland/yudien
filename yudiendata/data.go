@@ -722,10 +722,6 @@ NULL = Unknown, test for existence and update.  Assume it is desired to be creat
 
 
 func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}) {
-	//TODO(g): Do multiple DBs in the future (schema), for now just limit it to opsdb, because thats all we need now
-	//limited_database_search := "_default"
-
-
 	// Get the Hard coded OpsDB record from the database `schema` table
 	option_map := make(map[string]interface{})
 	filter_map := make(map[string]interface{})
@@ -735,7 +731,7 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 
 	UdnLogLevel(nil, log_info, "Schema: %v\n\n", schema_map)
 
-	default_schema := DatasourceInstance[database_config.Name].StoreSchema
+	datasource := DatasourceInstance[database_config.Name].StoreSchema
 
 	//TODO(g): Remove when we have the Dataman capability to ALTER tables to set PKEYs
 	UdnLogLevel(nil, log_info, "Direct Database Connect: \"%s\"\n\n", database_config.ConnectOptions)
@@ -745,34 +741,36 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 	}
 	defer db.Close()
 
-	db_list := default_schema.ListDatabase(context.Background())
-	UdnLogLevel(nil, log_info, "Schema DB List: %s\n\n", JsonDump(db_list))
+	// Make sure we see all the DBs in the Instance
+	//db_list := datasource.ListDatabase(context.Background())
+	//UdnLogLevel(nil, log_info, "Schema DB List: %s\n\n", JsonDump(db_list))
 
 
 
 	//UdnLogLevel(nil, log_info, "\nList DB Start: %v\n\n", time.Now().String())
-	//db_list := default_schema.ListDatabase(context.Background())
+	//db_list := datasource.ListDatabase(context.Background())
 	//UdnLogLevel(nil, log_info, "\nList DB Stop: %v\n\n", time.Now().String())
 
 	UdnLogLevel(nil, log_info, "Get Database: %s (%s)\n\n", database_config.Name, database_config.Database)
-	db_item := default_schema.GetDatabase(context.Background(), database_config.Database)
+	db_item := datasource.GetDatabase(context.Background(), database_config.Database)
 
-	UdnLogLevel(nil, log_info, "\n\nFound DB Item: %v\n\n", db_item)
 	UdnLogLevel(nil, log_info, "\n\nFound DB Item: %v\n\n", db_item.Name)
+	UdnLogLevel(nil, log_info, "\n\nFound DB Total: %v\n\n", JsonDump(db_item))
 
-	//shard_instance := default_schema.ListShardInstance(context.Background(), db_item.Name)
+	//shard_instance := datasource.ListShardInstance(context.Background(), db_item.Name)
 
 
 	//TODO(g): Make an empty list of the collections, so we can track what we have, to find missing ones
 	collection_array := make([]string, 0)
+	missing_collection_array := make([]string, 0)
 
 
 	//fmt.Printf("\n\nFound DB Shard Instance: %v -- %v\n\n", shard_instance, db_item.ShardInstances["public"])
 
-	//collections := default_schema.ListCollection(context.Background(), db_item.Name, "public")
+	//collections := datasource.ListCollection(context.Background(), db_item.Name, "public")
 
 	for _, collection := range db_item.ShardInstances["public"].Collections {
-		UdnLogLevel(nil, log_info, "\n\nFound DB Collections: %s\n", collection.Name)
+		UdnLogLevel(nil, log_info, "\n\n%s: Found DB Collections: %s\n", db_item.Name, collection.Name)
 
 		option_map := make(map[string]interface{})
 		filter_map := make(map[string]interface{})
@@ -783,7 +781,7 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 		collection_map := make(map[string]interface{})
 		if len(collection_result) > 0 {
 			collection_map = collection_result[0]
-			UdnLogLevel(nil, log_info, "OpsDB Collection: %v\n\n", collection_map)
+			UdnLogLevel(nil, log_info, "%s: Collection: %v\n\n", db_item.Name, collection_map)
 
 			// Add collection to our tracking array
 			collection_array = append(collection_array, collection.Name)
@@ -795,7 +793,7 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 			// Check: Index, Primary Index
 
 			for _, field := range collection.Fields {
-				UdnLogLevel(nil, log_info, "\n\nFound DB Collections: %s  Field: %s  Type: %s   (Default: %v -- Not Null: %v -- Relation: %v)\n", collection.Name, field.Name, field.FieldType.Name, field.Default, field.NotNull, field.Relation)
+				UdnLogLevel(nil, log_info, "\n\n%s: Found DB Collections: %s  Field: %s  Type: %s   (Default: %v -- Not Null: %v -- Relation: %v)\n", db_item.Name, collection.Name, field.Name, field.FieldType.Name, field.Default, field.NotNull, field.Relation)
 
 				// Check: Not Null, Relation, Default, Type
 
@@ -808,22 +806,25 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 				collection_field_map := make(map[string]interface{})
 				if len(collection_field_result) > 0 {
 					collection_field_map = collection_field_result[0]
-					UdnLogLevel(nil, log_info, "OpsDB Collection Field: %v\n\n", collection_field_map)
+					UdnLogLevel(nil, log_info, "%s: Collection Field: %v\n\n", db_item.Name, collection_field_map)
 
 					// Add collection to our tracking array
 					collection_field_array = append(collection_field_array, field.Name)
 
 
 				} else {
-					UdnLogLevel(nil, log_info, "OpsDB Collection Field: MISSING: %s\n\n", field.Name)
+					UdnLogLevel(nil, log_info, "%s: Collection Field: MISSING: %s\n\n", db_item.Name, field.Name)
 
 				}
 			}
 		} else {
-			UdnLogLevel(nil, log_info, "OpsDB Collection: MISSING: %s\n\n", collection.Name)
+			UdnLogLevel(nil, log_info, "%s: Collection: MISSING: %s\n\n", db_item.Name, collection.Name)
 
+			missing_collection_array = append(missing_collection_array, collection.Name)
 		}
 	}
+
+	UdnLogLevel(nil, log_info, "%s: Missing Collections: %v\n\n", db_item.Name, missing_collection_array)
 
 
 	// Loop over all collections and see if there are any we have in the `schema` table, that we dont have accounted for in the actual database
@@ -839,7 +840,7 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 
 	for _, collection_record := range all_collection_result {
 		if ok, _ := InArray(collection_record["name"].(string), collection_array) ; !ok {
-			UdnLogLevel(nil, log_info, "Not Found collection: %s\n\n", collection_record["name"])
+			UdnLogLevel(nil, log_info, "%s: Not Found collection: %s\n\n", db_item.Name, collection_record["name"])
 
 
 			new_collection := metadata.Collection{}
@@ -855,8 +856,8 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 
 
 			// Create the new collection
-			err := default_schema.AddCollection(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection)
-			UdnLogLevel(nil, log_info, "Add New Collection: %s: ERROR: %s\n\n", new_collection.Name, err)
+			err := datasource.AddCollection(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection)
+			UdnLogLevel(nil, log_info, "%s: Add New Collection: %s: ERROR: %s\n\n", db_item.Name, new_collection.Name, err)
 
 			for _, field_map := range all_collection_field_result {
 				// Create fields we need to populate this table
@@ -873,8 +874,8 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 				new_collection.Fields[new_field.Name] = &new_field
 
 				// Create the new collection field
-				err := default_schema.AddCollectionField(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_field)
-				UdnLogLevel(nil, log_info, "Add New Collection Field: %s: %s: ERROR: %s\n\n", new_collection.Name, new_field.Name, err)
+				err := datasource.AddCollectionField(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_field)
+				UdnLogLevel(nil, log_info, "%s: Add New Collection Field: %s: %s: ERROR: %s\n\n", db_item.Name, new_collection.Name, new_field.Name, err)
 
 				if field_map["is_primary_key"] == true {
 					new_index := metadata.CollectionIndex{}
@@ -887,14 +888,14 @@ func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}
 					new_index.Fields = append(new_index.Fields, new_field.Name)
 
 					// Create the new collection field index
-//					err := default_schema.AddCollectionIndex(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_index)
+//					err := datasource.AddCollectionIndex(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_index)
 
 					// Perform an ALTER table through SQL here, as dataman doesnt allow it
 					//TODO(g)...
 					//
 					sql := fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY (%s)", new_collection.Name, new_field.Name)
 					Query(db, sql)
-					UdnLogLevel(nil, log_info, "Add New Collection Field PKEY: %s: %s: ERROR: %s\n\n", new_collection.Name, new_index.Name, err)
+					UdnLogLevel(nil, log_info, "%s: Add New Collection Field PKEY: %s: %s: ERROR: %s\n\n", db_item.Name, new_collection.Name, new_index.Name, err)
 
 				}
 
