@@ -54,8 +54,8 @@ type DatabaseConfig struct {
 	User string `json:"user"`
 	Password string `json:"password"`
 	Host string `json:"host"`
-	ConnectOptionsRaw string `json:"connect_opts"`
-	ConnectOptions string `json:"connect_opts_formatted"`
+	ConnectOptionsTemplate string `json:"connect_template"`
+	ConnectOptions string `json:"connect_opts"`
 }
 
 var DefaultDatabase *DatabaseConfig
