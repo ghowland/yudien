@@ -1436,6 +1436,27 @@ func UDN_ArrayMapRemap(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	return result
 }
 
+func UDN_ArrayMapUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Get the remapping information
+	arg_0 := args[0]
+	update := GetResult(arg_0, type_map).(map[string]interface{})
+
+	input_map_array := GetResult(input, type_array).([]interface{})
+
+	UdnLogLevel(udn_schema, log_trace, "Array Map Update: %v\n", update)
+
+	for _, item := range input_map_array {
+		for key, value := range update {
+			item.(map[string]interface{})[key] = value
+		}
+	}
+
+	result := UdnResult{}
+	result.Result = input_map_array
+
+	return result
+}
+
 func UDN_ArrayMapFind(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// Get the remapping information
 	arg_0 := args[0]

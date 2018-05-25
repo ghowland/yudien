@@ -66,6 +66,7 @@
     1. [__array_index - Array Index](#__array_index)
     2. [__array_slice - Array Slice](#__array_slice)
     1. [__array_contains - Array Contains](#__array_contains)
+    3. [__array_map_update - Array Map Update](#__array_map_update)
     3. [__array_map_remap - Array Map Remap](#__array_map_remap)
     3. [__array_map_find - Array Map Find](#__array_map_find)
     3. [__array_map_find_update - Array Map Find Update - Depricated use __array_map_filter_update](#__array_map_find_update)
@@ -1976,6 +1977,35 @@ __input["Alice", "Bob"].__set.test.array.__input.["Bob"].__array_remove.test_arr
 
 ```
 0
+```
+
+**Side Effect:** None
+
+
+### __array_map_update ::: Array Map Update <a name="__array_map_update"></a>
+
+Takes an array of maps, overwrites all the update map key/values into the maps
+
+**Go:** UDN_ArrayMapRemap
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Map :: Key/Values to overwrite into incoming map
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10},{age=20}].__array_map_update.{color=1}
+```
+
+**Result:**
+
+```
+[{age=10,color=1},{age=20,color=1}]
 ```
 
 **Side Effect:** None

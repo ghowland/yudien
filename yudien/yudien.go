@@ -229,6 +229,7 @@ func InitUdn() {
 		"__array_append":    UDN_ArrayAppend, // Appends the input into the specified target location (args)
 		"__array_slice": 	 UDN_ArraySlice, // Slices an input array based on the start and end index
 		"__array_divide":    UDN_ArrayDivide,   // Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
+		"__array_map_update": UDN_ArrayMapUpdate, // Takes an array of maps, and overwrites all keys with the specified map
 		"__array_map_remap": UDN_ArrayMapRemap, // Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
 		"__array_remove":    UDN_ArrayRemove, // Removes the first instance of an element in an array.  Recquires exact match
 		"__array_index":     UDN_ArrayIndex, // Gets the index of the first instance of an element in an array.  Requires exact match
