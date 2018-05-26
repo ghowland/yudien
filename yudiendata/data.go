@@ -162,6 +162,8 @@ func AddJoinAsFlatNamespace(record map[string]interface{}, join_array []interfac
 			for field_name, value := range join_record {
 				field_key := fmt.Sprintf("%s.%s", join_name, field_name)
 				record[field_key] = value
+
+				//UdnLogLevel(nil, log_trace, "AddJoinAsFlatNamespace: %s: %v\n", field_key, value)
 			}
 		}
 	}

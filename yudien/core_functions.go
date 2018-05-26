@@ -1441,13 +1441,13 @@ func UDN_ArrayMapUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	arg_0 := args[0]
 	update := GetResult(arg_0, type_map).(map[string]interface{})
 
-	input_map_array := GetResult(input, type_array).([]interface{})
+	input_map_array := input.([]map[string]interface{})
 
 	UdnLogLevel(udn_schema, log_trace, "Array Map Update: %v\n", update)
 
 	for _, item := range input_map_array {
 		for key, value := range update {
-			item.(map[string]interface{})[key] = value
+			item[key] = value
 		}
 	}
 
@@ -2319,10 +2319,6 @@ func UDN_JsonEncode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 		input = args[0]
 	}
 
-	/*	var buffer bytes.Buffer
-		body, _ := json.MarshalIndent(input, "", "  ")
-		buffer.Write(body)
-	*/
 	result := UdnResult{}
 	result.Result = JsonDump(input)
 
@@ -2332,7 +2328,7 @@ func UDN_JsonEncode(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 }
 
 func UDN_JsonEncodeData(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	UdnLogLevel(udn_schema, log_trace, "JSON Encode: %v\n", args)
+	UdnLogLevel(udn_schema, log_trace, "JSON Encode Data: %v\n", args)
 
 	// Use the argument instead of input, if it exists
 	if len(args) != 0 {
