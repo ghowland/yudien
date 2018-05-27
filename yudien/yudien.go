@@ -219,6 +219,8 @@ func InitUdn() {
 		"__string_clear":  UDN_StringClear, // Initialize a string to empty string, so we can append to it again
 		"__string_replace":  UDN_StringReplace, // Initialize a string to empty string, so we can append to it again
 		"__concat":        UDN_StringConcat,
+		"__markdown_format": UDN_StringMarkdownFormat, // Format a string as HTML from markdown
+
 		"__input":         UDN_Input,          //TODO(g): This takes any input as the first arg, and then passes it along, so we can type in new input to go down the pipeline...
 		"__input_get":     UDN_InputGet,       // Gets information from the input, accessing it like __get
 		"__function":      UDN_StoredFunction, //TODO(g): This uses the udn_stored_function.name as the first argument, and then uses the current input to pass to the function, returning the final result of the function.		Uses the web_site.udn_stored_function_domain_id to determine the stored function
@@ -236,6 +238,7 @@ func InitUdn() {
 		"__array_contains":  UDN_ArrayContains, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
 		"__array_contains_any":  UDN_ArrayContainsAny, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
 		"__array_map_to_map":  UDN_ArrayMapToMap, // Map an array of maps into a single map, using one of the keys
+		"__array_map_to_series":  UDN_ArrayMapToSeries, // Map an array of maps into a single array, from one of the key.  Like a time series or other list of values.
 		"__array_map_template":  UDN_ArrayMapTemplate, // Update all map's key's values with a template statement from each map's key/values
 		"__array_map_key_set":  UDN_ArrayMapKeySet, // Update all map's with specified keys/values
 		"__array_map_find":  UDN_ArrayMapFind, // Finds a single map element, and returns the result in a map of {key=key,value=value}
@@ -263,6 +266,7 @@ func InitUdn() {
 		"__base64_decode": UDN_Base64Decode, // Decode base64
 		"__base64_encode": UDN_Base64Encode, // Encode base64
 
+
 		//TODO(g): Make these the new defaults, which use CM
 		"__change_get":    UDN_DataGet,    // Dataman Get
 		"__change_set":    UDN_DataSet,    // Dataman Set
@@ -288,6 +292,9 @@ func InitUdn() {
 		"__data_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
 		"__data_delete":    UDN_DataDelete,    // Dataman Get
 		"__data_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
+
+		"__time_series_get":    UDN_TimeSeriesGet,    // Time Series: Get
+		"__time_series_filter":    UDN_TimeSeriesFilter,    // Time Series: Filter
 
 		"__compare_equal":     UDN_CompareEqual,    // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
 		"__compare_not_equal": UDN_CompareNotEqual, // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...

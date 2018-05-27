@@ -51,6 +51,7 @@
     11. [__base64_decode - Base64 Decode](#__base64_decode)
     12. [__base64_encode - Base64 Encode](#__base64_encode)
     13. [__html_encode - HTML Encode](#__html_encode)
+    13. [__markdown_format - Markdown Format as HTML](#__markdown_format)
     14. [__num_to_string - Number to String](#__num_to_string)
 7. [Maps](#map)
     1. [__map_key_set - Map Key Set](#__map_key_set)
@@ -1515,6 +1516,32 @@ __input.'1 < 2'.__html_encode
 
 **Side Effect:** None
 
+### __markdown_format :: Markdown Format as HTML <a name="__markdown_format"></a>
+
+Converts text in Markdown format to HTML.
+
+**Go:** UDN_StringMarkdownFormat
+
+**Input:** String
+
+**Args:** None
+
+**Output:** String
+
+**Example:**
+
+```
+__input.'1 < 2'.__markdown_format
+```
+
+**Returns:**
+
+```
+1 &lt; 2
+```
+
+**Side Effect:** None
+
 
 ### __num_to_string ::: Number To String  <a name="__num_to_string"></a>
 
@@ -2265,6 +2292,36 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_template.label.'{{inde
 ### __array_map_to_map ::: Array Map Find <a name="__array_map_to_map"></a>
 
 Takes an array of maps, and returns a map where the key is the specified arg0 string key in all maps in the array
+
+**Go:** UDN_ArrayMapToMap
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. String :: Key to get from array maps, and key to set in result map
+  1. List of Maps (optional) :: Can be passed in as arg1 instead of input
+
+**Output:** Map
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_to_map.name
+```
+
+**Result:**
+
+```
+{Joe={age=10,name=Joe},Bob={age=20,name=Bob}}
+```
+
+**Side Effect:** None
+
+
+### __array_map_to_series ::: Array Map To Series <a name="__array_map_to_series"></a>
+
+Takes an array of maps, and returns an array, using only values from a single key.  Used for making time series or graph axes.
 
 **Go:** UDN_ArrayMapToMap
 

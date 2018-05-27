@@ -23,6 +23,7 @@ import (
 	"encoding/base64"
 	"github.com/google/go-cmp/cmp"
 	"math"
+	"gopkg.in/russross/blackfriday.v2"
 )
 
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -1016,6 +1017,27 @@ func UDN_StringConcat(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	// Input is a pass-through
 	result := UdnResult{}
 	result.Result = output
+
+	return result
+}
+
+
+func UDN_StringMarkdownFormat(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_string := GetResult(input, type_string).(string)
+
+	if len(args) > 0 {
+		input_string = GetResult(args[0], type_string).(string)
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "String Format Markdown: %s\n", input_string)
+
+	output := blackfriday.Run([]byte(input_string))
+
+	UdnLogLevel(udn_schema, log_trace, "String Format Markdown: Output: %s\n", output)
+
+	// Return the output
+	result := UdnResult{}
+	result.Result = string(output)
 
 	return result
 }
@@ -2040,6 +2062,30 @@ func UDN_ArrayMapToMap(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	result := UdnResult{}
 	result.Result = MapArrayToMap(input_value, map_key)
 
+	return result
+}
+
+
+func UDN_ArrayMapToSeries(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_value := input.([]map[string]interface{})
+
+	// Get the remapping information
+	map_key := GetResult(args[0], type_string).(string)
+
+	result_array := make([]interface{}, 0)
+
+	if len(args) > 1 {
+		input_value = GetResult(args[1], type_array).([]map[string]interface{})
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "Array Map To Series: %s in %d Record(s)\n", map_key, len(input_value))
+
+	for _, item := range input_value {
+		result_array = append(result_array, item[map_key])
+	}
+
+	result := UdnResult{}
+	result.Result = result_array
 
 	return result
 }
@@ -2570,6 +2616,54 @@ func UDN_SafeDataFilterFull(db *sql.DB, udn_schema map[string]interface{}, udn_s
 	} else {
 		result.Result = nil
 	}
+
+	return result
+}
+
+func UDN_TimeSeriesGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+
+	//TODO(g): Get based on time_store_item_id or the service_environment_namespace_metric data set
+
+	//TODO(g): Health Check = Alert
+
+	UdnLogLevel(udn_schema, log_trace, "Time Series Get: %v\n", args)
+
+	collection_name := GetResult(args[0], type_string).(string)
+	record_id := GetResult(args[1], type_int).(int64)
+
+	options := make(map[string]interface{})
+	if len(args) > 2 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	result_map := DatamanGet(collection_name, int(record_id), options)
+
+	result := UdnResult{}
+	result.Result = result_map
+
+	return result
+}
+
+func UDN_TimeSeriesFilter(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+
+	//TODO(g): Get based on time_store_item_id or the service_environment_namespace_metric data set
+
+	//TODO(g): Health Check = Alert
+
+	UdnLogLevel(udn_schema, log_trace, "Time Series Get: %v\n", args)
+
+	collection_name := GetResult(args[0], type_string).(string)
+	record_id := GetResult(args[1], type_int).(int64)
+
+	options := make(map[string]interface{})
+	if len(args) > 2 {
+		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	result_map := DatamanGet(collection_name, int(record_id), options)
+
+	result := UdnResult{}
+	result.Result = result_map
 
 	return result
 }
