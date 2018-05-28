@@ -85,6 +85,7 @@
     3. [__get_local_time - Get Local Time](#__get_local_time)
     4. [__time_to_epoch - Convert Time to Unix Time in Seconds](#__time_to_epoch)
     5. [__time_to_epoch_ms - Convert Time to Unix Time in Milliseconds](#__time_to_epoch_ms)
+    5. [__time - Time Object](#__time)
 10. [Math](#math)
     1. [__math - Math functions](#__math)
 11. [Rendering](#rendering)
@@ -2557,6 +2558,37 @@ __input.'2018-01-01 00:00:00'.__string_to_time.__time_to_epoch
 
 **Side Effect:** None
 
+
+### __time ::: Time Object <a name="__time"></a>
+
+Returns a time.Time object, default is Now.  All arguments are optional, and modify the time in a positive or negative way
+
+**Go:** UDN_Time
+
+**Input:** None
+
+**Args:**
+
+  0. int (optional) :: Year - Modifies year from current time.  Uses AddDate
+  1. int (optional) :: Month - Modifies month from current time.  Uses AddDate
+  2. int (optional) :: Day - Modifies day from current time.  Uses AddDate
+  2. string (optional) :: Duration - Modifies ns/ms/s/h from current time.  Uses ParseDuration
+
+**Output:** time.Time object
+
+**Example:**
+
+```
+__input.'2018-01-01 00:00:00'.__string_to_time.__time_to_epoch
+```
+
+**Result:**
+
+```
+1514764800000
+```
+
+**Side Effect:** None
 
 ## Math <a name="math"></a>
 
