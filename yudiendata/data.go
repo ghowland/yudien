@@ -408,7 +408,12 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 
 	// Add all the joined fields as a flat namespace to the original table
 	for _, record := range result.Return {
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+		field_id := "_id"
+		if record[field_id] == nil {
+			field_id = "id"
+		}
+
+		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record[field_id].(int64)))
 		if options["join"] != nil {
 			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
 		}

@@ -2072,6 +2072,8 @@ func UDN_ArrayMapToSeries(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 	// Get the remapping information
 	map_key := GetResult(args[0], type_string).(string)
 
+	map_key_parts := strings.Split(map_key, ".")
+
 	result_array := make([]interface{}, 0)
 
 	if len(args) > 1 {
@@ -2081,7 +2083,17 @@ func UDN_ArrayMapToSeries(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 	UdnLogLevel(udn_schema, log_trace, "Array Map To Series: %s in %d Record(s)\n", map_key, len(input_value))
 
 	for _, item := range input_value {
-		result_array = append(result_array, item[map_key])
+		var item_value interface{}
+
+		item_value = item
+
+		for _, part := range map_key_parts {
+			//UdnLogLevel(udn_schema, log_trace, "Array Map To Series: Step In: %d: %s: %v\n", index, part, SnippetData(item_value, 300))
+
+			item_value = item_value.(map[string]interface{})[part]
+		}
+
+		result_array = append(result_array, item_value)
 	}
 
 	result := UdnResult{}
@@ -3672,6 +3684,50 @@ func UDN_IsNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 
 	result := UdnResult{}
 	result.Result = value
+
+	return result
+}
+
+
+func UDN_Time(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+
+	result_time := time.Now()
+
+	year := 0
+	month := 0
+	day := 0
+	duration_string := "0s"
+
+	if len(args) > 0 {
+		year = int(GetResult(args[0], type_int).(int64))
+	}
+
+	if len(args) > 1 {
+		month = int(GetResult(args[1], type_int).(int64))
+	}
+
+	if len(args) > 2 {
+		day = int(GetResult(args[2], type_int).(int64))
+	}
+
+	if len(args) > 3 {
+		duration_string = GetResult(args[3], type_string).(string)
+	}
+
+
+	UdnLogLevel(udn_schema, log_trace, "Time: %v: %d %d %d %s\n", result_time, year, month, day, duration_string)
+
+	result_time = result_time.AddDate(year, month, day)
+
+	duration, err := time.ParseDuration(duration_string)
+	if err == nil {
+		result_time = result_time.Add(duration)
+	} else {
+		UdnLogLevel(udn_schema, log_trace, "Time: Error parsing duration: %s: %v\n", duration_string, err)
+	}
+
+	result := UdnResult{}
+	result.Result = result_time
 
 	return result
 }
