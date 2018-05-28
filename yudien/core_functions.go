@@ -3316,8 +3316,11 @@ func UDN_Iterate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	// If we have something to iterate over
 	if len(input_array) > 0 {
 		// Loop over the items in the input
-		for _, item := range input_array {
+		for item_index, item := range input_array {
 			UdnLogLevel(udn_schema, log_trace, "\n====== Iterate Loop Start: [%s]  Input: %v\n\n", udn_start.Id, SnippetData(item, 300))
+
+			// Set the iterate index, so we can track it
+			udn_data["_iterate_index"] = item_index
 
 			// Get the input
 			current_input := item
