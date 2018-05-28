@@ -141,50 +141,6 @@ func GetResult(input interface{}, type_value int) interface{} {
 			} else {
 				return fmt.Sprintf("%v", input)
 			}
-
-			/*
-			// If this is already an array, return it as-is
-			if strings.HasPrefix(type_str, "[]string") {
-				concat := ""
-				for _, arr_value := range input.([]string) {
-					concat += arr_value
-				}
-				return concat
-
-			} else if strings.HasPrefix(type_str, "[]") {
-				fmt.Printf("GetResult: Will attempt to coerce to string from []: %s\n", SnippetData(input, 60))
-				concat := ""
-				all_strings := true
-				not_strings := make([]interface{}, 0)
-
-				// If all these are strings, just concatenate them
-				for _, arr_value := range input.([]interface{}) {
-					switch arr_value.(type) {
-					case string:
-						concat += arr_value.(string)
-					default:
-						all_strings = false
-						fmt.Printf("GetResult: Coerce failure.  Array element is not a string: %s\n", SnippetData(arr_value, 60))
-						not_strings = AppendArray(not_strings, SnippetData(arr_value, 30))
-					}
-				}
-
-				if all_strings {
-					fmt.Printf("GetResult: Concatenated array to string\n")
-					return concat
-				} else {
-					fmt.Printf("GetResult: Array cannot be coerced into a string:  Not all elements are strings: %v\n", not_strings)
-
-					json_output, _ := json.MarshalIndent(input, "", "  ")
-					return string(json_output)
-				}
-			} else {
-				return fmt.Sprintf("%v", input)
-			}
-
-			//NOTE(g): Use type_string_force if you want to coerce this into a string, because this destroys too much data I think.  Testing this as 2 things anyways, easy to fold back into 1 if it doesnt work out.
-			return input
-			*/
 		}
 	case type_map:
 		//fmt.Printf("GetResult: Map: %s\n", type_str)

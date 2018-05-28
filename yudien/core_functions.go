@@ -601,20 +601,6 @@ func UDN_StringTemplateFromValueShort(db *sql.DB, udn_schema map[string]interfac
 
 	actual_input = GetResult(actual_input, type_map)
 
-	/*
-		// If this is an array, convert it to a string, so it is a concatenated string, and then can be properly turned into a map.
-		if actual_input != nil {
-			if strings.HasPrefix(fmt.Sprintf("%T", actual_input), "[]") {
-				UdnLogLevel(udn_schema, log_trace, "Short Template: Converting from array to string: %s\n", SnippetData(actual_input, 60))
-				actual_input = GetResult(actual_input, type_string)
-			} else {
-				UdnLogLevel(udn_schema, log_trace, "Short Template: Input is not an array: %s\n", SnippetData(actual_input, 60))
-				//UdnLogLevel(udn_schema, log_trace, "String Template: Input is not an array: %s\n", actual_input)
-			}
-		} else {
-			UdnLogLevel(udn_schema, log_trace, "Short Template: Input is nil\n")
-		}*/
-
 	template_str := GetResult(args[0], type_string).(string)
 
 	//UdnLogLevel(udn_schema, log_trace, "Short Template From Value: Template String: %s Template Input: %v\n\n", SnippetData(actual_input, 60), SnippetData(template_str, 60))
@@ -655,12 +641,6 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 	UdnLogLevel(udn_schema, log_trace, "String Template From Value: Template Input: Post Conversion Input: %v\n\n", SnippetData(actual_input, 600))
 
 	template_str := GetResult(args[0], type_string).(string)
-
-
-	//TODO(g):REMOVE: Debugging problem, remove when fixed, as it should be a no-op (and problem if left in)
-	//template_str = strings.Replace(template_str, "{{", "<<<", -1)
-	//template_str = strings.Replace(template_str, "}}", ">>>", -1)
-	//template_str = strings.Replace(template_str, "\\", "\\\\", -1)
 	template_str = strings.Replace(template_str, "\\", "", -1)
 
 	UdnLogLevel(udn_schema, log_trace, "String Template From Value: Template Input: %s Template String: %v\n\n", SnippetData(actual_input, 60), SnippetData(template_str, 600))
@@ -671,7 +651,6 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 	input_template := NewTextTemplateMap()
 	input_template.Map = GetResult(actual_input, type_map).(map[string]interface{})
 
-	//item_template := template.Must(template.New("text").Delims("<<<", ">>>").Parse(template_str))
 	item_template := template.Must(template.New("text").Parse(template_str))
 
 	item := StringFile{}
