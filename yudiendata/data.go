@@ -257,6 +257,13 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 				}
 			}
 		}
+
+		// If we have any different trimming the key, then trim and remove the old one.  Spaces are not allowed
+		trimmed_key := strings.TrimSpace(k)
+		if k != trimmed_key {
+			record[trimmed_key] = record[k]
+			delete(record, k)
+		}
 	}
 
 	// Fixup the record, if its not a new one, by getti
@@ -376,7 +383,6 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 			filter[k] = []string{"=", fmt.Sprintf("%d", v)}
 		}
 	}
-
 
 	filter_map := map[string]interface{} {
 		"db":             datasource_database,
