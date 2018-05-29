@@ -12,6 +12,7 @@
     9. [__decrement - Decrement Value](#__decrement)
     9. [__true - True](#__true)
     9. [__false - False](#__false)
+    9. [__length - Length or Size](#__length)
 2. [Database](#database)
     1. [__data_get - Dataman Get](#__data_get)
     2. [__data_set - Dataman Set](#__data_set)
@@ -522,6 +523,35 @@ false
 **Side Effect:** None
 
 **Related Functions:** [__true](#__true)
+
+
+### __length ::: Length or Size of input <a name="__length"></a>
+
+ Returns the length or size of the input.  Only valid for arrays, maps and strings.  Otherwise returns 1.
+
+**Go:** UDN_False
+
+**Input:** array/map/string
+
+**Args:**
+
+  0. array/map/string (optional) - Overrides the input, so this is counted for length instead
+
+**Output:** int - Length or size of the countable input
+
+**Example:**
+
+```
+__input.1234.__length
+```
+
+**Result:**
+
+```
+4
+```
+
+**Side Effect:** None
 
 
 ## Database  <a name="database"></a>

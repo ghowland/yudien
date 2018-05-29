@@ -3281,6 +3281,37 @@ func UDN_SetTemp(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
+func UDN_Length(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Length: %v\n", SnippetData(input, 80))
+
+	input_val := input
+
+	if len(args) > 0 {
+		input_val = args[0]
+	}
+
+	// By default, things are 1 in size, but if they are countable, we can change that
+	result_len := 1
+
+	switch input_val.(type) {
+	case []interface{}:
+		result_len = len(input_val.([]interface{}))
+		break
+	case map[string]interface{}:
+		result_len = len(input_val.(map[string]interface{}))
+		break
+	case string:
+		result_len = len(input_val.(string))
+		break
+	}
+
+	// result is passed through
+	result := UdnResult{}
+	result.Result = result_len
+
+	return result
+}
+
 func UDN_SetHttpResponseCode(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Set HTTP code: %v\n", SnippetData(args, 80))
 
