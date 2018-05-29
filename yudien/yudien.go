@@ -212,6 +212,8 @@ func InitUdn() {
 		"__true":          UDN_True,
 		"__false":          UDN_False,
 
+		"__length":          UDN_Length,
+
 		//TODO(g): DEPRICATE.  Longer name, same function.
 		"__template_string": UDN_StringTemplateFromValue, // Templates the string passed in as arg_0
 

@@ -3297,6 +3297,9 @@ func UDN_Length(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPar
 	case []interface{}:
 		result_len = len(input_val.([]interface{}))
 		break
+	case []map[string]interface{}:
+		result_len = len(input_val.([]map[string]interface{}))
+		break
 	case map[string]interface{}:
 		result_len = len(input_val.(map[string]interface{}))
 		break
