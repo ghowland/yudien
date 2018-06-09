@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-
 	. "github.com/ghowland/yudien/yudiencore"
 	. "github.com/ghowland/yudien/yudiendata"
 	. "github.com/ghowland/yudien/yudienutil"
@@ -355,6 +354,7 @@ func InitUdn() {
 		//"__continue": UDN_IterateContinue,		// Skip to next iteration
 		// -- Dont think I need this -- //"__break": UDN_IterateBreak,				//TODO(g): Break this iteration, we are done.  Is this needed?  Im not sure its needed, and it might suck
 
+		"__custom_populate_schedule_duty_responsibility": UDN_Customer_PopulateScheduleDutyResponsibility,   			// CUSTOM: Populate Schedule for Duty Responsibilities
 	}
 
 	PartTypeName = map[int]string{
