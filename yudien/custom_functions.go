@@ -110,8 +110,8 @@ func EvaluateShiftTimes(shifts []map[string]interface{}, start_time time.Time) {
 */
 
 	for _, shift := range shifts {
-		shift_start := GetShiftTimeStart(start_time, shift, shifts)
-		UdnLogLevel(nil, log_debug, "Evaluate Shift Times: %s: %v\n", shift["name"], shift_start)
+		shift_start, shift_end := GetShiftTimeStartEnd(start_time, shift, shifts)
+		UdnLogLevel(nil, log_debug, "Evaluate Shift Times: %s: %v -> %v\n", shift["name"], shift_start, shift_end)
 
 		/*
 		//shift_start := start_time.AddDate(0, 0, 0 - start_day_of_week + int(shift["start_day_of_week"].(int64)) )
@@ -140,9 +140,9 @@ func EvaluateShiftTimes(shifts []map[string]interface{}, start_time time.Time) {
 	}
 }
 
-func GetShiftTimeStart(start_time time.Time, shift map[string]interface{}, shifts []map[string]interface{}) time.Time {
-	start_day_of_week := int(start_time.Weekday())
-	shift_start := start_time.AddDate(0, 0, 0 - start_day_of_week)
+func GetShiftTimeStartEnd(start_time time.Time, shift map[string]interface{}, shifts []map[string]interface{}) (time.Time, time.Time) {
+	// Find the shift start
+	shift_start := start_time.AddDate(0, 0, int(shift["start_day_of_week"].(int64)) - int(start_time.Weekday()))
 
 	start_hour, start_minute, start_second := shift_start.Clock()
 	start_hour_duration := GetTimeOfDayDuration(start_hour, start_minute, start_second)
@@ -152,7 +152,9 @@ func GetShiftTimeStart(start_time time.Time, shift map[string]interface{}, shift
 	time_seconds_duration := GetTimeOfDayDuration(hour, minute, second)
 	shift_start_zero := shift_start_zero_day.Add(time_seconds_duration)
 
-	return shift_start_zero
+	shift_end := shift_start_zero.Add(time.Duration(shift["duration"].(int64)) * time.Second)
+
+	return shift_start_zero, shift_end
 }
 
 func GetTimeOfDayFromString(time_of_day string) (int, int, int) {
@@ -167,7 +169,7 @@ func GetTimeOfDayFromString(time_of_day string) (int, int, int) {
 
 func GetTimeOfDayDuration(hour int, minute int, second int) time.Duration {
 	time_seconds := hour * 60 * 60 + minute * 60 + second
-	time_seconds_duration := time.Duration(time_seconds * 1000000000)
+	time_seconds_duration := time.Duration(time_seconds) * time.Second
 
 	return time_seconds_duration
 }
