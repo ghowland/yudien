@@ -7,6 +7,7 @@ import (
 	. "github.com/ghowland/yudien/yudienutil"
 	"time"
 	"strings"
+	"strconv"
 )
 
 func UDN_Customer_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -48,7 +49,7 @@ func UDN_Customer_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[
 	// Get the Roster Users ordered by priority
 	options["sort"] = []string{"priority"}
 	filter := map[string]interface{}{
-		"duty_roster_id": []interface{}{2, "=", roster["_id"]},
+		"duty_roster_id": []interface{}{"=", roster["_id"]},
 	}
 	roster_users := DatamanFilter("duty_roster_business_user", filter, options)
 	if len(roster_users) == 0 {
@@ -60,7 +61,7 @@ func UDN_Customer_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[
 	// Get the Duty Responsbility Shifts
 	options["sort"] = nil
 	filter = map[string]interface{}{
-		"duty_responsibility_id": []interface{}{2, "=", responsibility["_id"]},
+		"duty_responsibility_id": []interface{}{"=", responsibility["_id"]},
 	}
 	shifts := DatamanFilter("duty_responsibility_shift", filter, options)
 	if responsibility["_error"] != nil {
@@ -80,16 +81,93 @@ func UDN_Customer_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[
 	// Get the Schedule Timeline Items
 	options["sort"] = []string{"time_start"}
 	filter = map[string]interface{}{
-		"schedule_timeline_id": []interface{}{2, "=", responsibility["schedule_timeline_id"]},
+		"schedule_timeline_id": []interface{}{"=", responsibility["schedule_timeline_id"]},
 	}
 	timeline_items := DatamanFilter("schedule_timeline_item", filter, options)
-	if len(timeline_items) == 0 {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Schedule Timeline Items: %d\n", len(timeline_items))
-		return result
-	}
 	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Schedule Timeline Items: %v\n", timeline_items)
+
+
+	EvaluateShiftTimes(shifts, start_time)
+
 
 	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Result: %v\n", result.Result)
 
 	return result
+}
+
+func EvaluateShiftTimes(shifts []map[string]interface{}, start_time time.Time) {
+	UdnLogLevel(nil, log_debug, "Evaluate Shift Times: %v\n", shifts)
+/*
+	UdnLogLevel(nil, log_debug, "Evaluate Shift Times: Start Weekday: %v\n", start_time.Weekday())
+
+	year, month, day := start_time.Date()
+
+	UdnLogLevel(nil, log_debug, "Evaluate Shift Times: Start Weekday: %v %v %v\n", year, month, day)
+
+	start_day_of_week := int(start_time.Weekday())
+
+	UdnLogLevel(nil, log_debug, "Evaluate Shift Times: Start Weekday: %v\n", start_day_of_week)
+*/
+
+	for _, shift := range shifts {
+		shift_start := GetShiftTimeStart(start_time, shift, shifts)
+		UdnLogLevel(nil, log_debug, "Evaluate Shift Times: %s: %v\n", shift["name"], shift_start)
+
+		/*
+		//shift_start := start_time.AddDate(0, 0, 0 - start_day_of_week + int(shift["start_day_of_week"].(int64)) )
+		shift_start := start_time.AddDate(0, 0, 0 - start_day_of_week)
+		UdnLogLevel(nil, log_debug, "Evaluate Shift Times: Shift Start: %v\n", shift_start)
+
+		start_hour, start_minute, start_second := shift_start.Clock()
+		start_hour_duration := GetTimeOfDayDuration(start_hour, start_minute, start_second)
+
+		shift_start_zero := shift_start.Add(-start_hour_duration)
+
+		UdnLogLevel(nil, log_debug, "Evaluate Shift Times: Shift Start Zero: %v\n", shift_start_zero)
+
+		UdnLogLevel(nil, log_debug, "Evaluate Shift Times: Clock: %d %d %d\n", start_hour, start_minute, start_second)
+
+		hour, minute, second := GetTimeOfDayFromString(shift["start_time_of_day"].(string))
+		time_seconds_duration := GetTimeOfDayDuration(hour, minute, second)
+
+		UdnLogLevel(nil, log_debug, "Evaluate Shift Times: Duration: %v\n", time_seconds_duration)
+
+		shirt_start_added := shift_start_zero.Add(time_seconds_duration)
+
+		//UdnLogLevel(udn_schema, log_debug, "Evaluate Shift Times:: %s: %d: %v: %v\n", shift["name"], shift["start_day_of_week"], shift_start_zero, shirt_start_added)
+		UdnLogLevel(nil, log_debug, "Evaluate Shift Times: %s: %d: %v\n", shift["name"], shift["start_day_of_week"], shirt_start_added)
+*/
+	}
+}
+
+func GetShiftTimeStart(start_time time.Time, shift map[string]interface{}, shifts []map[string]interface{}) time.Time {
+	start_day_of_week := int(start_time.Weekday())
+	shift_start := start_time.AddDate(0, 0, 0 - start_day_of_week)
+
+	start_hour, start_minute, start_second := shift_start.Clock()
+	start_hour_duration := GetTimeOfDayDuration(start_hour, start_minute, start_second)
+	shift_start_zero_day := shift_start.Add(-start_hour_duration)
+
+	hour, minute, second := GetTimeOfDayFromString(shift["start_time_of_day"].(string))
+	time_seconds_duration := GetTimeOfDayDuration(hour, minute, second)
+	shift_start_zero := shift_start_zero_day.Add(time_seconds_duration)
+
+	return shift_start_zero
+}
+
+func GetTimeOfDayFromString(time_of_day string) (int, int, int) {
+	time_parts := strings.Split(time_of_day, ":")
+
+	hour, _ := strconv.ParseInt(time_parts[0], 10, 64)
+	minute, _ := strconv.ParseInt(time_parts[1], 10, 64)
+	second, _ := strconv.ParseInt(time_parts[2], 10, 64)
+
+	return int(hour), int(minute), int(second)
+}
+
+func GetTimeOfDayDuration(hour int, minute int, second int) time.Duration {
+	time_seconds := hour * 60 * 60 + minute * 60 + second
+	time_seconds_duration := time.Duration(time_seconds * 1000000000)
+
+	return time_seconds_duration
 }
