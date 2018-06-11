@@ -311,9 +311,11 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 			}
 		}
 	} else {
-		// This is a new record, we just tested for it above, remove empty string _id
-		UdnLogLevel(nil, log_debug, "Removing _id: %s: %v\n", collection_name, record)
-		delete(record, "_id")
+		// This is a new record, we just tested for it above, remove empty string _id, if it exists
+		if _, ok := record["_id"]; ok {
+			UdnLogLevel(nil, log_debug, "Removing _id: %s: %v\n", collection_name, record)
+			delete(record, "_id")
+		}
 	}
 
 	// Remove fields I know I put in here, that I dont want to go in
@@ -339,7 +341,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
 
-	if result.ValidationError != "" {
+	if result.ValidationError != nil {
 		UdnLogLevel(nil, log_error, "Dataman SET: Validation ERROR: %s\n", JsonDump(result.ValidationError))
 	}
 
