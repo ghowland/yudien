@@ -1370,6 +1370,34 @@ func UDN_ArrayAppend(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	return result
 }
 
+func UDN_ArrayAppendArray(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	//UdnLogLevel(udn_schema, log_trace, "Array Append: %v\n", args)
+
+	// Get whatever we have stored at that location
+	array_value_potential := MapGet(args, udn_data)
+
+	// Force it into an array
+	array_value := GetResult(array_value_potential, type_array).([]interface{})
+
+	input_array := GetResult(input, type_array).([]interface{})
+
+	// Append the input into our array
+	for _, item := range input_array {
+		array_value = AppendArray(array_value, item)
+	}
+
+	// Save the result back into udn_data
+	MapSet(args, array_value, udn_data)
+
+	// Return the array
+	result := UdnResult{}
+	result.Result = array_value
+
+	UdnLogLevel(nil, log_trace, "Array Append: Final: %v: %s\n", args, JsonDump(array_value))
+
+	return result
+}
+
 func UDN_ArrayDivide(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	divisor, err := strconv.Atoi(args[0].(string))
 

@@ -232,6 +232,7 @@ func InitUdn() {
 		"__html_encode":     UDN_HtmlEncode, // Encode HTML symbols so they are not taken as literal HTML
 
 		"__array_append":    UDN_ArrayAppend, // Appends the input into the specified target location (args)
+		"__array_append_array":    UDN_ArrayAppendArray, // Appends an array (input) into the specified location, like __array_append
 		"__array_slice": 	 UDN_ArraySlice, // Slices an input array based on the start and end index
 		"__array_divide":    UDN_ArrayDivide,   // Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
 		"__array_map_update": UDN_ArrayMapUpdate, // Takes an array of maps, and overwrites all keys with the specified map

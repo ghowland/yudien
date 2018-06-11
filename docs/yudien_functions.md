@@ -1867,6 +1867,35 @@ __input.4.__array_append.test
 
 **Side Effect:** None
 
+### __array_append_array ::: Array Append Array <a name="__array_append_array"></a>
+
+Appends the input (array) into the specified target location (args)
+
+**Go:** UDN_ArrayAppend
+
+**Input:** Array of items
+
+**Args:**
+
+  0. Any :: Target array name
+
+**Output:** Array
+
+**Example:**
+
+```
+__input.[1,2,3].__set.test
+__input.[4,5,6].__array_append.test
+```
+
+**Result:**
+
+```
+[1,2,3,4,5,6]
+```
+
+**Side Effect:** None
+
 
 ### __array_remove ::: Array Remove <a name="__array_remove"></a>
 
