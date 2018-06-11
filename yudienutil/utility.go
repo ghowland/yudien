@@ -586,6 +586,22 @@ func MapKeysToUdnMap(data map[string]interface{}) string {
 	return udn_final
 }
 
+
+func MapArrayFind(map_array []map[string]interface{}, key string, value interface{}) map[string]interface{} {
+	var return_item map[string]interface{}
+
+	for _, item := range map_array {
+		//UdnLogLevel(nil, log_trace, "Map Array Find: %v == %v\n", item[key], value)
+		if item[key] == value {
+			return_item = item
+			//UdnLogLevel(nil, log_trace, "Map Array Find: %v == %v: Matched\n", item[key], value)
+			break
+		}
+	}
+
+	return return_item
+}
+
 func MapArrayToToUdnMap(map_array []map[string]interface{}, key_key string, value_key string) string {
 	map_values := make([]string, 0)
 

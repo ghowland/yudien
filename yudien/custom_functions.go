@@ -121,6 +121,8 @@ func EvaluateShiftTimes(database string, responsibility map[string]interface{}, 
 
 	time_layout := "2006-01-02 15:04:05"
 
+	options := make(map[string]interface{})
+	options["db"] = database
 
 	// How long we want to populate for; when we want to stop populating
 	population_duration := time.Duration(responsibility["populate_schedule_duration"].(int64)) * time.Second
@@ -129,13 +131,28 @@ func EvaluateShiftTimes(database string, responsibility map[string]interface{}, 
 	// We are going to walk forward until we have populated all we were asked to do
 	cur_start_time := start_time
 
+	// Get the current user
 	cur_roster_user := FindRosterUser(business_user_id, roster_users)
+
+	// If we have an automated adjustment of the current user for this responsibility, then get the new current user
+	if responsibility["populate_shift_user_priority_offset"].(int64) != 0 {
+		cur_roster_user = FindNextRosterUser(cur_roster_user["priority"].(int64) + responsibility["populate_shift_user_priority_offset"].(int64), roster_users)
+	}
 
 	for {
 		for _, shift := range shifts {
 			business_user := GetBusinessUser(cur_roster_user["business_user_id"].(int64), business_users)
 
-			shift_start, shift_end := GetShiftTimeStartEnd(cur_start_time, shift, shifts)
+			// Assume we will get our start/end time from the current shift, but we may actually get it from another shift
+			shift_time := shift
+
+			// If we want to get our start/end time from a different shift, then do that
+			if shift["start_sync_with_duty_responsibility_shift_id"] != nil {
+				shift_time = DatamanGet("duty_responsibility_shift", int(shift["start_sync_with_duty_responsibility_shift_id"].(int64)), options)
+			}
+
+			// Get our shift time from the specified shift_time (current or specified shift)
+			shift_start, shift_end := GetShiftTimeStartEnd(cur_start_time, shift_time, shifts)
 			UdnLogLevel(nil, log_debug, "Evaluate Shift Times: %s: %v -> %v  User: %s\n", shift["name"], shift_start, shift_end, business_user["name"])
 
 			// Create our timeline record
@@ -147,8 +164,6 @@ func EvaluateShiftTimes(database string, responsibility map[string]interface{}, 
 			}
 
 			// Save the timeline item
-			options := make(map[string]interface{})
-			options["db"] = database
 			DatamanSet("schedule_timeline_item", timeline_item, options)
 
 			// Update our current start time, to be the end of the previous shift
@@ -163,8 +178,6 @@ func EvaluateShiftTimes(database string, responsibility map[string]interface{}, 
 		}
 	}
 }
-
-
 
 func GetBusinessUser(business_user_id int64, business_users []map[string]interface{}) map[string]interface{} {
 	var user map[string]interface{}
