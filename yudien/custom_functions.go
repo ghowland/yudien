@@ -8,9 +8,10 @@ import (
 	"time"
 	"strings"
 	"strconv"
+	"fmt"
 )
 
-func UDN_Customer_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	database := GetResult(args[0], type_string).(string)
 	responsibility_id := GetResult(args[1], type_int).(int64)
 	start_populating := GetResult(args[2], type_string).(string)
@@ -254,3 +255,66 @@ func GetTimeOfDayDuration(hour int, minute int, second int) time.Duration {
 
 	return time_seconds_duration
 }
+
+func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	ao_database_name := GetResult(args[0], type_string).(string)
+	uuid := GetResult(args[1], type_string).(string)
+	executor := GetResult(args[2], type_string).(string)
+	monitor_protocol := GetResult(args[3], type_string).(string)
+	interval := GetResult(args[4], type_int).(int64)
+	monitor_url := GetResult(args[5], type_string).(string)
+
+	tablename := GetResult(args[6], type_string).(string)
+	fieldname_customer_service_id := GetResult(args[7], type_string).(string)
+
+	fieldname_created := "created"
+	fieldname_data_json := "data_json"
+
+	result := UdnResult{}
+	result.Result = nil
+
+	options := make(map[string]interface{})
+	options["db"] = "ao"
+
+	// Get the Roster Users ordered by priority
+	options["sort"] = []string{"priority"}
+	filter := map[string]interface{}{
+		"name": []interface{}{"=", ao_database_name},
+	}
+	ao_database_array := DatamanFilter("ao_database", filter, options)
+	if len(ao_database_array) == 0 {
+		UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Error getting AO Database: %d\n", len(ao_database_array))
+		return result
+	}
+	ao_database := ao_database_array[0]
+	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Error getting AO Database: %v\n", ao_database)
+
+	data := make(map[string]interface{})
+	data["uuid"] = uuid
+	data["executor"] = executor
+	executor_args := make(map[string]interface{})
+	data_returner_args := make(map[string]interface{})
+	data_returner_args["type"] = ao_database["database_type"]
+	data_returner_args["info"] = ao_database["database_connect_string"]
+	data_returner_args["tablename"] = tablename
+	data_returner_args["fieldname_customer_service_id"] = fieldname_customer_service_id
+	data_returner_args["fieldname_created"] = fieldname_created
+	data_returner_args["fieldname_data_json"] = fieldname_data_json
+	executor_args["data_returner_args"] = data_returner_args
+	executor_args["interval"] = fmt.Sprintf("%ds", interval)
+	executor_args["monitor"] = monitor_protocol
+	monitor_args := make(map[string]interface{})
+	monitor_args["url"] = monitor_url
+	executor_args["monitor_args"] = monitor_args
+	data["executor_args"] = executor_args
+
+
+	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: %s\n", JsonDump(data))
+
+	return result
+}
+
+func HttpsRequest(hostname string, port int, uri string, client_cert string, client_key string) {
+
+}
+
