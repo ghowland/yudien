@@ -263,14 +263,19 @@ func GetTimeOfDayDuration(hour int, minute int, second int) time.Duration {
 }
 
 func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	ao_database_name := GetResult(args[0], type_string).(string)
-	uuid := GetResult(args[1], type_string).(string)
-	executor := GetResult(args[2], type_string).(string)
-	monitor_protocol := GetResult(args[3], type_string).(string)
-	interval := GetResult(args[4], type_int).(int64)
-	monitor_url := GetResult(args[5], type_string).(string)
+	internal_database_name := GetResult(args[0], type_string).(string)
+	connection_database_name := GetResult(args[1], type_string).(string)
+	database_table := GetResult(args[2], type_string).(string)
+	server_connection_table := GetResult(args[3], type_string).(string)
+	server_connection_id := int(GetResult(args[4], type_int).(int64))
 
-	tablename := GetResult(args[6], type_string).(string)
+	uuid := GetResult(args[5], type_string).(string)
+	executor := GetResult(args[6], type_string).(string)
+	monitor_protocol := GetResult(args[7], type_string).(string)
+	interval := GetResult(args[8], type_int).(int64)
+	monitor_url := GetResult(args[9], type_string).(string)
+
+	tablename := GetResult(args[10], type_string).(string)
 
 	fieldname_customer_service_id := "time_store_item_id"
 	fieldname_created := "created"
@@ -280,28 +285,28 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 	result.Result = nil
 
 	options := make(map[string]interface{})
-	options["db"] = "ao"
+	options["db"] = internal_database_name
 
 	// Get the Roster Users ordered by priority
 	options["sort"] = []string{"priority"}
 	filter := map[string]interface{}{
-		"name": []interface{}{"=", ao_database_name},
+		"name": []interface{}{"=", connection_database_name},
 	}
-	ao_database_array := DatamanFilter("ao_database", filter, options)
-	if len(ao_database_array) == 0 {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Error getting AO Database: %d\n", len(ao_database_array))
+	connection_database_array := DatamanFilter(database_table, filter, options)
+	if len(connection_database_array) == 0 {
+		UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Error getting Connection Database: %d\n", len(connection_database_array))
 		return result
 	}
-	ao_database := ao_database_array[0]
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Error getting AO Database: %v\n", ao_database)
+	connection_database := connection_database_array[0]
+	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Error getting Connection Database: %v\n", connection_database)
 
 	data := make(map[string]interface{})
 	data["uuid"] = uuid
 	data["executor"] = executor
 	executor_args := make(map[string]interface{})
 	data_returner_args := make(map[string]interface{})
-	data_returner_args["type"] = ao_database["database_type"]
-	data_returner_args["info"] = ao_database["database_connect_string"]
+	data_returner_args["type"] = connection_database["database_type"]
+	data_returner_args["info"] = connection_database["database_connect_string"]
 	data_returner_args["tablename"] = tablename
 	data_returner_args["fieldname_customer_service_id"] = fieldname_customer_service_id
 	data_returner_args["fieldname_created"] = fieldname_created
@@ -316,9 +321,9 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 
 	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: %s\n", JsonDump(data))
 
-	ao_server := DatamanGet("ao_server_connection", 1, options)
+	taskman_server := DatamanGet(server_connection_table, server_connection_id, options)
 
-	http_result := HttpsRequest("localhost", 8080, "v1/localmanager/task", ao_server["client_certificate"].(string), ao_server["client_private_key"].(string), ao_server["certificate_authority"].(string), JsonDump(data))
+	http_result := HttpsRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), taskman_server["default_path"].(string), taskman_server["client_certificate"].(string), taskman_server["client_private_key"].(string), taskman_server["certificate_authority"].(string), JsonDump(data))
 
 	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Result: %s\n", JsonDump(http_result))
 
@@ -336,11 +341,7 @@ func HttpsRequest(hostname string, port int, uri string, client_cert string, cli
 	caCertPool.AppendCertsFromPEM([]byte(certificate_authority))
 
 	// Setup HTTPS client
-	/*
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      caCertPool,
-	}*/
+	//tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caCertPool,}		// This will restrict the client to connect to a valid CA
 	tlsConfig := &tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{cert}}
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
