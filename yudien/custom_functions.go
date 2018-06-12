@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"log"
 	"io/ioutil"
+	"bytes"
 )
 
 func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -334,24 +335,28 @@ func HttpsRequest(hostname string, port int, uri string, client_cert string, cli
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM([]byte(certificate_authority))
 
-
 	// Setup HTTPS client
+	/*
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
-	}
+	}*/
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{cert}}
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
 
 	url := fmt.Sprintf("https://%s:%d/%s", hostname, port, uri)
 
+	UdnLogLevel(nil, log_trace, "HttpsRequest: URL: %s\n", url)
+
 	// Form the request
-	request, err := http.NewRequest("PUT", url, nil)
+	request, err := http.NewRequest("PUT", url, bytes.NewBuffer([]byte(data_json)))
 	if err != nil {
 		log.Panic(err)
 	}
 	request.Header.Add("Content-Type", "application/json")
+
 
 	// Do the request
 	resp, err := client.Do(request)
@@ -359,6 +364,8 @@ func HttpsRequest(hostname string, port int, uri string, client_cert string, cli
 		log.Panic(err)
 	}
 	defer resp.Body.Close()
+
+	UdnLogLevel(nil, log_trace, "HttpsRequest: %s: %d\n", resp.Status, resp.StatusCode)
 
 	// Dump response
 	data, err := ioutil.ReadAll(resp.Body)
