@@ -189,11 +189,11 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
-	UdnLogLevel(nil, log_debug, "Dataman GET: %s: %v\n", datasource_database, result.Return[0])
-
 	if result.Error != "" {
 		UdnLogLevel(nil, log_error, "Dataman GET: %s: ERRORS: %v\n", datasource_database, result.Error)
 	}
+
+	UdnLogLevel(nil, log_debug, "Dataman GET: %s: %v\n", datasource_database, result.Return[0])
 
 	record := result.Return[0]
 	if record != nil {
@@ -209,6 +209,8 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 }
 
 func DatamanSet(collection_name string, record map[string]interface{}, options map[string]interface{}) map[string]interface{} {
+	UdnLogLevel(nil, log_trace, "Dataman SET: %s: %v\n", collection_name, record)
+
 	// Duplicate this map, because we are messing with a live map, that we dont expect to change in this function...
 	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
 	record = MapCopy(record)
@@ -279,11 +281,11 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		case string:
 			record_id, err = strconv.ParseInt(record["_id"].(string), 10, 32)
 			if err != nil {
-				UdnLogLevel(nil, log_error,"Record _id is not an integer: %s: %v", collection_name, record)
+				UdnLogLevel(nil, log_error,"Record _id is not an integer: %s: %v\n", collection_name, record)
 				delete(record, "_id")
 			}
 		default:
-			UdnLogLevel(nil, log_error,"Record _id type: %T", record["_id"])
+			UdnLogLevel(nil, log_error,"Record _id type: %T\n", record["_id"])
 			record_id = GetResult(record["_id"], type_int).(int64)
 		}
 
@@ -291,9 +293,10 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 
 		UdnLogLevel(nil, log_trace,"record_id type: %T\n", record_id)
 
-		options := make(map[string]interface{})
+		get_options := make(map[string]interface{})
+		get_options["db"] = options["db"]
 
-		record_current := DatamanGet(collection_name, int(record_id), options)
+		record_current := DatamanGet(collection_name, int(record_id), get_options)
 
 		//// Set all the fields we have in the existing record, into our new record, if they dont exist, which defeats Thomas' current bug not allowing me to save data unless all fields are present
 		//for k, v := range record_current {

@@ -264,18 +264,30 @@ func GetTimeOfDayDuration(hour int, minute int, second int) time.Duration {
 
 func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
-	connection_database_name := GetResult(args[1], type_string).(string)
-	database_table := GetResult(args[2], type_string).(string)
+	database_table := GetResult(args[1], type_string).(string)
+	connection_database_name := GetResult(args[2], type_string).(string)
 	server_connection_table := GetResult(args[3], type_string).(string)
 	server_connection_id := int(GetResult(args[4], type_int).(int64))
 
-	uuid := GetResult(args[5], type_string).(string)
-	executor := GetResult(args[6], type_string).(string)
-	monitor_protocol := GetResult(args[7], type_string).(string)
-	interval := GetResult(args[8], type_int).(int64)
-	monitor_url := GetResult(args[9], type_string).(string)
+	//uuid := GetResult(args[5], type_string).(string)
+	//executor := GetResult(args[6], type_string).(string)
+	//monitor_protocol := GetResult(args[7], type_string).(string)
+	//interval := GetResult(args[8], type_int).(int64)
+	//monitor_url := GetResult(args[9], type_string).(string)
 
-	tablename := GetResult(args[10], type_string).(string)
+
+	tablename := GetResult(args[5], type_string).(string)
+
+	input_data :=  GetResult(args[6], type_map).(map[string]interface{})
+
+	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Input Data: %s\n", JsonDump(input_data))
+
+	//uuid := GetResult(args[5], type_string).(string)
+	//executor := GetResult(args[6], type_string).(string)
+	//monitor_protocol := GetResult(args[7], type_string).(string)
+	//interval := GetResult(args[8], type_int).(int64)
+	//monitor_url := GetResult(args[9], type_string).(string)
+
 
 	fieldname_customer_service_id := "time_store_item_id"
 	fieldname_created := "created"
@@ -298,11 +310,72 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 		return result
 	}
 	connection_database := connection_database_array[0]
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Error getting Connection Database: %v\n", connection_database)
+	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Connection Database: %v\n", connection_database)
+
+	// Process data we need
+	input_data["service_environment_namespace_id"], _ = strconv.ParseInt(input_data["service_environment_namespace_id"].(string), 10, 64)
+	input_data["business_id"], _ = strconv.ParseInt(input_data["business_id"].(string), 10, 64)
+	input_data["interval"], _ = strconv.ParseInt(input_data["interval"].(string), 10, 64)
+	input_data["interval_ms"] = int(input_data["interval"].(int64) * 1000)
+	input_data["service_id"], _ = strconv.ParseInt(input_data["service_id"].(string), 10, 64)
+	input_data["service_monitor_type_id"], _ = strconv.ParseInt(input_data["service_monitor_type_id"].(string), 10, 64)
+
+
+	// Get data from our input_data information
+	//business := DatamanGet("business", input_data["business_id"].(int), options)
+	//service := DatamanGet("service", input_data["service_id"].(int), options)
+	service_environment_namespace := DatamanGet("service_environment_namespace", int(input_data["service_environment_namespace_id"].(int64)), options)
+	service_monitor_type := DatamanGet("service_monitor_type", int(input_data["service_monitor_type_id"].(int64)), options)
+
+	// Create the service monitor
+	service_monitor := make(map[string]interface{})
+	service_monitor["name"] = input_data["name"]
+	service_monitor["service_id"] = input_data["service_id"]
+	service_monitor["service_environment_namespace_id"] = input_data["service_environment_namespace_id"]
+	service_monitor["service_monitor_type_id"] = input_data["service_monitor_type_id"]
+	service_monitor["data_json"] = make(map[string]interface{})
+	service_monitor["data_json"].(map[string]interface{})["url"] = input_data["url"]
+	service_monitor["info"] = input_data["info"]
+	service_monitor["interval_ms"] = input_data["interval_ms"]
+	service_monitor["service_environment_namespace_id"] = input_data["service_environment_namespace_id"]
+
+	// Insert the Monitor
+	service_monitor_result := DatamanSet("service_monitor", service_monitor, options)
+
+	// Create the time_store_item
+	time_store_item := make(map[string]interface{})
+	time_store_item["business_id"] = input_data["business_id"]
+	time_store_item["time_store_id"] = service_environment_namespace["default_time_store_id"]
+	time_store_item["shared_group_id"] = 1	// Service Monitor shared_group
+	time_store_item["record_id"] = service_monitor_result["_id"]
+	time_store_item["name"] = input_data["metric_name"]
+
+	// Insert the s_e_n_m
+	time_store_item_result := DatamanSet("time_store_item", time_store_item, options)
+
+
+	// Create the service_environment_namespace_metric
+	service_environment_namespace_metric := make(map[string]interface{})
+	service_environment_namespace_metric["service_environment_namespace_id"] = service_monitor["service_environment_namespace_id"]
+	service_environment_namespace_metric["name"] = input_data["metric_name"]
+	service_environment_namespace_metric["time_store_item_id"] = time_store_item_result["_id"]
+	service_environment_namespace_metric["service_monitor_id"] = service_monitor_result["_id"]
+
+	// Insert the s_e_n_m
+	service_environment_namespace_metric_result := DatamanSet("service_environment_namespace_metric", service_environment_namespace_metric, options)
+
+	// Update the service_monitor, with the s_e_n_m
+	service_monitor_result["service_environment_namespace_metric_id"] = service_environment_namespace_metric_result["_id"]
+	_ = DatamanSet("service_monitor", service_monitor_result, options)
+
+	// Update the time_store_item, with the s_e_n_m
+	time_store_item_result["service_environment_namespace_metric_id"] = service_environment_namespace_metric_result["_id"]
+	_ = DatamanSet("time_store_item", time_store_item_result, options)
+
 
 	data := make(map[string]interface{})
-	data["uuid"] = uuid
-	data["executor"] = executor
+	data["uuid"] = fmt.Sprintf("%d", service_monitor_result["_id"])
+	data["executor"] = "monitor"
 	executor_args := make(map[string]interface{})
 	data_returner_args := make(map[string]interface{})
 	data_returner_args["type"] = connection_database["database_type"]
@@ -312,10 +385,10 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 	data_returner_args["fieldname_created"] = fieldname_created
 	data_returner_args["fieldname_data_json"] = fieldname_data_json
 	executor_args["data_returner_args"] = data_returner_args
-	executor_args["interval"] = fmt.Sprintf("%ds", interval)
-	executor_args["monitor"] = monitor_protocol
+	executor_args["interval"] = fmt.Sprintf("%ds", input_data["interval"].(int64))
+	executor_args["monitor"] = service_monitor_type["name_taskman"]
 	monitor_args := make(map[string]interface{})
-	monitor_args["url"] = monitor_url
+	monitor_args["url"] = service_monitor["data_json"].(map[string]interface{})["url"]
 	executor_args["monitor_args"] = monitor_args
 	data["executor_args"] = executor_args
 
