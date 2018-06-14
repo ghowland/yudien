@@ -469,7 +469,6 @@ func UDN_Custom_Code(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 }
 
 func CodeExecute(database string, code_id int, input interface{}, db *sql.DB, udn_schema map[string]interface{}, udn_data map[string]interface{}) interface{} {
-
 	options := make(map[string]interface{})
 	options["db"] = database
 
@@ -491,6 +490,10 @@ func CodeExecute(database string, code_id int, input interface{}, db *sql.DB, ud
 
 		args = append(args, arg_result)
 	}
+
+	// Set the args into the __get.function_arg array, like a Stored Function (__function), since ProcessUDN doesnt take input
+	function_set_args := []interface{}{"function_arg"}
+	MapSet(function_set_args, args, udn_data)
 
 	// Get the actual UDN we need -> code_function -> shared_udn (for now, this allows abstraction later if I want to change things at the code level, above the Shared UDN level)
 	options["sort"] = nil
