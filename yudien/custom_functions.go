@@ -450,3 +450,61 @@ func HttpsRequest(hostname string, port int, uri string, client_cert string, cli
 	return data
 }
 
+
+
+func UDN_Custom_Code(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_val := input
+
+	internal_database_name := GetResult(args[0], type_string).(string)
+	code_id := int(GetResult(args[1], type_int).(int64))
+
+	if len(args) > 2 {
+		input_val = args[2]
+	}
+
+	result := UdnResult{}
+	result.Result = CodeExecute(internal_database_name, code_id, input_val, db, udn_schema, udn_data)
+
+	return result
+}
+
+func CodeExecute(database string, code_id int, input interface{}, db *sql.DB, udn_schema map[string]interface{}, udn_data map[string]interface{}) interface{} {
+
+	options := make(map[string]interface{})
+	options["db"] = database
+
+	code := DatamanGet("code", code_id, options)
+	filter := map[string]interface{}{
+		"code_id": []interface{}{"=", code_id},
+	}
+	options["sort"] = []string{"priority",}
+	code_args := DatamanFilter("code_arg", filter, options)
+
+	// Get the results for our args
+	args := make([]interface{}, 0)
+
+	// Input is always the first argument, so it always going to our Code Functions, which dont take input, only args
+	args = append(args, input)
+
+	for _, code_arg := range code_args {
+		arg_result := CodeExecute(database, int(code_arg["execute_code_id"].(int64)), code_arg["input_data_json"], db, udn_schema, udn_data)
+
+		args = append(args, arg_result)
+	}
+
+	// Get the actual UDN we need -> code_function -> shared_udn (for now, this allows abstraction later if I want to change things at the code level, above the Shared UDN level)
+	options["sort"] = nil
+	code_function := DatamanGet("code_function", int(code["code_function_id"].(int64)), options)
+	shared_udn := DatamanGet("shared_udn", int(code_function["shared_udn_id"].(int64)), options)
+
+	// Execute the Shared UDN
+	//TODO(g): Make this better than dumping into JSON?  Seems like a waste if we already have it in data format and just parse it again, but deal with it later
+	result := ProcessSchemaUDNSet(db, udn_schema, JsonDump(shared_udn["execute_udn_data_json"]), udn_data)
+
+	// If we have a code chain (next), then execute it and it will execute any others and pass back their results
+	if code["next_code_id"] != nil {
+		result = CodeExecute(database, int(code["next_code_id"].(int64)), result, db, udn_schema, udn_data)
+	}
+
+	return result
+}
