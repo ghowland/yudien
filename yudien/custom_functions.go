@@ -511,3 +511,19 @@ func CodeExecute(database string, code_id int, input interface{}, db *sql.DB, ud
 
 	return result
 }
+
+func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	metric_name_array := GetResult(args[1], type_array).([]interface{})
+	labelset_map := GetResult(args[2], type_map).(map[string]interface{})
+
+	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Metric: Filter: %v: %v\n", metric_name_array, labelset_map)
+
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	result := UdnResult{}
+	result.Result = nil
+
+	return result
+}
