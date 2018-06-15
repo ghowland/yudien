@@ -361,6 +361,7 @@ func InitUdn() {
 		"__code": UDN_Custom_Code,   			// Code Execution from data.  First argument is DB to use, second is code_id, third is input_data override. //NOTE(g): This requires database tables to exist in the DB that match the functions requirements, which most UDN functions dont require.  Putting it in Custom code for now, but it will eventually be integrated into normal UDN once I have the schema population routines implemented.
 
 		"__custom_metric_filter": UDN_Custom_Metric_Filter,   			// CUSTOM: Fetch Metrics by name/labelset
+		"__custom_metric_get_values": UDN_Custom_Metric_Get_Values,   			// CUSTOM: Get TS values for list of metrics
 	}
 
 	PartTypeName = map[int]string{

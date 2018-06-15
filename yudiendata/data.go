@@ -409,6 +409,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 
+
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
 	if result.Error != "" {

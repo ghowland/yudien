@@ -457,18 +457,19 @@ func UDN_Custom_Code(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 
 	internal_database_name := GetResult(args[0], type_string).(string)
 	code_id := int(GetResult(args[1], type_int).(int64))
+	config_map := GetResult(args[2], type_map).(map[string]interface{})
 
 	if len(args) > 2 {
 		input_val = args[2]
 	}
 
 	result := UdnResult{}
-	result.Result = CodeExecute(internal_database_name, code_id, input_val, db, udn_schema, udn_data)
+	result.Result = CodeExecute(internal_database_name, code_id, config_map, input_val, db, udn_schema, udn_data)
 
 	return result
 }
 
-func CodeExecute(database string, code_id int, input interface{}, db *sql.DB, udn_schema map[string]interface{}, udn_data map[string]interface{}) interface{} {
+func CodeExecute(database string, code_id int, config_map map[string]interface{}, input interface{}, db *sql.DB, udn_schema map[string]interface{}, udn_data map[string]interface{}) interface{} {
 	options := make(map[string]interface{})
 	options["db"] = database
 
@@ -482,23 +483,25 @@ func CodeExecute(database string, code_id int, input interface{}, db *sql.DB, ud
 	// Get the results for our args
 	args := make([]interface{}, 0)
 
-	// Input is always the first argument, so it always going to our Code Functions, which dont take input, only args
+	// Config is always the first argument, so it always going to our Code Functions
+	args = append(args, config_map)
+	// Input is always the second argument, so it always going to our Code Functions, which dont take input, only args
 	args = append(args, input)
 
 	for _, code_arg := range code_args {
-		arg_result := CodeExecute(database, int(code_arg["execute_code_id"].(int64)), code_arg["input_data_json"], db, udn_schema, udn_data)
+		arg_result := CodeExecute(database, int(code_arg["execute_code_id"].(int64)), config_map, code_arg["input_data_json"], db, udn_schema, udn_data)
 
 		args = append(args, arg_result)
 	}
-
-	// Set the args into the __get.function_arg array, like a Stored Function (__function), since ProcessUDN doesnt take input
-	function_set_args := []interface{}{"function_arg"}
-	MapSet(function_set_args, args, udn_data)
 
 	// Get the actual UDN we need -> code_function -> shared_udn (for now, this allows abstraction later if I want to change things at the code level, above the Shared UDN level)
 	options["sort"] = nil
 	code_function := DatamanGet("code_function", int(code["code_function_id"].(int64)), options)
 	shared_udn := DatamanGet("shared_udn", int(code_function["shared_udn_id"].(int64)), options)
+
+	// Set the args into the __get.function_arg array, like a Stored Function (__function), since ProcessUDN doesnt take input
+	function_set_args := []interface{}{"function_arg"}
+	MapSet(function_set_args, args, udn_data)
 
 	// Execute the Shared UDN
 	//TODO(g): Make this better than dumping into JSON?  Seems like a waste if we already have it in data format and just parse it again, but deal with it later
@@ -506,7 +509,13 @@ func CodeExecute(database string, code_id int, input interface{}, db *sql.DB, ud
 
 	// If we have a code chain (next), then execute it and it will execute any others and pass back their results
 	if code["next_code_id"] != nil {
-		result = CodeExecute(database, int(code["next_code_id"].(int64)), result, db, udn_schema, udn_data)
+		// Set the args into the __get.function_arg array, like a Stored Function (__function), since ProcessUDN doesnt take input
+		function_set_args := []interface{}{"function_arg"}
+		args := make([]interface{}, 0)
+		args = append(args, input)
+		MapSet(function_set_args, args, udn_data)
+
+		result = CodeExecute(database, int(code["next_code_id"].(int64)), config_map, result, db, udn_schema, udn_data)
 	}
 
 	return result
@@ -521,6 +530,77 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
+
+
+	filter := map[string]interface{}{
+		"name": []interface{}{"in", metric_name_array},
+	}
+	//TODO(g): May want to add a sort option that can be passed in as arg3, since we could organize these somehow.  Remove comment if not needed.
+	name_filtered := DatamanFilter("service_environment_namespace_metric", filter, options)
+
+	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Metric: Filter: Name filtered array: %v\n", name_filtered)
+
+	labelset_filtered := make([]map[string]interface{}, 0)
+
+	for _, metric := range name_filtered {
+		// Assume we match, easier to falsify as it only takes one miss
+		matched_labelset := true
+
+		for label, value_array := range labelset_map {
+			UdnLogLevel(udn_schema, log_debug, "CUSTOM: Metric: Filter: Labelset: %s: %v\n", label, value_array)
+
+			if metric["labelset_data_jsonb"] == nil {
+				// Missing a labelset we wanted to test for
+				matched_labelset = false
+
+			} else if metric["labelset_data_jsonb"].(map[string]interface{})[label] != nil {
+				// It only takes 1 match per key to be a success
+				found_value := false
+
+				for _, value_item := range value_array.([]interface{}) {
+					if value_item == metric["labelset_data_jsonb"].(map[string]interface{})[label] {
+						found_value = true
+					}
+				}
+
+				if !found_value {
+					// Did not match one of the labelset options
+					matched_labelset = false
+					break
+				}
+			} else {
+				// Did not contain the label we had values to test against
+				matched_labelset = false
+				break
+			}
+		}
+
+		if matched_labelset {
+			// Nothing failed to match this metric, it has passed the labelset_filter
+			labelset_filtered = append(labelset_filtered, metric)
+		}
+	}
+
+
+	result := UdnResult{}
+	result.Result = labelset_filtered
+
+	return result
+}
+
+
+func UDN_Custom_Metric_Get_Values(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	duration_ms := GetResult(args[1], type_int).(int64)
+	offset_ms := GetResult(args[2], type_int).(int64)
+
+	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Metric: Get Values: %d: %d\n", duration_ms, offset_ms)
+
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+
+
 
 	result := UdnResult{}
 	result.Result = nil

@@ -179,7 +179,11 @@ func GetResult(input interface{}, type_value int) interface{} {
 		} else {
 			// Else, this is not a map yet, so turn it into one, of the key "value"
 			result := make(map[string]interface{})
-			result["value"] = input
+
+			if input != nil {
+				result["value"] = input
+			}
+
 			return result
 		}
 	case type_array:
