@@ -749,7 +749,7 @@ func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface
 	}
 
 	internal_database_name := GetResult(args[0], type_string).(string)
-	config := GetResult(args[1], type_array).([]interface{})
+	config := GetResult(args[1], type_map).(map[string]interface{})
 
 	// Take input as 3rd argument, if present
 	if len(args) > 2 {
@@ -762,10 +762,31 @@ func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
+	alert_threshold := GetResult(config["alert_threshold"], type_float).(float64)
+
+	for time_store_item_id, value := range input_val {
+		// If this TS value is less than our alert threshold, then alert!
+		if value < alert_threshold {
+			UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Handle Outage: Alert: %d: %f < %f\n", time_store_item_id, value, alert_threshold)
+
+			if config["health_check"] != nil {
+				MetricPopulateOutage(config, time_store_item_id, value)
+			} else {
+				UdnLogLevel(udn_schema, log_trace, "WARNNG: Metric: Handle Outage: Cant Populate Outage, because Health Check data is missing from config: health_check == nil\n")
+			}
+		}
+	}
 
 
 	result := UdnResult{}
 	result.Result = nil
 
 	return result
+}
+
+func MetricPopulateOutage(config map[string]interface{}, time_store_item_id int64, value float64) {
+	health_check := config["health_check"].(map[string]interface{})
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: Metric: Populate Outage: %d: %f: %s\n", time_store_item_id, value, health_check["name"])
+
 }
