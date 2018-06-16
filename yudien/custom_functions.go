@@ -742,18 +742,22 @@ func MetricMatchRuleTerm(data map[string]interface{}, field string, term string,
 }
 
 func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	input_val := input.(map[int64]interface{})
+	var input_val map[int64]float64
+
+	if input != nil {
+		input_val = input.(map[int64]float64)
+	}
 
 	internal_database_name := GetResult(args[0], type_string).(string)
 	config := GetResult(args[1], type_array).([]interface{})
 
 	// Take input as 3rd argument, if present
 	if len(args) > 2 {
-		input_val = args[2].(map[int64]interface{})
+		input_val = args[2].(map[int64]float64)
 	}
 
 	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Handle Outage: Config: %s\n", JsonDump(config))
-	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Handle Outage: Config: %s\n", JsonDump(input_val))
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Handle Outage: Input: %s\n", JsonDump(input_val))
 
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
