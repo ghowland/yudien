@@ -27,7 +27,7 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 
 	start_time, err := time.Parse("2006-01-02T15:04:05", start_populating)
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: %v\n", start_time, err)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: %v\n", start_time, err)
 
 
 	result := UdnResult{}
@@ -39,28 +39,28 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 	// Get the Responsibility
 	responsibility := DatamanGet("duty_responsibility", int(responsibility_id), options)
 	if responsibility["_error"] != nil {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting responsibility: %v\n", responsibility["_error"])
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting responsibility: %v\n", responsibility["_error"])
 		return result
 	}
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Responsibility: %v\n", responsibility)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Responsibility: %v\n", responsibility)
 
 	// Get the Duty
 	duty := DatamanGet("duty", int(responsibility["duty_id"].(int64)), options)
 	if duty["_error"] != nil {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting duty: %v\n", duty["_error"])
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting duty: %v\n", duty["_error"])
 		return result
 	}
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: duty: %v\n", duty)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: duty: %v\n", duty)
 
 	// Get the Roster
 	roster := DatamanGet("duty_roster", int(responsibility["duty_roster_id"].(int64)), options)
 	if roster["_error"] != nil {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Roster: %v\n", roster["_error"])
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Roster: %v\n", roster["_error"])
 		return result
 	}
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Roster: %v\n", roster)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Roster: %v\n", roster)
 
 	// Get the Roster Users ordered by priority
 	options["sort"] = []string{"priority"}
@@ -69,10 +69,10 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 	}
 	roster_users := DatamanFilter("duty_roster_business_user", filter, options)
 	if len(roster_users) == 0 {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Roster Users: %d\n", len(roster_users))
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Roster Users: %d\n", len(roster_users))
 		return result
 	}
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Roster Users: %v\n", roster_users)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Roster Users: %v\n", roster_users)
 
 	// Get the Businsess Users
 	options["sort"] = nil
@@ -81,10 +81,10 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 	}
 	business_users := DatamanFilter("business_user", filter, options)
 	if len(business_users) == 0 {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Business Users: %d\n", len(business_users))
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Business Users: %d\n", len(business_users))
 		return result
 	}
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Business Users: %v\n", business_users)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Business Users: %v\n", business_users)
 
 	// Get the Duty Responsbility Shifts
 	options["sort"] = nil
@@ -93,18 +93,18 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 	}
 	shifts := DatamanFilter("duty_responsibility_shift", filter, options)
 	if responsibility["_error"] != nil {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Shifts: %d\n", len(shifts))
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Shifts: %d\n", len(shifts))
 		return result
 	}
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Shifts: %v\n", shifts)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Shifts: %v\n", shifts)
 
 	// Get the Timeline
 	timeline := DatamanGet("schedule_timeline", int(responsibility["schedule_timeline_id"].(int64)), options)
 	if timeline["_error"] != nil {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Schedule Timeline: %v\n", timeline["_error"])
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Error getting Schedule Timeline: %v\n", timeline["_error"])
 		return result
 	}
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Schedule Timeline: %v\n", timeline)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Schedule Timeline: %v\n", timeline)
 
 	// Get the Schedule Timeline Items
 	options["sort"] = []string{"time_start"}
@@ -112,19 +112,19 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 		"schedule_timeline_id": []interface{}{"=", responsibility["schedule_timeline_id"]},
 	}
 	timeline_items := DatamanFilter("schedule_timeline_item", filter, options)
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Schedule Timeline Items: %v\n", timeline_items)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Schedule Timeline Items: %v\n", timeline_items)
 
 
 	EvaluateShiftTimes(database, responsibility, shifts, start_time, business_user_id, roster_users, business_users)
 
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Populate Schedule: Duty Responsibility: Result: %v\n", result.Result)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Result: %v\n", result.Result)
 
 	return result
 }
 
 func EvaluateShiftTimes(database string, responsibility map[string]interface{}, shifts []map[string]interface{}, start_time time.Time, business_user_id int64, roster_users []map[string]interface{}, business_users []map[string]interface{}) {
-	UdnLogLevel(nil, log_debug, "Evaluate Shift Times: %v\n", shifts)
+	UdnLogLevel(nil, log_trace, "Evaluate Shift Times: %v\n", shifts)
 
 	time_layout := "2006-01-02 15:04:05"
 
@@ -160,7 +160,7 @@ func EvaluateShiftTimes(database string, responsibility map[string]interface{}, 
 
 			// Get our shift time from the specified shift_time (current or specified shift)
 			shift_start, shift_end := GetShiftTimeStartEnd(cur_start_time, shift_time, shifts)
-			UdnLogLevel(nil, log_debug, "Evaluate Shift Times: %s: %v -> %v  User: %s\n", shift["name"], shift_start, shift_end, business_user["name"])
+			UdnLogLevel(nil, log_trace, "Evaluate Shift Times: %s: %v -> %v  User: %s\n", shift["name"], shift_start, shift_end, business_user["name"])
 
 			// Create our timeline record
 			timeline_item := map[string]interface{}{
@@ -280,7 +280,7 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 
 	input_data :=  GetResult(args[6], type_map).(map[string]interface{})
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Input Data: %s\n", JsonDump(input_data))
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: TaskMan: Input Data: %s\n", JsonDump(input_data))
 
 	//uuid := GetResult(args[5], type_string).(string)
 	//executor := GetResult(args[6], type_string).(string)
@@ -306,11 +306,11 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 	}
 	connection_database_array := DatamanFilter(database_table, filter, options)
 	if len(connection_database_array) == 0 {
-		UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Error getting Connection Database: %d\n", len(connection_database_array))
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: TaskMan: Add Task: Error getting Connection Database: %d\n", len(connection_database_array))
 		return result
 	}
 	connection_database := connection_database_array[0]
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Connection Database: %v\n", connection_database)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: TaskMan: Add Task: Connection Database: %v\n", connection_database)
 
 	// Process data we need
 	input_data["service_environment_namespace_id"], _ = strconv.ParseInt(input_data["service_environment_namespace_id"].(string), 10, 64)
@@ -354,22 +354,22 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 	time_store_item_result := DatamanSet("time_store_item", time_store_item, options)
 
 
-	// Create the service_environment_namespace_metric
-	service_environment_namespace_metric := make(map[string]interface{})
-	service_environment_namespace_metric["service_environment_namespace_id"] = service_monitor["service_environment_namespace_id"]
-	service_environment_namespace_metric["name"] = input_data["metric_name"]
-	service_environment_namespace_metric["time_store_item_id"] = time_store_item_result["_id"]
-	service_environment_namespace_metric["service_monitor_id"] = service_monitor_result["_id"]
+	// Create the business_environment_namespace_metric
+	business_environment_namespace_metric := make(map[string]interface{})
+	business_environment_namespace_metric["service_environment_namespace_id"] = service_monitor["service_environment_namespace_id"]
+	business_environment_namespace_metric["name"] = input_data["metric_name"]
+	business_environment_namespace_metric["time_store_item_id"] = time_store_item_result["_id"]
+	business_environment_namespace_metric["service_monitor_id"] = service_monitor_result["_id"]
 
 	// Insert the s_e_n_m
-	service_environment_namespace_metric_result := DatamanSet("service_environment_namespace_metric", service_environment_namespace_metric, options)
+	business_environment_namespace_metric_result := DatamanSet("business_environment_namespace_metric", business_environment_namespace_metric, options)
 
 	// Update the service_monitor, with the s_e_n_m
-	service_monitor_result["service_environment_namespace_metric_id"] = service_environment_namespace_metric_result["_id"]
+	service_monitor_result["business_environment_namespace_metric_id"] = business_environment_namespace_metric_result["_id"]
 	_ = DatamanSet("service_monitor", service_monitor_result, options)
 
 	// Update the time_store_item, with the s_e_n_m
-	time_store_item_result["service_environment_namespace_metric_id"] = service_environment_namespace_metric_result["_id"]
+	time_store_item_result["business_environment_namespace_metric_id"] = business_environment_namespace_metric_result["_id"]
 	_ = DatamanSet("time_store_item", time_store_item_result, options)
 
 
@@ -392,13 +392,13 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 	executor_args["monitor_args"] = monitor_args
 	data["executor_args"] = executor_args
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: %s\n", JsonDump(data))
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: TaskMan: Add Task: %s\n", JsonDump(data))
 
 	taskman_server := DatamanGet(server_connection_table, server_connection_id, options)
 
 	http_result := HttpsRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), taskman_server["default_path"].(string), taskman_server["client_certificate"].(string), taskman_server["client_private_key"].(string), taskman_server["certificate_authority"].(string), JsonDump(data))
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: TaskMan: Add Task: Result: %s\n", JsonDump(http_result))
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: TaskMan: Add Task: Result: %s\n", JsonDump(http_result))
 
 	return result
 }
@@ -526,7 +526,7 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 	metric_name_array := GetResult(args[1], type_array).([]interface{})
 	labelset_map := GetResult(args[2], type_map).(map[string]interface{})
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Metric: Filter: %v: %v\n", metric_name_array, labelset_map)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Filter: %v: %v\n", metric_name_array, labelset_map)
 
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
@@ -536,9 +536,9 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 		"name": []interface{}{"in", metric_name_array},
 	}
 	//TODO(g): May want to add a sort option that can be passed in as arg3, since we could organize these somehow.  Remove comment if not needed.
-	name_filtered := DatamanFilter("service_environment_namespace_metric", filter, options)
+	name_filtered := DatamanFilter("business_environment_namespace_metric", filter, options)
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Metric: Filter: Name filtered array: %v\n", name_filtered)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Filter: Name filtered array: %v\n", name_filtered)
 
 	labelset_filtered := make([]map[string]interface{}, 0)
 
@@ -547,7 +547,7 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 		matched_labelset := true
 
 		for label, value_array := range labelset_map {
-			UdnLogLevel(udn_schema, log_debug, "CUSTOM: Metric: Filter: Labelset: %s: %v\n", label, value_array)
+			UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Filter: Labelset: %s: %v\n", label, value_array)
 
 			if metric["labelset_data_jsonb"] == nil {
 				// Missing a labelset we wanted to test for
@@ -594,11 +594,169 @@ func UDN_Custom_Metric_Get_Values(db *sql.DB, udn_schema map[string]interface{},
 	duration_ms := GetResult(args[1], type_int).(int64)
 	offset_ms := GetResult(args[2], type_int).(int64)
 
-	UdnLogLevel(udn_schema, log_debug, "CUSTOM: Metric: Get Values: %d: %d\n", duration_ms, offset_ms)
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Get Values: %d: %d\n", duration_ms, offset_ms)
 
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
+	time_store_values := make(map[int64]interface{})
+
+	for _, metric := range input.([]map[string]interface{}) {
+		filter := map[string]interface{}{
+			"time_store_item_id": []interface{}{"=", metric["time_store_item_id"]},
+			"created": []interface{}{">", time.Now().Add(-time.Millisecond * time.Duration(duration_ms))},
+		}
+		//TODO(g): Will have to do N queries for all the different tables the data is in
+		metric_values := DatamanFilter("time_store_partition_timestorepartitionid", filter, options)
+
+		time_store_values[metric["time_store_item_id"].(int64)] = metric_values
+	}
+
+
+	result := UdnResult{}
+	result.Result = time_store_values
+
+	return result
+}
+
+
+func UDN_Custom_Metric_Rule_Match_Percent(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	rules := GetResult(args[1], type_array).([]interface{})
+
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Rule Match Percent: %v\n", rules)
+
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	input_val := input.(map[int64]interface{})
+
+	result_map := make(map[int64]float64)
+
+	for time_store_item_id, datapoints := range input_val {
+		input_count := len(datapoints.([]map[string]interface{}))
+		input_matched := 0
+
+		for _, datapoint := range datapoints.([]map[string]interface{}) {
+			//matched_all_rules := true
+
+			//UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Rule Match Percent: %d: %v\n", time_store_item_id, datapoint)
+
+			matched_all_rules := MetricMatchRules(datapoint, rules)
+
+			if matched_all_rules {
+				input_matched++
+			}
+
+		}
+
+		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Rule Match Percent: Matched: %d of %d\n", input_matched, input_count)
+
+		input_percent := float64(input_matched) / float64(input_count)
+
+		result_map[time_store_item_id] = input_percent
+	}
+
+
+
+	result := UdnResult{}
+	result.Result = result_map
+
+	return result
+}
+
+func MetricMatchRules(data map[string]interface{}, rules []interface{}) bool {
+	// Start true and falsify this
+	matched_all_rules := true
+
+	for _, rule := range rules {
+		rule_wrapper := rule.(map[string]interface{})
+		//UdnLogLevel(nil, log_trace, "Metric Match Rules: Wrapper: %v\n", rule_wrapper)
+
+		for field, rule_map := range rule_wrapper {
+			//UdnLogLevel(nil, log_trace, "Metric Match Rules: %s: %v\n", field, rule_map)
+
+			for term, value := range rule_map.(map[string]interface{}) {
+				is_match := MetricMatchRuleTerm(data["data_json"].(map[string]interface{}), field, term, value)
+
+				UdnLogLevel(nil, log_trace, "Metric Match Rules: %s: %v:  Matched: %v\n", field, rule_map, is_match)
+
+
+				if !is_match {
+					matched_all_rules = false
+					break
+				}
+			}
+		}
+
+	}
+
+	return matched_all_rules
+}
+
+func MetricMatchRuleTerm(data map[string]interface{}, field string, term string, value interface{}) bool {
+	//UdnLogLevel(nil, log_trace, "Metric Match Rule Term: Data: %s\n", JsonDump(data))
+
+	// Get the field value from the data
+	field_args := SimpleDottedStringToArray(field)
+	field_value := MapGet(field_args, data)
+	//UdnLogLevel(nil, log_trace, "Metric Match Rule Term: Field Args: %v: %s\n", field_args, field_value)
+
+	// Uppercase term so we have consistent values
+	term = strings.ToUpper(term)
+
+	//UdnLogLevel(nil, log_trace, "Metric Match Rule Term: %s: %v: %s: %v\n", field, field_value, term, value)
+
+	if term == "IN" {
+		found_term := false
+
+		for _, item := range value.([]interface{}) {
+			field_value_str := GetResult(field_value, type_string).(string)
+			item_str := GetResult(item, type_string).(string)
+
+			UdnLogLevel(nil, log_trace, "Metric Match Rule Term: %s: %s == %s\n", field, field_value_str, item_str)
+
+			if item_str == field_value_str {
+				found_term = true
+				break
+			}
+		}
+
+		if found_term {
+			return true
+		}
+	} else if term == "<" {
+		field_num := GetResult(field_value, type_float).(float64)
+		value_num := GetResult(value, type_float).(float64)
+
+		UdnLogLevel(nil, log_trace, "Metric Match Rule Term: %s: %f < %f\n", field, field_num, value_num)
+
+		if field_num < value_num {
+			return true
+		} else {
+			return false
+		}
+	}
+
+	return false
+}
+
+func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_val := input.(map[int64]interface{})
+
+	internal_database_name := GetResult(args[0], type_string).(string)
+	config := GetResult(args[1], type_array).([]interface{})
+
+	// Take input as 3rd argument, if present
+	if len(args) > 2 {
+		input_val = args[2].(map[int64]interface{})
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Handle Outage: Config: %s\n", JsonDump(config))
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Handle Outage: Config: %s\n", JsonDump(input_val))
+
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
 
 
 

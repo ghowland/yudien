@@ -362,6 +362,8 @@ func InitUdn() {
 
 		"__custom_metric_filter": UDN_Custom_Metric_Filter,   			// CUSTOM: Fetch Metrics by name/labelset
 		"__custom_metric_get_values": UDN_Custom_Metric_Get_Values,   			// CUSTOM: Get TS values for list of metrics
+		"__custom_metric_rule_match_percent": UDN_Custom_Metric_Rule_Match_Percent,   	// CUSTOM: Returns a scalar, % of matches in the rules
+		"__custom_metric_handle_outage": UDN_Custom_Metric_Handle_Outage,   	// CUSTOM: Handles an any outages from health check failures on metrics
 	}
 
 	PartTypeName = map[int]string{

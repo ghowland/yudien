@@ -1000,7 +1000,6 @@ func UDN_StringConcat(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	return result
 }
 
-
 func UDN_StringMarkdownFormat(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_string := GetResult(input, type_string).(string)
 
@@ -1526,7 +1525,6 @@ func UDN_ArrayMapFind(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	return result
 }
 
-
 func UDN_ArrayMapFindUpdate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "TODO(g): UDN_ArrayMapFindUpdate called UDN_ArrayMapFilterUpdate.  Depricated.\n")
 
@@ -1851,7 +1849,6 @@ func UDN_ArrayMapFilterArrayContains(db *sql.DB, udn_schema map[string]interface
 	return result
 }
 
-
 func UDN_MapFilterArrayContains(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_map := GetResult(input, type_map).(map[string]interface{})
 
@@ -1986,7 +1983,6 @@ func UDN_MapFilterKey(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	return result
 }
 
-
 // Update all map's key's values with a template statement from each map's key/values
 func UDN_ArrayMapTemplate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 
@@ -2051,9 +2047,6 @@ func UDN_ArrayMapKeySet(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	return result
 }
 
-
-
-
 func UDN_ArrayMapToMap(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_value := input.([]map[string]interface{})
 
@@ -2071,7 +2064,6 @@ func UDN_ArrayMapToMap(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 
 	return result
 }
-
 
 func UDN_ArrayMapToSeries(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_value := input.([]map[string]interface{})
@@ -3441,7 +3433,6 @@ func UDN_Iterate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	return result
 }
 
-
 func UDN_While(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// Will loop over all UdnParts until it finds __end_iterate.  It expects input to hold a list.List, which use to iterate and execute the UdnPart blocks
 	// It will set a variable that will be accessable by the "__get.current.ARG0"
@@ -3732,7 +3723,6 @@ func UDN_IsNil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 	return result
 }
 
-
 func UDN_Time(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 
 	result_time := time.Now()
@@ -3911,7 +3901,6 @@ func UDN_NumberToString(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	return result
 }
 
-
 func UDN_GetCurrentTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Get Current Time: %v\n", SnippetData(input, 60))
 
@@ -3982,7 +3971,6 @@ func UDN_GetCurrentTime(db *sql.DB, udn_schema map[string]interface{}, udn_start
 	return result
 }
 
-
 func UDN_GetLocalTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Get Local Time: %v\n", SnippetData(input, 60))
 
@@ -4024,7 +4012,6 @@ func UDN_GetLocalTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 	}
 	return result
 }
-
 
 func UDN_GroupBy(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Group by: %v\n", SnippetData(input, 60))
