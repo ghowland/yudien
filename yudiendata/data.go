@@ -370,6 +370,65 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	}
 }
 
+
+func DatamanInsert(collection_name string, record map[string]interface{}, options map[string]interface{}) map[string]interface{} {
+	UdnLogLevel(nil, log_trace, "Dataman INSERT: %s: %v\n", collection_name, record)
+
+	// Duplicate this map, because we are messing with a live map, that we dont expect to change in this function...
+	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
+	record = MapCopy(record)
+
+	datasource_instance, datasource_database := GetDatasourceInstance(options)
+
+	// Remove fields I know I put in here, that I dont want to go in
+	//TODO(g):REMOVE: Same as the others
+	delete(record, "_table")
+	delete(record, "_web_data_widget_instance_id")
+
+	// Form the Dataman query
+	dataman_query := &query.Query{
+		query.Insert,
+		map[string]interface{} {
+			"db":             datasource_database,
+			"shard_instance": "public",
+			"collection":     collection_name,
+			"record":         record,
+		},
+	}
+
+	//UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
+	UdnLogLevel(nil, log_trace, "Dataman INSERT: Query: JSON: %v\n", JsonDump(dataman_query))
+
+	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
+
+
+	if result.ValidationError != nil {
+		UdnLogLevel(nil, log_error, "Dataman INSERT: Validation ERROR: %s\n", JsonDump(result.ValidationError))
+	}
+
+
+	//result_bytes, _ := json.Marshal(result)
+	//UdnLogLevel(nil, log_trace, "Dataman SET: %s\n", result_bytes)
+
+	if result.Error != "" {
+		UdnLogLevel(nil, log_error, "Dataman INSERT: ERROR: %v\n", result.Error)
+	}
+
+	if result.Return != nil {
+		record := result.Return[0]
+		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+
+		UdnLogLevel(nil, log_trace, "Dataman INSERT: Result Record: JSON: %v\n", record)
+
+		return record
+	} else {
+		UdnLogLevel(nil, log_trace, "Dataman INSERT: Failed Result: nil: %v\n", result.Error)
+		record := make(map[string]interface{})
+		record["_error"] = result.ValidationError
+		return record
+	}
+}
+
 func DatamanFilter(collection_name string, filter map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
 
 	//fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])

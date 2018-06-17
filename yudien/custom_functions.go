@@ -842,14 +842,14 @@ func MetricPopulateOutage(internal_database_name string, config map[string]inter
 
 	// Add this alert to the new Outage
 	new_service_outage_item := make(map[string]interface{})
-	new_service_outage_item["business_id"] = health_check["business_id"]
+	//new_service_outage_item["business_id"] = health_check["business_id"]
 	new_service_outage_item["service_outage_id"] = service_outage["_id"]
-	new_service_outage_item["service_outage_type_id"] = 1	// Activated
+	new_service_outage_item["service_outage_item_type_id"] = 1	// Activated
 	new_service_outage_item["health_check_id"] = health_check["_id"]
 	new_service_outage_item["time_start"] = time.Now()
 	new_service_outage_item["business_environment_namespace_metric_id"] = time_store_item["business_environment_namespace_metric_id"]
 
-	service_outage_item := DatamanSet("service_outage_item", new_service_outage_item, options)
+	service_outage_item := DatamanInsert("service_outage_item", new_service_outage_item, options)
 
 	UdnLogLevel(nil, log_trace, "CUSTOM: Metric: Populate Outage: Service Outage Item: %v\n", service_outage_item)
 
