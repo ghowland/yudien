@@ -1074,14 +1074,51 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 
 }
 
-func GetEscalationPolicyUserContactId(internal_database_name string, escalation_policy_id int64, at_time time.Time) int64 {
+func GetEscalationPolicyUserContactId(internal_database_name string, escalation_policy_item_id int64, at_time time.Time) int64 {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
 	var business_user_contact_id int64
+
+	escalation_policy_item := DatamanGet("escalation_policy_item", int(escalation_policy_item_id), options)
+
+	duty_responsibility_shift := DatamanGet("duty_responsibility_shift", int(escalation_policy_item["duty_responsibility_shift_id"].(int64)), options)
+
+	duty_responsibility := DatamanGet("duty_responsibility", int(duty_responsibility_shift["duty_responsibility_id"].(int64)), options)
+
+
+	filter := map[string]interface{}{
+		"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
+		"time_start": []interface{}{">", at_time},
+		"time_stop": []interface{}{"<", at_time},
+	}
+	schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
+
+	if len(schedule_timeline_item_array) > 0 {
+		schedule_timeline_item := schedule_timeline_item_array[0]
+
+		business_user_id := schedule_timeline_item["business_user_id"].(int64)
+
+		filter := map[string]interface{}{
+			"business_user_id": []interface{}{"=", business_user_id},
+		}
+		business_user_contact_array := DatamanFilter("business_user_contact", filter, options)
+
+		//TODO(g): Do a selection here, for now Im just taking the first one and assuming it's fine
+		business_user_contact := business_user_contact_array[0]
+
+		// Set the business_user_contact_id
+		business_user_contact_id = business_user_contact["_id"].(int64)
+	} else {
+		UdnLogLevel(nil, log_error, "GetEscalationPolicyUserContactId: Failed to find Schedule Timeline Item for Escalation Policy Item: %v\n", escalation_policy_item)
+		business_user_contact_id = -1
+	}
+
 
 	return business_user_contact_id
 }
 
 func GetAlertEscalationPolicyItemIdAndInfo(internal_database_name string, alert map[string]interface{}) (int64, string) {
-	// Check to see if there are any open outages
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
