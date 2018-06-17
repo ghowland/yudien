@@ -655,6 +655,15 @@ func IsStringInArray(text string, arr []string) bool {
 	return false
 }
 
+func IsValueInArray(value interface{}, arr []interface{}) bool {
+	for _, v := range arr {
+		if value == v {
+			return true
+		}
+	}
+	return false
+}
+
 //TODO(g):PACKAGE:REFLECT: Using refect here, to not be string specific, evaluate removing this in the future
 func InArray(val interface{}, array interface{}) (exists bool, index int) {
 	exists = false
