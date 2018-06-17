@@ -988,9 +988,12 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 		new_alert_notification := make(map[string]interface{})
 		new_alert_notification["alert_id"] = alert["_id"]
 		new_alert_notification["business_id"] = service_outage["business_id"]
+		new_alert_notification["shared_group_id"] = 7 // Outage
+		new_alert_notification["record_id"] = service_outage["_id"]
 		new_alert_notification["alert_notification_type_id"] = outage_alert_notication_type
 		new_alert_notification["content_subject"] = fmt.Sprintf("Outage Created: %s", outage_name)
 		new_alert_notification["content_body"] = fmt.Sprintf("Outage Created Body: %s", outage_name)
+		new_alert_notification["created"] = time.Now()
 
 		alert_notification := DatamanInsert("alert_notification", new_alert_notification, options)
 
@@ -1035,16 +1038,29 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 		}
 
 		if alert == nil {
-			UdnLogLevel(nil, log_error, "ERROR: No alert found: Service Outage %v", service_outage)
+			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No alert found: Service Outage %v\n", service_outage)
 			return
 		}
 
 		new_alert_notification := make(map[string]interface{})
 		new_alert_notification["alert_id"] = alert["_id"]
 		new_alert_notification["business_id"] = service_outage["business_id"]
+		new_alert_notification["shared_group_id"] = 7 // Outage
+		new_alert_notification["record_id"] = service_outage["_id"]
 		new_alert_notification["alert_notification_type_id"] = outage_alert_notication_type
 		new_alert_notification["content_subject"] = fmt.Sprintf("Outage Created: %s", outage_name)
 		new_alert_notification["content_body"] = fmt.Sprintf("Outage Created Body: %s", outage_name)
+		new_alert_notification["created"] = time.Now()
+
+		escalation_policy_item_id, escalation_policy_item_info := GetAlertEscalationPolicyItemIdAndInfo(internal_database_name, alert)
+		if escalation_policy_item_id == -1 {
+			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No Escalation Policy found for Alert: Service Outage: %v -- Alert: %v\n", service_outage, alert)
+			return
+		}
+
+		new_alert_notification["escalation_policy_item_id"] = escalation_policy_item_id
+		new_alert_notification["escalation_policy_item_info"] = escalation_policy_item_info
+		new_alert_notification["business_user_contact_id"] = GetEscalationPolicyUserContactId(internal_database_name, alert["escalation_policy_id"].(int64), time.Now())
 
 		alert_notification := DatamanInsert("alert_notification", new_alert_notification, options)
 
@@ -1056,4 +1072,35 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 		_ = DatamanInsert("service_outage_alert_notification", new_service_outage_alert_notification, options)
 	}
 
+}
+
+func GetEscalationPolicyUserContactId(internal_database_name string, escalation_policy_id int64, at_time time.Time) int64 {
+	var business_user_contact_id int64
+
+	return business_user_contact_id
+}
+
+func GetAlertEscalationPolicyItemIdAndInfo(internal_database_name string, alert map[string]interface{}) (int64, string) {
+	// Check to see if there are any open outages
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	//TODO(g): Make a decision making system here.  For now, I am just doing the simple "make alert when told" thing.
+
+	// Find the first Escalation Policy (parent_id==NULL) for this Alert.  This is where we start.
+	filter := map[string]interface{}{
+		"escalation_policy_id": []interface{}{"=", alert["escalation_policy_id"]},
+		"parent_id": []interface{}{"=", nil},
+	}
+	escalation_policy_item_array := DatamanFilter("escalation_policy_item", filter, options)
+
+	if len(escalation_policy_item_array) > 0 {
+		escalation_policy_item := escalation_policy_item_array[0]
+
+		return escalation_policy_item["_id"].(int64), escalation_policy_item["name"].(string)
+	} else {
+		UdnLogLevel(nil, log_error, "GetAlertEscalationPolicyItemIdAndInfo: Failed to find Escalation Policy Item Parent for Alert: %v\n", alert)
+
+		return -1, "Error"
+	}
 }
