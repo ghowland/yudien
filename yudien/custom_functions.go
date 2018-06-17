@@ -450,8 +450,6 @@ func HttpsRequest(hostname string, port int, uri string, client_cert string, cli
 	return data
 }
 
-
-
 func UDN_Custom_Code(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_val := input
 
@@ -588,13 +586,21 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 	return result
 }
 
-
 func UDN_Custom_Metric_Get_Values(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
 	duration_ms := GetResult(args[1], type_int).(int64)
 	offset_ms := GetResult(args[2], type_int).(int64)
 
-	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Get Values: %d: %d\n", duration_ms, offset_ms)
+	time_store_values := MetricGetValues(internal_database_name, duration_ms, offset_ms, input)
+
+	result := UdnResult{}
+	result.Result = time_store_values
+
+	return result
+}
+
+func MetricGetValues(internal_database_name string, duration_ms int64, offset_ms int64, input interface{}) map[int64]interface{} {
+	UdnLogLevel(nil, log_trace, "MetricGetValues: %d: %d\n", duration_ms, offset_ms)
 
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
@@ -612,24 +618,28 @@ func UDN_Custom_Metric_Get_Values(db *sql.DB, udn_schema map[string]interface{},
 		time_store_values[metric["time_store_item_id"].(int64)] = metric_values
 	}
 
-
-	result := UdnResult{}
-	result.Result = time_store_values
-
-	return result
+	return time_store_values
 }
-
 
 func UDN_Custom_Metric_Rule_Match_Percent(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
 	rules := GetResult(args[1], type_array).([]interface{})
 
-	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Rule Match Percent: %v\n", rules)
+	result_map := MetricRuleMatchPercent(internal_database_name, rules, input.(map[int64]interface{}))
+
+	result := UdnResult{}
+	result.Result = result_map
+
+	return result
+}
+
+func MetricRuleMatchPercent(internal_database_name string, rules []interface{}, input map[int64]interface{}) map[int64]float64 {
+	UdnLogLevel(nil, log_trace, "MetricRuleMatchPercent: %v\n", rules)
 
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
-	input_val := input.(map[int64]interface{})
+	input_val := input
 
 	result_map := make(map[int64]float64)
 
@@ -650,19 +660,14 @@ func UDN_Custom_Metric_Rule_Match_Percent(db *sql.DB, udn_schema map[string]inte
 
 		}
 
-		UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Rule Match Percent: Matched: %d of %d\n", input_matched, input_count)
+		UdnLogLevel(nil, log_trace, "MetricRuleMatchPercent: Matched: %d of %d\n", input_matched, input_count)
 
 		input_percent := float64(input_matched) / float64(input_count)
 
 		result_map[time_store_item_id] = input_percent
 	}
 
-
-
-	result := UdnResult{}
-	result.Result = result_map
-
-	return result
+	return result_map
 }
 
 func MetricMatchRules(data map[string]interface{}, rules []interface{}) bool {
@@ -770,7 +775,7 @@ func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface
 			UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Handle Outage: Alert: %d: %f < %f\n", time_store_item_id, value, alert_threshold)
 
 			if config["health_check"] != nil {
-				MetricPopulateOutage(config, time_store_item_id, value)
+				MetricPopulateOutage(internal_database_name, config, time_store_item_id, value)
 			} else {
 				UdnLogLevel(udn_schema, log_trace, "WARNNG: Metric: Handle Outage: Cant Populate Outage, because Health Check data is missing from config: health_check == nil\n")
 			}
@@ -784,9 +789,135 @@ func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface
 	return result
 }
 
-func MetricPopulateOutage(config map[string]interface{}, time_store_item_id int64, value float64) {
+func MetricPopulateOutage(internal_database_name string, config map[string]interface{}, time_store_item_id int64, value float64) {
 	health_check := config["health_check"].(map[string]interface{})
 
 	UdnLogLevel(nil, log_trace, "CUSTOM: Metric: Populate Outage: %d: %f: %s\n", time_store_item_id, value, health_check["name"])
 
+	// Check to see if there are any open outages
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+
+	// Check to see if this alert is part of the open outages, and update them
+	filter := map[string]interface{}{
+		"business_id": []interface{}{"=", health_check["business_id"]},
+	}
+	//TODO(g): May want to add a sort option that can be passed in as arg3, since we could organize these somehow.  Remove comment if not needed.
+	outage_array := DatamanFilter("service_outage", filter, options)
+
+	var service_outage map[string]interface{}
+
+	// If there are no open outages, create a new Outage
+	if len(outage_array) == 0 {
+		// Get the default service
+		filter := map[string]interface{}{
+			"is_default": []interface{}{"=", true},
+		}
+		options["sort"] = []string{"_id"}		// Always in the same order, so we have a consistent default
+		business_service_array := DatamanFilter("business_service", filter, options)
+		options["sort"] = nil
+
+		var service_id int64
+
+		if len(business_service_array) > 0 {
+			service_id = business_service_array[0]["service_id"].(int64)
+		}
+
+		new_service_outage := make(map[string]interface{})
+
+		new_service_outage["business_id"] = health_check["business_id"]
+		new_service_outage["service_id"] = service_id
+		new_service_outage["time_start"] = time.Now()
+
+		// Save the new outage
+		service_outage := DatamanSet("service_outage", new_service_outage, options)
+		UdnLogLevel(nil, log_trace, "CUSTOM: Metric: New Outage: %d\n", service_outage["_id"])
+	} else {
+		service_outage = outage_array[0]
+	}
+
+	// Get the time_store_item for this Health Check value
+	time_store_item := DatamanGet("time_store_item", int(time_store_item_id), options)
+
+	// Add this alert to the new Outage
+	new_service_outage_item := make(map[string]interface{})
+	new_service_outage_item["business_id"] = health_check["business_id"]
+	new_service_outage_item["service_outage_id"] = service_outage["_id"]
+	new_service_outage_item["service_outage_type_id"] = 1	// Activated
+	new_service_outage_item["health_check_id"] = health_check["_id"]
+	new_service_outage_item["time_start"] = time.Now()
+	new_service_outage_item["business_environment_namespace_metric_id"] = time_store_item["business_environment_namespace_metric_id"]
+
+	service_outage_item := DatamanSet("service_outage_item", new_service_outage_item, options)
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: Metric: Populate Outage: Service Outage Item: %v\n", service_outage_item)
+
+	/*
+	// See if we already have a notice on this
+	filter["service_outage_id"] = service_outage["_id"]
+	filter["time_store_item_id"] = true
+	filter["time_stop"] = nil
+	service_outage_item_array := DatamanFilter("service_outage_item", filter, options)
+	*/
+
+	// Kick off the Escalation Policy to determine if it's time to Alert
+
 }
+
+func UDN_Custom_Metric_Process_Open_Outages(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	ProcessOpenOutages(internal_database_name)
+
+	result := UdnResult{}
+	result.Result = nil
+
+	return result
+}
+
+func ProcessOpenOutages(internal_database_name string) {
+	// Check to see if there are any open outages
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+
+	//TODO(g): Check to see if we need to alert again, or we can close the outage, or if we are flapping, etc.  This is the state handler.
+
+	// All activated (time_stop==NULL) outage_items, check to see if they have healed, and deal with that
+	//TODO(g)...
+
+
+	filter := map[string]interface{}{
+		"time_stop": []interface{}{"=", nil},
+	}
+	options["sort"] = []string{"_id"}		// Always in the same order, so we have a consistent default
+	service_outage_item_array := DatamanFilter("service_outage_item", filter, options)
+	options["sort"] = nil
+
+	// Call GetMetricValues from our open service_outage_item array, to test if they have changed
+	for _, service_outage_item := range service_outage_item_array {
+		health_check := DatamanGet("health_check", int(service_outage_item["helath_check_id"].(int64)), options)
+		businsess_environment_namespace := DatamanGet("businsess_environment_namespace", int(service_outage_item["business_environment_namespace_metric_id"].(int64)), options)
+
+		businsess_environment_namespace_array := []map[string]interface{}{businsess_environment_namespace}
+		time_store_values := MetricGetValues(internal_database_name, health_check["duration_ms"].(int64), health_check["offset_ms"].(int64), businsess_environment_namespace_array)
+
+		// Get the percentage
+		rules := health_check["code_data_json"].(map[string]interface{})["rules"].([]interface{})
+		match_percentage_map := MetricRuleMatchPercent(internal_database_name, rules, time_store_values)
+
+		health_check_percentage := match_percentage_map[businsess_environment_namespace["time_store_item_id"].(int64)]
+
+		alert_threshold := GetResult(health_check["code_data_json"].(map[string]interface{})["alert_threshold"], type_float).(float64)
+
+		if health_check_percentage < alert_threshold {
+			// Heal this outage_item and store it
+			service_outage_item["time_stop"] = time.Now()
+
+			_ = DatamanSet("service_outage_item", service_outage_item, options)
+		}
+	}
+}
+

@@ -337,8 +337,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		},
 	}
 
-	UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
-	//UdnLogLevel(nil, log_trace, "Dataman SET: Record: JSON: %v\n", JsonDump(record))
+	//UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
 	UdnLogLevel(nil, log_trace, "Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
 
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
@@ -364,7 +363,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 
 		return record
 	} else {
-		UdnLogLevel(nil, log_trace, "Dataman SET: Failed Result: nil: %v\n", result.ValidationError.(map[string]interface{}))
+		UdnLogLevel(nil, log_trace, "Dataman SET: Failed Result: nil: %v\n", result.Error)
 		record := make(map[string]interface{})
 		record["_error"] = result.ValidationError
 		return record
