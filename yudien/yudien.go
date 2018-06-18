@@ -365,6 +365,7 @@ func InitUdn() {
 		"__custom_metric_rule_match_percent": UDN_Custom_Metric_Rule_Match_Percent,   	// CUSTOM: Returns a scalar, % of matches in the rules
 		"__custom_metric_handle_outage": UDN_Custom_Metric_Handle_Outage,   	// CUSTOM: Handles an any outages from health check failures on metrics
 		"__custom_metric_process_open_outages": UDN_Custom_Metric_Process_Open_Outages,   	// CUSTOM: Handles an any outages from health check failures on metrics
+		"__custom_metric_process_alert_notifications": UDN_Custom_Metric_Process_Alert_Notifications,   	// CUSTOM: Processes any open Alert Notifications
 	}
 
 	PartTypeName = map[int]string{

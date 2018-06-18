@@ -15,6 +15,7 @@ import (
 	"log"
 	"io/ioutil"
 	"bytes"
+	"net/smtp"
 )
 
 func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
@@ -775,7 +776,7 @@ func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface
 			UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Handle Outage: Alert: %d: %f < %f\n", time_store_item_id, value, alert_threshold)
 
 			if config["health_check"] != nil {
-				MetricPopulateOutage(internal_database_name, config, time_store_item_id, value)
+				MetricPopulateOutage(internal_database_name, config, time_store_item_id, value, alert_threshold)
 			} else {
 				UdnLogLevel(udn_schema, log_trace, "WARNNG: Metric: Handle Outage: Cant Populate Outage, because Health Check data is missing from config: health_check == nil\n")
 			}
@@ -789,7 +790,7 @@ func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface
 	return result
 }
 
-func MetricPopulateOutage(internal_database_name string, config map[string]interface{}, time_store_item_id int64, value float64) {
+func MetricPopulateOutage(internal_database_name string, config map[string]interface{}, time_store_item_id int64, value float64, alert_threshold float64) {
 	health_check := config["health_check"].(map[string]interface{})
 
 	UdnLogLevel(nil, log_trace, "CUSTOM: Metric: Populate Outage: %d: %f: %s\n", time_store_item_id, value, health_check["name"])
@@ -848,6 +849,7 @@ func MetricPopulateOutage(internal_database_name string, config map[string]inter
 	new_service_outage_item["health_check_id"] = health_check["_id"]
 	new_service_outage_item["time_start"] = time.Now()
 	new_service_outage_item["business_environment_namespace_metric_id"] = time_store_item["business_environment_namespace_metric_id"]
+	new_service_outage_item["name"] = fmt.Sprintf("%s: Failed: %f%%  Required: %f%%", health_check["name"], value, alert_threshold)
 
 	service_outage_item := DatamanInsert("service_outage_item", new_service_outage_item, options)
 
@@ -919,8 +921,6 @@ func ProcessOpenOutages(internal_database_name string) {
 		if health_check_percentage < alert_threshold {
 			// Heal this outage_item and store it
 			service_outage_item["time_stop"] = time.Now()
-
-			service_outage_item["name"] = fmt.Sprintf("%s: Failed: %f%%  Required: %f%%", health_check["name"], health_check_percentage, alert_threshold)
 
 			_ = DatamanSet("service_outage_item", service_outage_item, options)
 		}
@@ -995,6 +995,19 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 		new_alert_notification["content_body"] = fmt.Sprintf("Outage Created Body: %s", outage_name)
 		new_alert_notification["created"] = time.Now()
 
+		//TODO(g): Get this from the Escalation Policy Method
+		new_alert_notification["alert_notification_method_id"] = 1 // Email
+
+		escalation_policy_item_id, escalation_policy_item_info := GetAlertEscalationPolicyItemIdAndInfo(internal_database_name, alert)
+		if escalation_policy_item_id == -1 {
+			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No Escalation Policy found for Alert: Service Outage: %v -- Alert: %v\n", service_outage, alert)
+			return
+		}
+
+		new_alert_notification["escalation_policy_item_id"] = escalation_policy_item_id
+		new_alert_notification["escalation_policy_item_info"] = escalation_policy_item_info
+		new_alert_notification["business_user_contact_id"] = GetEscalationPolicyUserContactId(internal_database_name, alert["escalation_policy_id"].(int64), time.Now())
+
 		alert_notification := DatamanInsert("alert_notification", new_alert_notification, options)
 
 		// Make the service_outage_alert_notification record
@@ -1052,6 +1065,9 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 		new_alert_notification["content_body"] = fmt.Sprintf("Outage Created Body: %s", outage_name)
 		new_alert_notification["created"] = time.Now()
 
+		//TODO(g): Get this from the Escalation Policy Method
+		new_alert_notification["alert_notification_method_id"] = 1 // Email
+
 		escalation_policy_item_id, escalation_policy_item_info := GetAlertEscalationPolicyItemIdAndInfo(internal_database_name, alert)
 		if escalation_policy_item_id == -1 {
 			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No Escalation Policy found for Alert: Service Outage: %v -- Alert: %v\n", service_outage, alert)
@@ -1089,10 +1105,12 @@ func GetEscalationPolicyUserContactId(internal_database_name string, escalation_
 
 	filter := map[string]interface{}{
 		"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
-		"time_start": []interface{}{">", at_time},
-		"time_stop": []interface{}{"<", at_time},
+		"time_start": []interface{}{"<", at_time},
+		"time_stop": []interface{}{">", at_time},
 	}
 	schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
+
+	UdnLogLevel(nil, log_trace, "GetEscalationPolicyUserContactId: Found Schedule Timeline Items: %v\n", schedule_timeline_item_array)
 
 	if len(schedule_timeline_item_array) > 0 {
 		schedule_timeline_item := schedule_timeline_item_array[0]
@@ -1141,3 +1159,85 @@ func GetAlertEscalationPolicyItemIdAndInfo(internal_database_name string, alert 
 		return -1, "Error"
 	}
 }
+
+
+func UDN_Custom_Metric_Process_Alert_Notifications(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	ProcessAlertNotifications(internal_database_name)
+
+	result := UdnResult{}
+	result.Result = nil
+
+	return result
+}
+
+func ProcessAlertNotifications(internal_database_name string) {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	UdnLogLevel(nil, log_trace, "ProcessAlertNotifications\n")
+
+	// Find alert notifications that havent been sent yet
+	filter := map[string]interface{}{
+		"time_sent": []interface{}{"=", nil},
+	}
+	alert_notification_array := DatamanFilter("alert_notification", filter, options)
+
+	for _, alert_notification := range alert_notification_array {
+		SendAlert(internal_database_name, alert_notification)
+	}
+}
+
+func SendAlert(internal_database_name string, alert_notification map[string]interface{}) {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	business_user_contact := DatamanGet("business_user_contact", int(alert_notification["business_user_contact_id"].(int64)), options)
+	business_user := DatamanGet("business_user", int(business_user_contact["business_user_id"].(int64)), options)
+
+	to_str := fmt.Sprintf("%s <%s>", business_user["name"], business_user_contact["value"])
+
+	from_str := "geoff@gmail.com"
+
+	body := fmt.Sprintf("Subject: %s\n\n%s\n\n", alert_notification["content_subject"].(string), alert_notification["content_body"].(string))
+
+	err := smtp.SendMail(
+		"localhost:25",
+		nil,
+		from_str,
+		[]string{to_str},
+		[]byte(body),
+	)
+	if err != nil {
+		UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
+	}
+
+
+	/*
+	c, err := smtp.Dial("localhost:25")
+	if err != nil {
+		UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
+	}
+	defer c.Close()
+
+	// Set the sender and recipient.
+	c.Mail(from_str)
+	c.Rcpt(to_str)
+
+	// Send the email body.
+	wc, err := c.Data()
+	if err != nil {
+		UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
+	}
+	defer wc.Close()
+
+	buf := bytes.NewBufferString(alert_notification["content_body"].(string))
+	if _, err = buf.WriteTo(wc); err != nil {
+		UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
+	}
+
+	*/
+}
+
