@@ -124,7 +124,7 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 }
 
 // Returns a DatasourceInstance.  If name is "" or not found, it starts with the lowest DB and finds the first collection/table that matches
-func GetDatasourceInstance(options map[string]interface{}) (*storagenode.DatasourceInstance, string) {
+func GetDatasourceInstance(options map[string]interface{}) (*storagenode.DatasourceInstance, string, string) {
 	datasource_instance := DatasourceInstance["_default"]
 	datasource_database := DatasourceDatabase["_default"]
 
@@ -142,7 +142,7 @@ func GetDatasourceInstance(options map[string]interface{}) (*storagenode.Datasou
 
 	UdnLogLevel(nil, log_trace, "Data Source Connection: %s\n", selected_db)
 
-	return datasource_instance, datasource_database
+	return datasource_instance, datasource_database, selected_db
 }
 
 func GetRecordLabel(datasource_database string, collection_name string, record_id int) string {
@@ -172,7 +172,7 @@ func AddJoinAsFlatNamespace(record map[string]interface{}, join_array []interfac
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
 	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	get_map := map[string]interface{} {
 		"db":             datasource_database,
@@ -197,7 +197,7 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 
 	record := result.Return[0]
 	if record != nil {
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, record_id)
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, record_id)
 	}
 
 	// Add all the joined fields as a flat namespace to the original table
@@ -215,7 +215,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
 	record = MapCopy(record)
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	// Remove the _id field, if it is nil.  This means it should be new/insert
 	if record["_id"] == nil || record["_id"] == "<nil>" || record["_id"] == "\u003cnil\u003e" || record["_id"] == "" {
@@ -357,7 +357,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 
 	if result.Return != nil {
 		record := result.Return[0]
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record["_id"].(int64)))
 
 		UdnLogLevel(nil, log_trace, "Dataman SET: Result Record: JSON: %v\n", record)
 
@@ -378,7 +378,7 @@ func DatamanInsert(collection_name string, record map[string]interface{}, option
 	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
 	record = MapCopy(record)
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	// Remove fields I know I put in here, that I dont want to go in
 	//TODO(g):REMOVE: Same as the others
@@ -416,7 +416,7 @@ func DatamanInsert(collection_name string, record map[string]interface{}, option
 
 	if result.Return != nil {
 		record := result.Return[0]
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record["_id"].(int64)))
 
 		UdnLogLevel(nil, log_trace, "Dataman INSERT: Result Record: JSON: %v\n", record)
 
@@ -434,7 +434,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	//fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	filter = MapCopy(filter)
 
@@ -483,7 +483,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 			field_id = "id"
 		}
 
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record[field_id].(int64)))
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record[field_id].(int64)))
 		if options["join"] != nil {
 			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
 		}
@@ -495,7 +495,7 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 func DatamanFilterFull(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
 	// Contains updated functionality of DatamanFilter where multiple constraints can be used as per dataman specs
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	// filter should be a map[string]interface{} for single filters and []interface{} for multi-filters
 	// dataman handles all cases so it is fine for filter to be interface{}
@@ -534,7 +534,7 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 
 	// Add all the joined fields as a flat namespace to the original table
 	for _, record := range result.Return {
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record["_id"].(int64)))
 		if options["join"] != nil {
 			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
 		}
@@ -564,7 +564,7 @@ func DatamanDelete(collection_name string, record_id int64, options map[string]i
 	// Whether to delete or NULL FK dependencies on the deleted entry (recursively)
 	UdnLogLevel(nil, log_trace, "Delete entry: collection name: %v, record_id: %v, options: %v\n", collection_name, record_id, options)
 
-	_, datasource_database := GetDatasourceInstance(options)
+	_, datasource_database, _ := GetDatasourceInstance(options)
 
 	var record map[string]interface{}
 
@@ -724,7 +724,7 @@ func FindDeleteDependency(schema_id int64, schema_table_id int64, record_id int6
 func DatamanDeleteRaw(collection_name string, record_id int64, options map[string]interface{}) map[string]interface{}{
 	// Used for deleting the a single entry with no other FK dependent on the deleted entry
 	// If there are other FK(s) dependent on the deleted entry, please use DatamanDelete
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	delete_map := map[string]interface{} {
 		"db":             datasource_database,
@@ -747,7 +747,7 @@ func DatamanDeleteRaw(collection_name string, record_id int64, options map[strin
 		record = result.Return[0]
 
 		if record != nil {
-			record["__record_label"] = GetRecordLabel(datasource_database, collection_name, int(record_id))
+			record["__record_label"] = GetRecordLabel(selected_db, collection_name, int(record_id))
 		}
 	} else {
 		// Send the error & msg back to the UDN caller
