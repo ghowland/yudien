@@ -2687,16 +2687,22 @@ func UDN_DataGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	collection_name := GetResult(args[0], type_string).(string)
 	record_id := GetResult(args[1], type_int).(int64)
 
-	// If this is a negative value, return an empty map, this is a new record
-	if record_id < 0 {
-		//TODO(g): Populate with default values
-		result.Result = make(map[string]interface{})
-		return result
-	}
-
 	options := make(map[string]interface{})
 	if len(args) > 2 {
 		options = GetResult(args[2], type_map).(map[string]interface{})
+	}
+
+	// If this is a negative value, return an empty map, this is a new record
+	if record_id < 0 {
+		_, _, selected_db := GetDatasourceInstance(options)
+
+		//TODO(g): Populate with default values
+		new_record := make(map[string]interface{})
+		new_record["_id"] = record_id
+		new_record["_record_label"] = fmt.Sprintf("%s.%s.%d", selected_db, collection_name, record_id)
+
+		result.Result = new_record
+		return result
 	}
 
 	result_map := DatamanGet(collection_name, int(record_id), options)
