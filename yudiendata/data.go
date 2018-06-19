@@ -222,7 +222,15 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		//fmt.Printf("DatamanSet: Removing _id key: %s\n", record["_id"])
 		delete(record, "_id")
 	} else {
-		//fmt.Printf("DatamanSet: Not Removing _id: %s\n", record["_id"])
+		// If this a new record (negative ID), clear the negative value out so it is not submitted
+		record_id := GetResult(record["_id"], type_int).(int64)
+
+		if record_id < 0 {
+			UdnLogLevel(nil, log_trace, "DatamanSet: New Record: Removing _id: %d\n", record_id)
+			delete(record, "_id")
+		} else {
+			//UdnLogLevel(nil, log_trace, "DatamanSet: Not Removing _id: %s\n", record["_id"])
+		}
 	}
 
 	// Delete the defaults base64 encoded map, it is never part of a record, it is to ensure we keep our defaults

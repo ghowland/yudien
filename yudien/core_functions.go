@@ -2682,8 +2682,17 @@ func UDN_TimeSeriesFilter(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 func UDN_DataGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Data Get: %v\n", args)
 
+	result := UdnResult{}
+
 	collection_name := GetResult(args[0], type_string).(string)
 	record_id := GetResult(args[1], type_int).(int64)
+
+	// If this is a negative value, return an empty map, this is a new record
+	if record_id < 0 {
+		//TODO(g): Populate with default values
+		result.Result = make(map[string]interface{})
+		return result
+	}
 
 	options := make(map[string]interface{})
 	if len(args) > 2 {
@@ -2691,8 +2700,6 @@ func UDN_DataGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPa
 	}
 
 	result_map := DatamanGet(collection_name, int(record_id), options)
-
-	result := UdnResult{}
 	result.Result = result_map
 
 	return result
