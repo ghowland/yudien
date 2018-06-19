@@ -334,15 +334,32 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	delete(record, "_table")
 	delete(record, "_web_data_widget_instance_id")
 
-	// Form the Dataman query
-	dataman_query := &query.Query{
-		query.Set,
-		map[string]interface{} {
-			"db":             datasource_database,
-			"shard_instance": "public",
-			"collection":     collection_name,
-			"record":         record,
-		},
+	var dataman_query *query.Query
+
+	// Insert if this doesnt have the _id PKEY, otherwise SET (update)
+	if record["_id"] == nil {
+		// Form the Dataman query -- INSERT
+		dataman_query = &query.Query{
+			query.Insert,
+			map[string]interface{} {
+				"db":             datasource_database,
+				"shard_instance": "public",
+				"collection":     collection_name,
+				"record":         record,
+			},
+		}
+
+	} else {
+		// Form the Dataman query -- SET
+		dataman_query = &query.Query{
+			query.Set,
+			map[string]interface{} {
+				"db":             datasource_database,
+				"shard_instance": "public",
+				"collection":     collection_name,
+				"record":         record,
+			},
+		}
 	}
 
 	//UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
