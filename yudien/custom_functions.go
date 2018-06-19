@@ -1241,3 +1241,128 @@ func SendAlert(internal_database_name string, alert_notification map[string]inte
 	*/
 }
 
+
+
+
+func UDN_Custom_Metric_Escalation_Policy_Oncall(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	escalation_policy_id:= GetResult(args[1], type_int).(int64)
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	data := EscalationPolicyGetOncall(internal_database_name, escalation_policy_id, time.Now())
+
+	result := UdnResult{}
+	result.Result = data
+
+	return result
+}
+
+func EscalationPolicyGetOncall(internal_database_name string, escalation_policy_id int64, at_time time.Time) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	data := GetEscalationPolicyInfo(internal_database_name, escalation_policy_id, at_time)
+
+	return data
+}
+
+
+func GetEscalationPolicyInfo(internal_database_name string, escalation_policy_id int64, at_time time.Time) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	filter := map[string]interface{}{
+		"escalation_policy_id": []interface{}{"=", escalation_policy_id},
+	}
+	options["sort"] = []string{"format_priority"}		// Always in the same order, so we have a consistent default
+	escalation_policy_item_array := DatamanFilter("escalation_policy_item", filter, options)
+	options["sort"] = nil
+
+	// Make our return map data
+	data := make(map[string]interface{})
+
+	oncall_users := ""
+
+	for _, escalation_policy_item := range escalation_policy_item_array {
+		item := GetEscalationPolicyItemInfo(internal_database_name, escalation_policy_item["_id"].(int64), at_time)
+
+		UdnLogLevel(nil, log_trace, "GetEscalationPolicyInfo: %d: %v\n", escalation_policy_item["_id"], item)
+
+		if item["skip"] == nil {
+			if oncall_users != "" {
+				oncall_users += ", "
+			}
+			oncall_users += item["oncall_user"].(string)
+
+			data["team"] = item["oncall_user_team"]
+		}
+	}
+
+	// Set final data values
+	data["oncall_users"] = oncall_users
+
+	UdnLogLevel(nil, log_trace, "GetEscalationPolicyInfo: Result: %v\n", data)
+
+	return data
+}
+
+func GetEscalationPolicyItemInfo(internal_database_name string, escalation_policy_item_id int64, at_time time.Time) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	// Make our return map data
+	data := make(map[string]interface{})
+
+	escalation_policy_item := DatamanGet("escalation_policy_item", int(escalation_policy_item_id), options)
+
+	// If we dont have a Duty Responsibility Shift, dont show this
+	if escalation_policy_item["duty_responsibility_shift_id"] == nil {
+		data["skip"] = true
+		return data
+	}
+
+	duty_responsibility_shift := DatamanGet("duty_responsibility_shift", int(escalation_policy_item["duty_responsibility_shift_id"].(int64)), options)
+
+	duty_responsibility := DatamanGet("duty_responsibility", int(duty_responsibility_shift["duty_responsibility_id"].(int64)), options)
+
+	var business_user_contact_id int64
+
+	filter := map[string]interface{}{
+		"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
+		"time_start": []interface{}{"<", at_time},
+		"time_stop": []interface{}{">", at_time},
+	}
+	schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
+
+	UdnLogLevel(nil, log_trace, "GetEscalationPolicyUserContactId: Found Schedule Timeline Items: %v\n", schedule_timeline_item_array)
+
+	if len(schedule_timeline_item_array) > 0 {
+		schedule_timeline_item := schedule_timeline_item_array[0]
+
+		business_user_id := schedule_timeline_item["business_user_id"].(int64)
+
+		filter := map[string]interface{}{
+			"business_user_id": []interface{}{"=", business_user_id},
+		}
+		business_user_contact_array := DatamanFilter("business_user_contact", filter, options)
+
+		//TODO(g): Do a selection here, for now Im just taking the first one and assuming it's fine
+		business_user_contact := business_user_contact_array[0]
+
+		// Set the business_user_contact_id
+		business_user_contact_id = business_user_contact["_id"].(int64)
+	} else {
+		UdnLogLevel(nil, log_error, "GetEscalationPolicyUserContactId: Failed to find Schedule Timeline Item for Escalation Policy Item: %v\n", escalation_policy_item)
+		business_user_contact_id = -1
+	}
+
+	//TODO(g): This will break if user_contact == -1...
+	business_user := DatamanGet("business_user", int(business_user_contact_id), options)
+	business_team := DatamanGet("business_team", int(business_user["business_team_id"].(int64)), options)
+
+	// Set final return values
+	data["oncall_user"] = fmt.Sprintf("%s %s.", business_user["name_first"], business_user["name_last"].(string)[0:1])
+	data["oncall_user_team"] = business_team["name"]
+
+	return data
+}
