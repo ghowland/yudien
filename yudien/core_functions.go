@@ -4255,6 +4255,15 @@ func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 	return result
 }
 
+
+func UDN_Nil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	// Return nil
+	result := UdnResult{}
+	result.Result = nil
+
+	return result
+}
+
 func UDN_DebugGetAllUdnData(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	//TODO(g):SECURITY: This should have a security check, because it is a DEBUG style function, and could give away information the end user should not see, but is needed during processing, and is not exposed without this type of DEBUG function
 

@@ -182,6 +182,7 @@ func InitUdn() {
 		"__end_iterate":  nil,
 		"__while":        UDN_While,	 // While takes a condition (arg_0) and a max (arg_1:int) number of iterations, so it cannot run forever
 		"__end_while":  nil,
+		"__nil":          UDN_Nil,		// Returns nil
 		"__get":          UDN_Get,
 		"__set":          UDN_Set,
 		"__get_index": 	  UDN_GetIndex, // Get data using input rather than args (otherwise same as __get)
