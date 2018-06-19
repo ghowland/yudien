@@ -2788,6 +2788,23 @@ func UDN_DataDelete(db *sql.DB, udn_schema map[string]interface{}, udn_start *Ud
 	return result
 }
 
+func UDN_DataTombstone(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Data Tombstone: %v\n", args)
+
+	record_label := GetResult(args[0], type_string).(string)
+
+	record := DatamanGetByLabel(record_label)
+
+	record["_is_deleted"] = true
+
+	record_result := DatamanSetByLabel(record_label, record)
+
+	result := UdnResult{}
+	result.Result = record_result
+
+	return result
+}
+
 func UDN_DataDeleteFilter(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// DataDelete using filter - can have multiple deletes (deletes are performed one-by-one)
 	UdnLogLevel(udn_schema, log_trace, "Data Delete Filter: %v\n", args)

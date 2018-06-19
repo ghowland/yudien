@@ -169,6 +169,39 @@ func AddJoinAsFlatNamespace(record map[string]interface{}, join_array []interfac
 	}
 }
 
+func DatamanGetByLabel(record_label string) map[string]interface{} {
+	UdnLogLevel(nil, log_debug, "Dataman GET By Label: %s\n", record_label)
+
+	parts := strings.Split(record_label, ".")
+
+	database := parts[0]
+	table := parts[1]
+	record_pkey := GetResult(parts[2], type_int).(int64)
+
+	options := make(map[string]interface{})
+	options["db"] = database
+
+	record := DatamanGet(table, int(record_pkey), options)
+
+	return record
+}
+
+func DatamanSetByLabel(record_label string, record map[string]interface{}) map[string]interface{} {
+	UdnLogLevel(nil, log_debug, "Dataman SET By Label: %s: %v\n", record_label, record)
+
+	parts := strings.Split(record_label, ".")
+
+	database := parts[0]
+	table := parts[1]
+
+	options := make(map[string]interface{})
+	options["db"] = database
+
+	record_result := DatamanSet(table, record, options)
+
+	return record_result
+}
+
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
 	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
@@ -198,6 +231,12 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 	record := result.Return[0]
 	if record != nil {
 		record["_record_label"] = GetRecordLabel(selected_db, collection_name, record_id)
+
+		// If we have an Active Tombstone record, and we arent ignoring it
+		if record["_is_deleted"] != nil && options["ignore_tombstones"] != nil && record["_is_deleted"] == true && options["ignore_tombstones"] != true {
+			record["_error"] = "This record has been deleted with a Tombstone: _is_deleted = true"
+			UdnLogLevel(nil, log_error, "Dataman GET: %s: ERRORS: %s\n", record["_record_label"], record["_error"])
+		}
 	}
 
 	// Add all the joined fields as a flat namespace to the original table
@@ -514,7 +553,25 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 		}
 	}
 
-	return result.Return
+	// Filter any Tombstone Deleted records
+	final_record_array := make([]map[string]interface{}, 0)
+
+	for _, record := range result.Return {
+		// Ensure we remove any records with _is_deleted==true unless options.ignore_tombstones==true
+		// If we have an Active Tombstone record, and we arent ignoring it
+		if record["_is_deleted"] != nil && record["_is_deleted"] == true {
+			if  options["ignore_tombstones"] != nil && options["ignore_tombstones"] == true {
+				final_record_array = append(final_record_array, record)
+			} else {
+				// Not adding this record to final_record_array, because it was deleted by tombstone, and we arent ignoring that with options flag
+			}
+		} else {
+			// This wasnt removed by Tombstone, so add it to our final results
+			final_record_array = append(final_record_array, record)
+		}
+	}
+
+	return final_record_array
 }
 
 func DatamanFilterFull(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
@@ -565,7 +622,25 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 		}
 	}
 
-	return result.Return
+	// Filter any Tombstone Deleted records
+	final_record_array := make([]map[string]interface{}, 0)
+
+	for _, record := range result.Return {
+		// Ensure we remove any records with _is_deleted==true unless options.ignore_tombstones==true
+		// If we have an Active Tombstone record, and we arent ignoring it
+		if record["_is_deleted"] != nil && record["_is_deleted"] == true {
+			if  options["ignore_tombstones"] != nil && options["ignore_tombstones"] == true {
+				final_record_array = append(final_record_array, record)
+			} else {
+				// Not adding this record to final_record_array, because it was deleted by tombstone, and we arent ignoring that with options flag
+			}
+		} else {
+			// This wasnt removed by Tombstone, so add it to our final results
+			final_record_array = append(final_record_array, record)
+		}
+	}
+
+	return final_record_array
 }
 
 func DatamanFormat(filter_string string, args ...interface{}) interface{} {

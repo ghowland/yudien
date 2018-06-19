@@ -297,6 +297,7 @@ func InitUdn() {
 		"__data_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
 		"__data_delete":    UDN_DataDelete,    // Dataman Get
 		"__data_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
+		"__data_tombstone": UDN_DataTombstone, // Dataman "Delete" with a Tombstone marker: _is_deleted=true
 
 		"__time_series_get":    UDN_TimeSeriesGet,    // Time Series: Get
 		"__time_series_filter":    UDN_TimeSeriesFilter,    // Time Series: Filter
