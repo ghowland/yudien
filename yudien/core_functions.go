@@ -2884,6 +2884,11 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 			record_map = submit_map[database].(map[string]interface{})[table].(map[string]interface{})[record_pkey].(map[string]interface{})
 		}
 
+		// Convert value into nil if it is "__nil"
+		if value == "__nil" {
+			value = nil
+		}
+
 		record_map[field] = value
 
 		UdnLogLevel(nil, log_trace,"Change: Submit: DB: %s  Table: %s  Record: %s  Field: %s  =  %v\n", database, table, record_pkey, field, value)
