@@ -160,7 +160,12 @@ func AddJoinAsFlatNamespace(record map[string]interface{}, join_array []interfac
 			join_record := record[join_string].(map[string]interface{})
 
 			for field_name, value := range join_record {
+				// Use dots to reach joined data in flat namespace
 				field_key := fmt.Sprintf("%s.%s", join_name, field_name)
+				record[field_key] = value
+
+				// Use double-underscore too, sometimes we cant use dots
+				field_key = fmt.Sprintf("%s__%s", join_name, field_name)
 				record[field_key] = value
 
 				//UdnLogLevel(nil, log_trace, "AddJoinAsFlatNamespace: %s: %v\n", field_key, value)
