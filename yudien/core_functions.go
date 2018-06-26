@@ -972,6 +972,9 @@ func UDN_StringReplace(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	arg_0 := GetResult(args[0], type_string).(string)
 	arg_1 := GetResult(args[1], type_string).(string)
 
+	// Quote replacement stuff
+	arg_1 = strings.Replace(arg_1, "||QUOTE||", "'", -1)
+
 	// Create a list of UdnResults, so we can pass them as args to the Set command
 	result_string := strings.Replace(input_string, arg_0, arg_1, -1)
 
