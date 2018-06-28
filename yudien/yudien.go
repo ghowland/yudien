@@ -369,6 +369,8 @@ func InitUdn() {
 		"__custom_metric_process_open_outages": UDN_Custom_Metric_Process_Open_Outages,   	// CUSTOM: Handles an any outages from health check failures on metrics
 		"__custom_metric_process_alert_notifications": UDN_Custom_Metric_Process_Alert_Notifications,   	// CUSTOM: Processes any open Alert Notifications
 		"__custom_metric_escalation_policy_oncall": UDN_Custom_Metric_Escalation_Policy_Oncall,   	// CUSTOM: Get the team/oncall members of the Escalation Policy
+
+		"__customer_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	// CUSTOM: Post change submit, process the data
 	}
 
 	PartTypeName = map[int]string{

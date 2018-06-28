@@ -397,14 +397,14 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 
 	taskman_server := DatamanGet(server_connection_table, server_connection_id, options)
 
-	http_result := HttpsRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), taskman_server["default_path"].(string), taskman_server["client_certificate"].(string), taskman_server["client_private_key"].(string), taskman_server["certificate_authority"].(string), JsonDump(data))
+	http_result := HttpsRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), taskman_server["default_path"].(string), "PUT", taskman_server["client_certificate"].(string), taskman_server["client_private_key"].(string), taskman_server["certificate_authority"].(string), JsonDump(data))
 
 	UdnLogLevel(udn_schema, log_trace, "CUSTOM: TaskMan: Add Task: Result: %s\n", JsonDump(http_result))
 
 	return result
 }
 
-func HttpsRequest(hostname string, port int, uri string, client_cert string, client_key string, certificate_authority string, data_json string) []byte {
+func HttpsRequest(hostname string, port int, uri string, method string, client_cert string, client_key string, certificate_authority string, data_json string) []byte {
 	// Use strings, not file loading
 	cert, err := tls.X509KeyPair([]byte(client_cert), []byte(client_key))
 	if err != nil {
@@ -426,7 +426,7 @@ func HttpsRequest(hostname string, port int, uri string, client_cert string, cli
 	UdnLogLevel(nil, log_trace, "HttpsRequest: URL: %s\n", url)
 
 	// Form the request
-	request, err := http.NewRequest("PUT", url, bytes.NewBuffer([]byte(data_json)))
+	request, err := http.NewRequest(method, url, bytes.NewBuffer([]byte(data_json)))
 	if err != nil {
 		log.Panic(err)
 	}
@@ -1365,4 +1365,136 @@ func GetEscalationPolicyItemInfo(internal_database_name string, escalation_polic
 	data["oncall_user_team"] = business_team["name"]
 
 	return data
+}
+
+
+func UDN_Custom_Monitor_Post_Process_Change(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	ts_database_table := GetResult(args[1], type_string).(string)
+	ts_connection_database_name := GetResult(args[2], type_string).(string)
+	api_server_connection_table := GetResult(args[3], type_string).(string)
+	api_server_connection_id := GetResult(args[4], type_int).(int64)
+	ts_tablename := GetResult(args[5], type_string).(string)
+
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	error_map := MonitorPostProcessChange(internal_database_name, ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
+
+	result := UdnResult{}
+	result.Result = error_map
+
+	return result
+}
+
+func MonitorPostProcessChange(internal_database_name string, ts_database_table string, ts_connection_database_name string, ts_tablename string, api_server_connection_table string, api_server_connection_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	filter := make(map[string]interface{})
+	filter["business_environment_namespace_metric_id"] = []interface{}{"=", nil}
+	monitor_list := DatamanFilter("service_monitor", filter, options)
+
+	UdnLogLevel(nil, log_trace, "MonitorPostProcessChange: %d\n", len(monitor_list))
+
+	for _, monitor := range monitor_list {
+		if monitor["business_environment_namespace_metric_id"] == nil {
+			UdnLogLevel(nil, log_trace, "MonitorPostProcessChange: %v\n", monitor)
+
+			business_environment_namespace := DatamanGet("business_environment_namespace", int(monitor["business_environment_namespace_id"].(int64)), options)
+
+			time_store := DatamanGet("time_store", int(business_environment_namespace["default_time_store_id"].(int64)), options)
+
+			// Create the time_store_item for this metric
+			new_time_store_item := map[string]interface{}{
+				"business_id": monitor["business_id"],
+				"time_store_id": time_store["_id"],
+				"shared_group_id": 1,
+				"record_id": monitor["_id"],
+				"name": monitor["name"],
+				//"business_environment_namespace_metric_id": nil,
+			}
+
+			time_store_item := DatamanInsert("time_store_item", new_time_store_item, options)
+
+			// Create the business_environment_namespace_metric record
+			new_business_environment_namespace_metric := map[string]interface{}{
+				"business_environment_namespace_id": monitor["business_environment_namespace_id"],
+				"name": monitor["name"],
+				"service_monitor_id": monitor["_id"],
+				"time_store_item_id": time_store_item["_id"],
+			}
+
+			business_environment_namespace_metric := DatamanInsert("business_environment_namespace_metric", new_business_environment_namespace_metric, options)
+
+			// Update the monitor with the b_e_n metric
+			monitor["business_environment_namespace_metric_id"] = business_environment_namespace_metric["_id"]
+			DatamanSet("service_monitor", monitor, options)
+
+			// Update the time_store_item with the b_e_n metric
+			time_store_item["business_environment_namespace_metric_id"] = business_environment_namespace_metric["_id"]
+			DatamanSet("time_store_item", time_store_item, options)
+
+			// Add the Monitor to TaskMan
+			TaskMan_AddTask(internal_database_name, monitor["_id"].(int64), ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
+		}
+	}
+
+	// If we have errors, put them back in with field_label dotted keys, so we can re-render them in the form
+	error_map := make(map[string]interface{})
+	return error_map
+}
+
+func TaskMan_AddTask(internal_database_name string, service_monitor_id int64, ts_database_table string, ts_connection_database_name string, ts_tablename string, api_server_connection_table string, api_server_connection_id int64) bool {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	service_monitor := DatamanGet("service_monitor", int(service_monitor_id), options)
+	service_monitor_type := DatamanGet("service_monitor_type", int(service_monitor["service_monitor_type_id"].(int64)), options)
+
+	filter := map[string]interface{}{
+		"name": []interface{}{"=", ts_connection_database_name},
+	}
+	connection_database_array := DatamanFilter(ts_database_table, filter, options)
+	if len(connection_database_array) == 0 {
+		UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Add Task: Error getting Connection Database: %d\n", len(connection_database_array))
+		return false
+	}
+	connection_database := connection_database_array[0]
+
+	// Static values we use in data
+	fieldname_customer_service_id := "time_store_item_id"
+	fieldname_created := "created"
+	fieldname_data_json := "data_json"
+
+	// Interval, in seconds, from milliseconds
+	interval := service_monitor["interval_ms"].(int64) / 1000
+
+	data := make(map[string]interface{})
+	data["uuid"] = fmt.Sprintf("%d", service_monitor["_id"])
+	data["executor"] = "monitor"
+	executor_args := make(map[string]interface{})
+	data_returner_args := make(map[string]interface{})
+	data_returner_args["type"] = connection_database["database_type"]
+	data_returner_args["info"] = connection_database["database_connect_string"]
+	data_returner_args["tablename"] = ts_tablename
+	data_returner_args["fieldname_customer_service_id"] = fieldname_customer_service_id
+	data_returner_args["fieldname_created"] = fieldname_created
+	data_returner_args["fieldname_data_json"] = fieldname_data_json
+	executor_args["data_returner_args"] = data_returner_args
+	executor_args["interval"] = fmt.Sprintf("%ds", interval)
+	executor_args["monitor"] = service_monitor_type["name_taskman"]
+	monitor_args := make(map[string]interface{})
+	monitor_args["url"] = service_monitor["data_json"].(map[string]interface{})["url"]
+	executor_args["monitor_args"] = monitor_args
+	data["executor_args"] = executor_args
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Add Task: %s\n", JsonDump(data))
+
+	taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
+
+	http_result := HttpsRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), taskman_server["default_path"].(string), "PUT", taskman_server["client_certificate"].(string), taskman_server["client_private_key"].(string), taskman_server["certificate_authority"].(string), JsonDump(data))
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Add Task: Result: %s\n", JsonDump(http_result))
+
+	return true
 }
