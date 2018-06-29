@@ -1160,7 +1160,6 @@ func GetAlertEscalationPolicyItemIdAndInfo(internal_database_name string, alert 
 	}
 }
 
-
 func UDN_Custom_Metric_Process_Alert_Notifications(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
 
@@ -1241,9 +1240,6 @@ func SendAlert(internal_database_name string, alert_notification map[string]inte
 	*/
 }
 
-
-
-
 func UDN_Custom_Metric_Escalation_Policy_Oncall(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
 	escalation_policy_id:= GetResult(args[1], type_int).(int64)
@@ -1265,7 +1261,6 @@ func EscalationPolicyGetOncall(internal_database_name string, escalation_policy_
 
 	return data
 }
-
 
 func GetEscalationPolicyInfo(internal_database_name string, escalation_policy_id int64, at_time time.Time) map[string]interface{} {
 	options := make(map[string]interface{})
@@ -1366,7 +1361,6 @@ func GetEscalationPolicyItemInfo(internal_database_name string, escalation_polic
 
 	return data
 }
-
 
 func UDN_Custom_Monitor_Post_Process_Change(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
@@ -1497,4 +1491,58 @@ func TaskMan_AddTask(internal_database_name string, service_monitor_id int64, ts
 	UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Add Task: Result: %s\n", JsonDump(http_result))
 
 	return true
+}
+
+func UDN_Custom_Duty_Shift_Summary(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	duty_id := GetResult(args[1], type_int).(int64)
+	time_start_str := GetResult(args[2], type_string).(string)
+	time_stop_str := GetResult(args[3], type_string).(string)
+
+	time_start, _ := time.Parse("2006-01-02T15:04:05", time_start_str)
+	time_stop, _ := time.Parse("2006-01-02T15:04:05", time_stop_str)
+
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	error_map := GetDutyShiftSummary(internal_database_name, duty_id, time_start, time_stop)
+
+	result := UdnResult{}
+	result.Result = error_map
+
+	return result
+}
+
+func GetDutyShiftSummary(internal_database_name string, duty_id int64, time_start time.Time, time_stop time.Time) []map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	duty := DatamanGet("duty", int(duty_id), options)
+
+	UdnLogLevel(nil, log_trace, "GetDutyShiftSummary: %d: %s  Start: %v  Stop: %v", duty_id, duty["name"], time_start, time_stop)
+
+	filter := map[string]interface{}{
+		"duty_id": []interface{}{"=", duty_id},
+	}
+	options["sort"] = []string{"priority"}
+	duty_responsibility_array := DatamanFilter("duty_responsibility", filter, options)
+	options["sort"] = nil
+
+	result_array := make([]map[string]interface{}, 0)
+
+	for _, duty_responsibility := range duty_responsibility_array {
+		filter := map[string]interface{}{
+			"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
+			"time_stop": []interface{}{">", time_start},
+			"time_start": []interface{}{"<", time_stop},
+		}
+		options["sort"] = []string{"time_start"}
+		schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
+		options["sort"] = nil
+
+		for _, schedule_timeline_item := range schedule_timeline_item_array {
+			UdnLogLevel(nil, log_trace, "Duty Responsibility: %s  Start: %v  Stop: %v  User: %d\n", duty_responsibility["name"], schedule_timeline_item["time_start"], schedule_timeline_item["time_stop"], schedule_timeline_item["business_user_id"])
+		}
+	}
+
+	return result_array
 }

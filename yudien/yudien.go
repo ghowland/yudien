@@ -372,7 +372,10 @@ func InitUdn() {
 		"__custom_metric_process_alert_notifications": UDN_Custom_Metric_Process_Alert_Notifications,   	// CUSTOM: Processes any open Alert Notifications
 		"__custom_metric_escalation_policy_oncall": UDN_Custom_Metric_Escalation_Policy_Oncall,   	// CUSTOM: Get the team/oncall members of the Escalation Policy
 
-		"__customer_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	// CUSTOM: Post change submit, process the data
+		"__custom_duty_shift_summary": UDN_Custom_Duty_Shift_Summary,	// CUSTOM: Get the Duty shift summary over a time range
+
+		"__custom_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	// CUSTOM: Post change submit, process the data
+		"__customer_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	//TODO(g):REMOVE: This one is a typo.  Switch to the above __custom_*// CUSTOM: Post change submit, process the data
 	}
 
 	PartTypeName = map[int]string{
