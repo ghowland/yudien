@@ -2682,6 +2682,29 @@ func UDN_TimeSeriesFilter(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 	return result
 }
 
+func UDN_SetLogLevel(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	log_level := GetResult(args[0], type_string).(string)
+
+	UdnLogLevel(udn_schema, log_trace, "Set Log Level: '%s'\n", log_level)
+
+	// Set the log level if it fits into ones we allow
+	if log_level == "info" {
+		Debug_Udn_Log_Level = log_info
+		UdnLogLevel(udn_schema, log_info, "Set Log Level: INFO\n")
+	} else if log_level == "debug" {
+		Debug_Udn_Log_Level = log_debug
+		UdnLogLevel(udn_schema, log_debug, "Set Log Level: DEBUG\n")
+	} else if log_level == "trace" {
+		Debug_Udn_Log_Level = log_trace
+		UdnLogLevel(udn_schema, log_trace, "Set Log Level: TRACE\n")
+	}
+
+	result := UdnResult{}
+	result.Result = nil
+
+	return result
+}
+
 func UDN_DataGet(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "Data Get: %v\n", args)
 

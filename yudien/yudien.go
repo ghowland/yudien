@@ -357,6 +357,8 @@ func InitUdn() {
 		//"__continue": UDN_IterateContinue,		// Skip to next iteration
 		// -- Dont think I need this -- //"__break": UDN_IterateBreak,				//TODO(g): Break this iteration, we are done.  Is this needed?  Im not sure its needed, and it might suck
 
+		"__log_level": UDN_SetLogLevel,   	// Set the log level
+
 		"__custom_populate_schedule_duty_responsibility": UDN_Custom_PopulateScheduleDutyResponsibility,   			// CUSTOM: Populate Schedule for Duty Responsibilities
 		"__custom_taskman_addtask": UDN_Custom_TaskMan_AddTask,   			// CUSTOM: TaskMan: Add Task
 
