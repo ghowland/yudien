@@ -1527,7 +1527,7 @@ func GetDutyShiftSummary(internal_database_name string, duty_id int64, time_star
 	duty_responsibility_array := DatamanFilter("duty_responsibility", filter, options)
 	options["sort"] = nil
 
-	result_array := make([]map[string]interface{}, 0)
+	result_map := make(map[string]map[string]interface{})
 
 	for _, duty_responsibility := range duty_responsibility_array {
 		filter := map[string]interface{}{
@@ -1541,8 +1541,53 @@ func GetDutyShiftSummary(internal_database_name string, duty_id int64, time_star
 
 		for _, schedule_timeline_item := range schedule_timeline_item_array {
 			UdnLogLevel(nil, log_trace, "Duty Responsibility: %s  Start: %v  Stop: %v  User: %d\n", duty_responsibility["name"], schedule_timeline_item["time_start"], schedule_timeline_item["time_stop"], schedule_timeline_item["business_user_id"])
+
+			business_user := DatamanGet("business_user", int(schedule_timeline_item["business_user_id"].(int64)), options)
+
+			// Ensure we also have a record for this key
+			key := schedule_timeline_item["time_start"].(string)
+			if result_map[key] == nil {
+				result_record := make(map[string]interface{})
+				result_map[key] = result_record
+			}
+
+			// Populate the result_map[key] fields
+			result_map[key]["time_start"] = schedule_timeline_item["time_start"]
+			result_map[key]["time_stop"] = schedule_timeline_item["time_stop"]
+
+			summary := fmt.Sprintf("%s: <b>%s %s</b>", duty_responsibility["name"], business_user["name_first"], business_user["name_last"])
+
+			// Add separator to the summary
+			if result_map[key]["summary"] != nil {
+				result_map[key]["summary"] = fmt.Sprintf("%s ", result_map[key]["summary"])
+				// Append the new summary
+				result_map[key]["summary"] = fmt.Sprintf("%s%s", result_map[key]["summary"], summary)
+			} else {
+				result_map[key]["summary"] = fmt.Sprintf("%s", summary)
+			}
+
 		}
 	}
+
+	// Sort the result map keys, and insert into result_array
+	result_array := make([]map[string]interface{}, 0)
+
+	//TODO(g): Sort and go from keys, use result_map[key] to make upgrading immediate
+	//TODO(g): These are already sorted from the DB, but we should always double check here, because we have more complex cases coming where the line up changes
+	for key, _ := range result_map {
+		result_array = append(result_array, result_map[key])
+	}
+
+	//TODO(g): Duplicate the last entry so we can see when it ends?  Remove, keep, make it an option?  Add option map?  Can be optional on UDN side
+	if len(result_array) > 0 {
+		last_item := MapCopy(result_array[len(result_array)-1])
+
+		// This allows us to see whend the last event ends
+		last_item["time_start"] = last_item["time_stop"]
+
+		result_array = append(result_array, last_item)
+	}
+
 
 	return result_array
 }
