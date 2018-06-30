@@ -1591,3 +1591,42 @@ func GetDutyShiftSummary(internal_database_name string, duty_id int64, time_star
 
 	return result_array
 }
+
+func UDN_Custom_Duty_Responsibility_Current_User(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	duty_responsibility_id := GetResult(args[1], type_int).(int64)
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	user := GetDutyResponsibilityCurrentUser(internal_database_name, duty_responsibility_id)
+
+	result := UdnResult{}
+	result.Result = user
+
+	return result
+}
+
+func GetDutyResponsibilityCurrentUser(internal_database_name string, duty_responsibility_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+
+	duty_responsibility := DatamanGet("duty_responsibility", int(duty_responsibility_id), options)
+
+	now := time.Now()
+
+	filter := map[string]interface{}{
+		"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
+		"time_start": []interface{}{"<", now},
+		"time_stop": []interface{}{">", now},
+	}
+	options["sort"] = []string{"priority"}
+	schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
+	options["sort"] = nil
+
+	business_user_id := schedule_timeline_item_array[0]["business_user_id"].(int64)
+
+	business_user := DatamanGet("business_user", int(business_user_id), options)
+
+	return business_user
+}
+

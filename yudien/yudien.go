@@ -236,12 +236,12 @@ func InitUdn() {
 		"__array_append_array":    UDN_ArrayAppendArray, // Appends an array (input) into the specified location, like __array_append
 		"__array_slice": 	 UDN_ArraySlice, // Slices an input array based on the start and end index
 		"__array_divide":    UDN_ArrayDivide,   // Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
-		"__array_map_update": UDN_ArrayMapUpdate, // Takes an array of maps, and overwrites all keys with the specified map
-		"__array_map_remap": UDN_ArrayMapRemap, // Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
 		"__array_remove":    UDN_ArrayRemove, // Removes the first instance of an element in an array.  Recquires exact match
 		"__array_index":     UDN_ArrayIndex, // Gets the index of the first instance of an element in an array.  Requires exact match
 		"__array_contains":  UDN_ArrayContains, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
 		"__array_contains_any":  UDN_ArrayContainsAny, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
+		"__array_map_update": UDN_ArrayMapUpdate, // Takes an array of maps, and overwrites all keys with the specified map
+		"__array_map_remap": UDN_ArrayMapRemap, // Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
 		"__array_map_to_map":  UDN_ArrayMapToMap, // Map an array of maps into a single map, using one of the keys
 		"__array_map_to_series":  UDN_ArrayMapToSeries, // Map an array of maps into a single array, from one of the key.  Like a time series or other list of values.
 		"__array_map_template":  UDN_ArrayMapTemplate, // Update all map's key's values with a template statement from each map's key/values
@@ -373,6 +373,7 @@ func InitUdn() {
 		"__custom_metric_escalation_policy_oncall": UDN_Custom_Metric_Escalation_Policy_Oncall,   	// CUSTOM: Get the team/oncall members of the Escalation Policy
 
 		"__custom_duty_shift_summary": UDN_Custom_Duty_Shift_Summary,	// CUSTOM: Get the Duty shift summary over a time range
+		"__current_duty_responsibility_current_user": UDN_Custom_Duty_Responsibility_Current_User, // CUSTOM: ...
 
 		"__custom_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	// CUSTOM: Post change submit, process the data
 		"__customer_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	//TODO(g):REMOVE: This one is a typo.  Switch to the above __custom_*// CUSTOM: Post change submit, process the data

@@ -1447,7 +1447,7 @@ func UDN_ArrayMapRemap(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 
 	UdnLogLevel(udn_schema, log_trace, "Array Map Remap: %v\n", remap)
 
-	new_array := make([]interface{}, 0)
+	new_array := make([]map[string]interface{}, 0)
 
 	for _, old_map := range input.([]map[string]interface{}) {
 		new_map := make(map[string]interface{})
@@ -1458,7 +1458,7 @@ func UDN_ArrayMapRemap(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 		}
 
 		// Add the new map to the new array
-		new_array = AppendArray(new_array, new_map)
+		new_array = append(new_array, new_map)
 	}
 
 	result := UdnResult{}
