@@ -1619,7 +1619,7 @@ func GetDutyResponsibilityCurrentUser(internal_database_name string, duty_respon
 		"time_start": []interface{}{"<", now},
 		"time_stop": []interface{}{">", now},
 	}
-	options["sort"] = []string{"priority"}
+	options["sort"] = []string{"time_start"}
 	schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
 	options["sort"] = nil
 
@@ -1630,3 +1630,99 @@ func GetDutyResponsibilityCurrentUser(internal_database_name string, duty_respon
 	return business_user
 }
 
+func UDN_Custom_Duty_Roster_User_Shift_Info(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	duty_roster_id := GetResult(args[1], type_int).(int64)
+	duty_responsibility_id := GetResult(args[2], type_int).(int64)
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	user := GetDutyRosterUserShiftInfo(internal_database_name, duty_roster_id, duty_responsibility_id)
+
+	result := UdnResult{}
+	result.Result = user
+
+	return result
+}
+
+func GetDutyRosterUserShiftInfo(internal_database_name string, duty_roster_id int64, duty_responsibility_id int64) []map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	result_array := make([]map[string]interface{}, 0)
+
+	duty_responsibility := DatamanGet("duty_responsibility", int(duty_responsibility_id), options)
+
+
+	filter := map[string]interface{}{
+		"duty_roster_id": []interface{}{"=", duty_roster_id},
+	}
+	options["sort"] = []string{"priority"}
+	duty_roster_business_user_array := DatamanFilter("duty_roster_business_user", filter, options)
+	options["sort"] = nil
+
+	now := time.Now()
+
+	for _, duty_roster_business_user := range duty_roster_business_user_array {
+		business_user := DatamanGet("business_user", int(duty_roster_business_user["business_user_id"].(int64)), options)
+
+		UdnLogLevel(nil, log_trace, "GetDutyRosterUserShiftInfo: User: %v\n", business_user)
+
+		filter := map[string]interface{}{
+			"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
+			"business_user_id": []interface{}{"=", business_user["_id"]},
+		}
+		options["sort"] = []string{"time_start"}
+		schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
+		options["sort"] = nil
+
+		// Augment busienss_user with our scheduling information.  Are they currently on-call?
+		business_user["oncall_color"] = "default"
+		business_user["oncall_icon"] = "icon-bell3"
+		business_user["oncall_next"] = fmt.Sprintf("Next %s: Never", duty_responsibility["name"])
+		business_user["oncall_previous"] = fmt.Sprintf("Last %s: Never", duty_responsibility["name"])
+
+		for _, schedule_timeline_item := range schedule_timeline_item_array {
+			time_start, _ := time.Parse("2006-01-02 15:04:05", schedule_timeline_item["time_start"].(string))
+			time_stop, _ := time.Parse("2006-01-02 15:04:05", schedule_timeline_item["time_stop"].(string))
+
+			UdnLogLevel(nil, log_trace, "GetDutyRosterUserShiftInfo: Now: %v  Start: %v  Stop: %v\n", now, time_start, time_stop)
+
+			if now.After(time_start) && now.Before(time_stop) {
+				UdnLogLevel(nil, log_trace, "GetDutyRosterUserShiftInfo: Now: %v  Start: %v  Stop: %v -- INSIDE!\n", now, time_start, time_stop)
+				business_user["oncall_color"] = duty_responsibility["format_color_class"]
+
+				business_user["oncall_next"] = fmt.Sprintf("Currently %s", duty_responsibility["name"])
+
+				break
+			} else {
+
+				// Get the Next Oncall
+				if business_user["next_oncall"] == nil {
+					business_user["next_oncall"] = time_start
+					business_user["oncall_next"] = fmt.Sprintf("Starts %s at %s", duty_responsibility["name"], business_user["next_oncall"].(time.Time).Format("2006-01-02 15:04:05"))
+				} else {
+					if time_start.After(business_user["next_oncall"].(time.Time)) {
+						business_user["next_oncall"] = time_start
+						business_user["oncall_next"] = fmt.Sprintf("Starts %s at %s", duty_responsibility["name"], business_user["next_oncall"].(time.Time).Format("2006-01-02 15:04:05"))
+					}
+				}
+			}
+
+			// Get the Last Oncall
+			if business_user["previous_oncall"] == nil {
+				business_user["previous_oncall"] = time_stop
+				business_user["oncall_previous"] = fmt.Sprintf("Last %s at %s", duty_responsibility["name"], business_user["previous_oncall"].(time.Time).Format("2006-01-02 15:04:05"))
+			} else {
+				if time_start.After(business_user["previous_oncall"].(time.Time)) && time_start.Before(now) {
+					business_user["previous_oncall"] = time_stop
+					business_user["oncall_previous"] = fmt.Sprintf("Last %s at %s", duty_responsibility["name"], business_user["previous_oncall"].(time.Time).Format("2006-01-02 15:04:05"))
+				}
+			}
+		}
+
+		// Append business_user to the result_array
+		result_array = append(result_array, business_user)
+	}
+
+	return result_array
+}

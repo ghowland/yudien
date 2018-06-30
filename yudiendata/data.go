@@ -140,7 +140,7 @@ func GetDatasourceInstance(options map[string]interface{}) (*storagenode.Datasou
 		}
 	}
 
-	UdnLogLevel(nil, log_trace, "Data Source Connection: %s\n", selected_db)
+	//UdnLogLevel(nil, log_trace, "Data Source Connection: %s\n", selected_db)
 
 	return datasource_instance, datasource_database, selected_db
 }
