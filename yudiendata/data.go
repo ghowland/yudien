@@ -17,6 +17,7 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
 	"github.com/jacksontj/dataman/src/datamantype"
+	"time"
 )
 
 const (
@@ -45,6 +46,11 @@ const ( // order matters for log levels
 	log_info  = iota
 	log_debug = iota
 	log_trace = iota
+)
+
+const (
+	time_format_db = "2006-01-02 15:04:05"
+	time_format_go = "2006-01-02T15:04:05"
 )
 
 type DatabaseConfig struct {
@@ -498,22 +504,59 @@ func DatamanInsert(collection_name string, record map[string]interface{}, option
 	}
 }
 
-func DatamanFilter(collection_name string, filter map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
+func DatamanFilter(collection_name string, filter_input_map map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
 
 	//fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
 
 	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
-	filter = MapCopy(filter)
+	filter_input_map = MapCopy(filter_input_map)
 
-	for k, v := range filter {
+	for k, v := range filter_input_map {
 		switch v.(type) {
 		case string:
-			filter[k] = []string{"=", v.(string)}
+			filter_input_map[k] = []string{"=", v.(string)}
 		case int64:
-			filter[k] = []string{"=", fmt.Sprintf("%d", v)}
+			filter_input_map[k] = []string{"=", fmt.Sprintf("%d", v)}
 		}
+	}
+
+	var filter interface{}
+	filter = filter_input_map
+
+	// If we were given Time Range options to filter on, handle these
+	if options["time_range"] != nil && options["time_range_fields"] != nil {
+		// Make a full filter out of this, as we need multiple of the same fields to AND together, so incorporate the filter_map we got as an arg
+		filter_full := make([]interface{}, 0)
+		filter_full = append(filter_full, filter_input_map)
+
+		UdnLogLevel(nil, log_trace, "Dataman Filter: Time Range 001: %s\n\n", JsonDump(filter_full))
+
+		//TODO(g): Handle errors from parsing
+		time_range_part := strings.Split(options["time_range"].(string), " - ")
+		time_range_start, _ := time.Parse(time_format_db, time_range_part[0])
+		time_range_stop, _ := time.Parse(time_format_db, time_range_part[1])
+
+		for _, field := range options["time_range_fields"].([]interface{}) {
+			field_str := field.(string)
+
+			filter_item_start := map[string]interface{}{
+				field_str: []interface{}{">=", time_range_start},
+			}
+			filter_item_stop := map[string]interface{}{
+				field_str: []interface{}{"<", time_range_stop},
+			}
+
+			filter_item := []interface{}{filter_item_start, "AND", filter_item_stop}
+
+			// Join this item and previous together logically with AND
+			filter_full = append(filter_full, "AND")
+			filter_full = append(filter_full, filter_item)
+		}
+
+		// Update the filter to the full filter we made here
+		filter = filter_full
 	}
 
 	filter_map := map[string]interface{} {
@@ -531,8 +574,8 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	//fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
 	//fmt.Printf("Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
 	UdnLogLevel(nil, log_trace, "Dataman Filter: %s\n\n", JsonDump(filter_map))
-	UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
-	UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
+	//UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
+	//UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
 
 	dataman_query := &query.Query{query.Filter, filter_map}
 

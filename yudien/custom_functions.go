@@ -21,9 +21,7 @@ import (
 const (
 	time_format_db = "2006-01-02 15:04:05"
 	time_format_go = "2006-01-02T15:04:05"
-	time_format_date_range = "01/02/2006 15:04:05"
 )
-
 
 func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	database := GetResult(args[0], type_string).(string)
@@ -1850,8 +1848,19 @@ func GetUserBusiness(internal_database_name string) map[string]interface{} {
 func UDN_Custom_Date_Range_Parse(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	page_args := GetResult(args[0], type_map).(map[string]interface{})
 
+	default_duration_start := ""
+	default_duration_stop := ""
+
+	if len(args) > 1 {
+		default_duration_start = GetResult(args[1], type_string).(string)
+	}
+
+	if len(args) > 2 {
+		default_duration_stop = GetResult(args[2], type_string).(string)
+	}
+
 	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
-	data_range_str := DateRangeParse(page_args)
+	data_range_str := DateRangeParseFromMap(page_args, default_duration_start, default_duration_stop)
 
 	result := UdnResult{}
 	result.Result = data_range_str
@@ -1859,7 +1868,7 @@ func UDN_Custom_Date_Range_Parse(db *sql.DB, udn_schema map[string]interface{}, 
 	return result
 }
 
-func DateRangeParse(page_args map[string]interface{}) string {
+func DateRangeParseFromMap(page_args map[string]interface{}, default_duration_start string, default_duration_stop string) string {
 	result_str := ""
 
 	start := time.Now()
@@ -1867,11 +1876,12 @@ func DateRangeParse(page_args map[string]interface{}) string {
 
 	duration_from_start_of_day := time.Duration(-duration_from_start_of_day_int*1000000000)
 
-	UdnLogLevel(nil, log_trace, "DateRangeParse: duration_from_start_of_day: %v %T\n", duration_from_start_of_day, duration_from_start_of_day)
+	UdnLogLevel(nil, log_trace, "DateRangeParse: duration_from_start_of_day: %v %T   Default: %s %s\n", duration_from_start_of_day, duration_from_start_of_day, default_duration_start, default_duration_stop)
 	UdnLogLevel(nil, log_trace, "DateRangeParse: duration_from_start_of_day: %v %v %v\n", start.Hour(), start.Minute(), start.Second())
 
 	today_start := start.Add(duration_from_start_of_day)
 	UdnLogLevel(nil, log_trace, "DateRangeParse: today_start: %v\n", today_start)
+	UdnLogLevel(nil, log_trace, "DateRangeParse: page args: %s\n", JsonDump(page_args))
 
 
 	if page_args["from_days_ago"] != nil && page_args["to_days_ago"] != nil {
@@ -1881,7 +1891,28 @@ func DateRangeParse(page_args map[string]interface{}) string {
 		from_days_ago := today_start.AddDate(0, 0, -from_days_ago_int)
 		to_days_ago := today_start.AddDate(0, 0, -to_days_ago_int)
 
-		result_str = fmt.Sprintf("%s - %s", from_days_ago.Format(time_format_date_range), to_days_ago.Format(time_format_date_range))
+		result_str = fmt.Sprintf("%s - %s", from_days_ago.Format(time_format_db), to_days_ago.Format(time_format_db))
+		UdnLogLevel(nil, log_trace, "DateRangeParse: Result: %s\n", result_str)
+	}
+
+	// If there is no valid result_str, then use the default info
+	if result_str == "" && default_duration_start != "" {
+		//TODO(g): Handle errors
+		start_duration, _ := time.ParseDuration(default_duration_start)
+
+		// Use now (-0s) if we dont have a stop, or parse it if it exists
+		stop_duration, _ := time.ParseDuration("-0s")
+		if default_duration_stop != "" {
+			stop_duration, _ = time.ParseDuration(default_duration_stop)
+		}
+
+		UdnLogLevel(nil, log_trace, "DateRangeParse: Default: Duration: %v  -  %v\n", start_duration, stop_duration)
+
+		from_days_ago := start.Add(start_duration)
+		to_days_ago := start.Add(stop_duration)
+
+		result_str = fmt.Sprintf("%s - %s", from_days_ago.Format(time_format_db), to_days_ago.Format(time_format_db))
+		UdnLogLevel(nil, log_trace, "DateRangeParse: Default: Result: %s\n", result_str)
 	}
 
 	return result_str
