@@ -18,6 +18,13 @@ import (
 	"net/smtp"
 )
 
+const (
+	time_format_db = "2006-01-02 15:04:05"
+	time_format_go = "2006-01-02T15:04:05"
+	time_format_date_range = "01/02/2006 15:04:05"
+)
+
+
 func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	database := GetResult(args[0], type_string).(string)
 	responsibility_id := GetResult(args[1], type_int).(int64)
@@ -26,7 +33,7 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 
 	start_populating = strings.Replace(start_populating," ", "T", -1)
 
-	start_time, err := time.Parse("2006-01-02T15:04:05", start_populating)
+	start_time, err := time.Parse(time_format_go, start_populating)
 
 	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: %v\n", start_time, err)
 
@@ -127,7 +134,7 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 func EvaluateShiftTimes(database string, responsibility map[string]interface{}, shifts []map[string]interface{}, start_time time.Time, business_user_id int64, roster_users []map[string]interface{}, business_users []map[string]interface{}) {
 	UdnLogLevel(nil, log_trace, "Evaluate Shift Times: %v\n", shifts)
 
-	time_layout := "2006-01-02 15:04:05"
+	time_layout := time_format_db
 
 	options := make(map[string]interface{})
 	options["db"] = database
@@ -1499,8 +1506,8 @@ func UDN_Custom_Duty_Shift_Summary(db *sql.DB, udn_schema map[string]interface{}
 	time_start_str := GetResult(args[2], type_string).(string)
 	time_stop_str := GetResult(args[3], type_string).(string)
 
-	time_start, _ := time.Parse("2006-01-02T15:04:05", time_start_str)
-	time_stop, _ := time.Parse("2006-01-02T15:04:05", time_stop_str)
+	time_start, _ := time.Parse(time_format_go, time_start_str)
+	time_stop, _ := time.Parse(time_format_go, time_stop_str)
 
 
 	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
@@ -1682,8 +1689,8 @@ func GetDutyRosterUserShiftInfo(internal_database_name string, duty_roster_id in
 		business_user["oncall_previous"] = fmt.Sprintf("Last %s: Never", duty_responsibility["name"])
 
 		for _, schedule_timeline_item := range schedule_timeline_item_array {
-			time_start, _ := time.Parse("2006-01-02 15:04:05", schedule_timeline_item["time_start"].(string))
-			time_stop, _ := time.Parse("2006-01-02 15:04:05", schedule_timeline_item["time_stop"].(string))
+			time_start, _ := time.Parse(time_format_db, schedule_timeline_item["time_start"].(string))
+			time_stop, _ := time.Parse(time_format_db, schedule_timeline_item["time_stop"].(string))
 
 			UdnLogLevel(nil, log_trace, "GetDutyRosterUserShiftInfo: Now: %v  Start: %v  Stop: %v\n", now, time_start, time_stop)
 
@@ -1699,11 +1706,11 @@ func GetDutyRosterUserShiftInfo(internal_database_name string, duty_roster_id in
 				// Get the Next Oncall
 				if business_user["next_oncall"] == nil {
 					business_user["next_oncall"] = time_start
-					business_user["oncall_next"] = fmt.Sprintf("Starts %s at %s", duty_responsibility["name"], business_user["next_oncall"].(time.Time).Format("2006-01-02 15:04:05"))
+					business_user["oncall_next"] = fmt.Sprintf("Starts %s at %s", duty_responsibility["name"], business_user["next_oncall"].(time.Time).Format(time_format_db))
 				} else {
 					if time_start.After(business_user["next_oncall"].(time.Time)) {
 						business_user["next_oncall"] = time_start
-						business_user["oncall_next"] = fmt.Sprintf("Starts %s at %s", duty_responsibility["name"], business_user["next_oncall"].(time.Time).Format("2006-01-02 15:04:05"))
+						business_user["oncall_next"] = fmt.Sprintf("Starts %s at %s", duty_responsibility["name"], business_user["next_oncall"].(time.Time).Format(time_format_db))
 					}
 				}
 			}
@@ -1711,11 +1718,11 @@ func GetDutyRosterUserShiftInfo(internal_database_name string, duty_roster_id in
 			// Get the Last Oncall
 			if business_user["previous_oncall"] == nil {
 				business_user["previous_oncall"] = time_stop
-				business_user["oncall_previous"] = fmt.Sprintf("Last %s at %s", duty_responsibility["name"], business_user["previous_oncall"].(time.Time).Format("2006-01-02 15:04:05"))
+				business_user["oncall_previous"] = fmt.Sprintf("Last %s at %s", duty_responsibility["name"], business_user["previous_oncall"].(time.Time).Format(time_format_db))
 			} else {
 				if time_start.After(business_user["previous_oncall"].(time.Time)) && time_start.Before(now) {
 					business_user["previous_oncall"] = time_stop
-					business_user["oncall_previous"] = fmt.Sprintf("Last %s at %s", duty_responsibility["name"], business_user["previous_oncall"].(time.Time).Format("2006-01-02 15:04:05"))
+					business_user["oncall_previous"] = fmt.Sprintf("Last %s at %s", duty_responsibility["name"], business_user["previous_oncall"].(time.Time).Format(time_format_db))
 				}
 			}
 		}
@@ -1725,4 +1732,157 @@ func GetDutyRosterUserShiftInfo(internal_database_name string, duty_roster_id in
 	}
 
 	return result_array
+}
+
+func UDN_Custom_Activity_Daily(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	table_name := GetResult(args[1], type_string).(string)
+	time_start_field_name := GetResult(args[2], type_string).(string)
+	days := GetResult(args[3], type_int).(int64)
+	field_match_map := GetResult(args[4], type_map).(map[string]interface{})
+	time_start := ""
+	if len(args) > 5 {
+		time_start = GetResult(args[5], type_string).(string)
+	}
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	data := ActivityDaily(internal_database_name, table_name, time_start_field_name, int(days), field_match_map, time_start)
+
+	result := UdnResult{}
+	result.Result = data
+
+	return result
+}
+
+func ActivityDaily(internal_database_name string, table_name string, time_start_field_name string, days int, field_match_map map[string]interface{}, time_start_str string) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	// All queries must have business_id in their table schema, because we need to enforce security
+	business := GetUserBusiness(internal_database_name)
+
+	start := time.Now()
+	if time_start_str != "" {
+		start, _ = time.Parse(time_format_db, time_start_str)
+	}
+
+
+	duration_from_start_of_day := time.Duration(start.Hour() * 3600 + start.Second())
+	today_start := start.Add(-duration_from_start_of_day)
+	one_week_ago := today_start.AddDate(0, 0, -days)
+
+	//NOTE(g): No need to filter on the end, because we are tracking to NOW.  Only if we
+	filter := map[string]interface{}{
+		"business_id": []interface{}{"=", business["_id"]},
+		time_start_field_name: []interface{}{">", one_week_ago},
+		time_start_field_name: []interface{}{">", one_week_ago},
+	}
+
+	// Dynamically add elements of the field_map into this to further contrain the query
+	for key, value := range field_match_map {
+		filter[key] = []interface{}{"=", value}
+	}
+
+	// Query the dynamic talbe_name
+	options["sort"] = []string{time_start_field_name}
+	activity_array := DatamanFilter(table_name, filter, options)
+	options["sort"] = nil
+
+	// Make the return and tallying arrays
+	result_map := make(map[string]interface{})
+	day_array := make([]interface{}, days)
+	value_array := make([]interface{}, days)
+	result_map["days"] = day_array
+	result_map["values"] = value_array
+	result_map["max"] = 10
+
+	// Popualte the days and initial values
+	for day := 0; day < days ; day++ {
+		// Get how many days_ago from the start we will move backwards.  0 being the beginning of today
+		days_ago := (days-1) - day
+		cur_time := start.AddDate(0, 0, -days_ago)
+
+		day_array[day] = cur_time.Weekday().String()
+		value_array[day] = 0
+	}
+
+	// Tally the events into days
+	for _, activity := range activity_array {
+		activity_start_str := activity[time_start_field_name].(string)
+		activity_start, _ := time.Parse(time_format_db, activity_start_str)
+
+		for day := 0; day < days ; day++ {
+			// Get how many days_ago from the start we will move backwards.  0 being the beginning of today
+			days_ago := (days-1) - day
+			cur_time := start.AddDate(0, 0, -days_ago)
+			cur_time_next_day := cur_time.AddDate(0, 0, 1)
+
+			//TODO(g): Does this take care of edge boundaries, or could an exact midnight time get skipped?
+			if activity_start.After(cur_time) && activity_start.Before(cur_time_next_day) {
+				value_array[day] = value_array[day].(int) + 1
+				break
+			}
+		}
+	}
+
+	// Check for a higher daily max
+	for day := 0; day < days ; day++ {
+		if value_array[day].(int) > result_map["max"].(int) {
+			result_map["max"] = value_array[day]
+		}
+	}
+
+	return result_map
+}
+
+func GetUserBusiness(internal_database_name string) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	//TODO(g): Actually get this from the current user
+	business_id := 1
+
+	business := DatamanGet("business", business_id, options)
+
+	return business
+}
+
+func UDN_Custom_Date_Range_Parse(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	page_args := GetResult(args[0], type_map).(map[string]interface{})
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	data_range_str := DateRangeParse(page_args)
+
+	result := UdnResult{}
+	result.Result = data_range_str
+
+	return result
+}
+
+func DateRangeParse(page_args map[string]interface{}) string {
+	result_str := ""
+
+	start := time.Now()
+	duration_from_start_of_day_int := (start.Hour()*3600) + (start.Minute()*60) + start.Second()
+
+	duration_from_start_of_day := time.Duration(-duration_from_start_of_day_int*1000000000)
+
+	UdnLogLevel(nil, log_trace, "DateRangeParse: duration_from_start_of_day: %v %T\n", duration_from_start_of_day, duration_from_start_of_day)
+	UdnLogLevel(nil, log_trace, "DateRangeParse: duration_from_start_of_day: %v %v %v\n", start.Hour(), start.Minute(), start.Second())
+
+	today_start := start.Add(duration_from_start_of_day)
+	UdnLogLevel(nil, log_trace, "DateRangeParse: today_start: %v\n", today_start)
+
+
+	if page_args["from_days_ago"] != nil && page_args["to_days_ago"] != nil {
+		from_days_ago_int := int(GetResult(page_args["from_days_ago"], type_int).(int64))
+		to_days_ago_int := int(GetResult(page_args["to_days_ago"], type_int).(int64))
+
+		from_days_ago := today_start.AddDate(0, 0, -from_days_ago_int)
+		to_days_ago := today_start.AddDate(0, 0, -to_days_ago_int)
+
+		result_str = fmt.Sprintf("%s - %s", from_days_ago.Format(time_format_date_range), to_days_ago.Format(time_format_date_range))
+	}
+
+	return result_str
 }

@@ -377,6 +377,10 @@ func InitUdn() {
 
 		"__customer_duty_roster_user_shift_info": UDN_Custom_Duty_Roster_User_Shift_Info,   	//CUSTOM: ....
 
+		"__custom_weekly_activity": UDN_Custom_Activity_Daily, //CUSTOM: Weekly activity on a database/table/field
+
+		"__custom_date_range_parse": UDN_Custom_Date_Range_Parse, //CUSTOM: Weekly activity on a database/table/field
+
 		//"__customer_duty_responsibility_user_shift_next": UDN_Custom_Duty_Responsibility_User_Shift_Next,   	//CUSTOM: ....
 		//"__customer_duty_responsibility_user_shift_previous": UDN_Custom_Duty_Responsibility_User_Shift_Previous,   	//CUSTOM: ....
 
