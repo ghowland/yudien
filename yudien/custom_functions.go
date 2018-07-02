@@ -1983,7 +1983,9 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 				"created": []interface{}{">", time.Now().Add(time.Duration(-3600 * 1000000000))},
 			}
 			options["sort"] = []string{"created"}
-			graph_item["time_series"] = DatamanFilter("time_store_partition_timestorepartitionid", filter, options)
+			time_series_array := DatamanFilter("time_store_partition_timestorepartitionid", filter, options)
+			graph_item["time_series_values"] = ArrayMapToSeries(time_series_array, "data_json.duration")
+			graph_item["time_series_times"] = ArrayMapToSeries(time_series_array, "created")
 			options["sort"] = nil
 
 			// Add this to the graph information
@@ -1992,5 +1994,32 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 	}
 
 	return return_data
+}
+
+//TODO(g): Move this to utility so it's generally accessible
+//TODO(g): Repalce inside of UDN_ArrayMapToSeries() with call to this to reduce duplicate and single-purpose code, this is a general solution
+func ArrayMapToSeries(array_map []map[string]interface{}, map_key string) []interface{} {
+	// Get the remapping information
+	map_key_parts := strings.Split(map_key, ".")
+
+	result_array := make([]interface{}, 0)
+
+	UdnLogLevel(nil, log_trace, "ArrayMapToSeries: %s in %d Record(s)\n", map_key, len(array_map))
+
+	for _, item := range array_map {
+		var item_value interface{}
+
+		item_value = item
+
+		for _, part := range map_key_parts {
+			//UdnLogLevel(udn_schema, log_trace, "Array Map To Series: Step In: %d: %s: %v\n", index, part, SnippetData(item_value, 300))
+
+			item_value = item_value.(map[string]interface{})[part]
+		}
+
+		result_array = append(result_array, item_value)
+	}
+
+	return result_array
 }
 
