@@ -3827,6 +3827,27 @@ func UDN_Time(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 	return result
 }
 
+
+func UDN_TimeString(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+
+	time_value := input.(time.Time)
+
+	result := UdnResult{}
+	result.Result = time_value.Format(time_format_db)
+
+	return result
+}
+
+func UDN_TimeStringDate(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+
+	time_value := input.(time.Time)
+
+	result := UdnResult{}
+	result.Result = time_value.Format(time_format_date)
+
+	return result
+}
+
 func UDN_StringToTime(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "String to Time: %v\n", SnippetData(input, 60))
 

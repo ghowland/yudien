@@ -51,6 +51,7 @@ const ( // order matters for log levels
 const (
 	time_format_db = "2006-01-02 15:04:05"
 	time_format_go = "2006-01-02T15:04:05"
+	time_format_date = "2006-01-02"
 )
 
 type DatabaseConfig struct {

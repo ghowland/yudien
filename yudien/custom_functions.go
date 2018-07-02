@@ -21,6 +21,7 @@ import (
 const (
 	time_format_db = "2006-01-02 15:04:05"
 	time_format_go = "2006-01-02T15:04:05"
+	time_format_date = "2006-01-02"
 )
 
 func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {

@@ -223,8 +223,6 @@ func InitUdn() {
 		"__concat":        UDN_StringConcat,
 		"__markdown_format": UDN_StringMarkdownFormat, // Format a string as HTML from markdown
 
-		"__time":          UDN_Time, // Return current time.Time object, and run AddDate if any args are passed in
-
 		"__input":         UDN_Input,          //TODO(g): This takes any input as the first arg, and then passes it along, so we can type in new input to go down the pipeline...
 		"__input_get":     UDN_InputGet,       // Gets information from the input, accessing it like __get
 		"__function":      UDN_StoredFunction, //TODO(g): This uses the udn_stored_function.name as the first argument, and then uses the current input to pass to the function, returning the final result of the function.		Uses the web_site.udn_stored_function_domain_id to determine the stored function
@@ -298,6 +296,10 @@ func InitUdn() {
 		"__data_delete":    UDN_DataDelete,    // Dataman Get
 		"__data_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
 		"__data_tombstone": UDN_DataTombstone, // Dataman "Delete" with a Tombstone marker: _is_deleted=true
+
+		"__time":          UDN_Time, // Return current time.Time object, and run AddDate if any args are passed in
+		"__time_string":          UDN_TimeString, // Return string of the time
+		"__time_string_date":          UDN_TimeStringDate, // Return string of the date
 
 		"__time_series_get":    UDN_TimeSeriesGet,    // Time Series: Get
 		"__time_series_filter":    UDN_TimeSeriesFilter,    // Time Series: Filter
