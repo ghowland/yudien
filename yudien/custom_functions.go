@@ -16,6 +16,7 @@ import (
 	"io/ioutil"
 	"bytes"
 	"net/smtp"
+	"sort"
 )
 
 const (
@@ -1984,9 +1985,21 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 			}
 			options["sort"] = []string{"created"}
 			time_series_array := DatamanFilter("time_store_partition_timestorepartitionid", filter, options)
-			graph_item["time_series_values"] = ArrayMapToSeries(time_series_array, "data_json.duration")
-			graph_item["time_series_times"] = ArrayMapToSeries(time_series_array, "created")
 			options["sort"] = nil
+
+			// Set up what variables we will use to get the data
+			graph_item["field_selector"] = "data_json.duration"
+			graph_item["field_x"] = "created"
+
+			// Get the data
+			graph_item["time_series_values"] = ArrayMapToSeries(time_series_array, graph_item["field_selector"].(string))
+			graph_item["time_series_times"] = ArrayMapToSeries(time_series_array, graph_item["field_x"].(string))
+
+			if len(time_series_array) > 0 {
+				graph_item["field_options"] = DashboardItemGetFieldOptions(graph_item["field_selector"].(string), time_series_array[0])
+			} else {
+				graph_item["field_options"] = make([]map[string]interface{}, 0)
+			}
 
 			// Add this to the graph information
 			return_data["data_point_array"] = append(return_data["data_point_array"].([]map[string]interface{}), graph_item)
@@ -1994,6 +2007,61 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 	}
 
 	return return_data
+}
+
+func GetMapKeysAsSelector(data map[string]interface{}, prefix string) []string {
+	keys := make([]string, 0)
+
+	for key, key_value := range data {
+
+		switch key_value.(type) {
+		case map[string]interface{}:
+			key_prefix := fmt.Sprintf("%s%s.", prefix, key)
+
+			new_keys := GetMapKeysAsSelector(key_value.(map[string]interface{}), key_prefix)
+			for _, new_key := range new_keys {
+				keys = append(keys, new_key)
+			}
+
+			break
+		default:
+			key_str := fmt.Sprintf("%s%s", prefix, key)
+			keys = append(keys, key_str)
+		}
+	}
+
+	sort.Strings(keys)
+
+	return keys
+}
+
+func DashboardItemGetFieldOptions(field_selector string, time_series_metric map[string]interface{}) []map[string]interface{} {
+	field_options := make([]map[string]interface{}, 0)
+
+	// Get all the names
+	prefix := ""
+	field_names := GetMapKeysAsSelector(time_series_metric, prefix)
+
+	UdnLogLevel(nil, log_trace, "DashboardItemGetFieldOptions: Field Names: %v\n", field_names)
+
+	for _, name := range field_names {
+		field_item := make(map[string]interface{})
+
+		//label=name,name=name,value=_id,selected=selected
+		field_item["label"] = name
+		field_item["name"] = name
+		field_item["value"] = name
+
+		if name == field_selector {
+			field_item["selected"] = "selected"
+		}
+
+		field_options = append(field_options, field_item)
+	}
+
+	UdnLogLevel(nil, log_trace, "DashboardItemGetFieldOptions: Field Options: %v\n", field_options)
+
+	return field_options
 }
 
 //TODO(g): Move this to utility so it's generally accessible
