@@ -3827,7 +3827,6 @@ func UDN_Time(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 	return result
 }
 
-
 func UDN_TimeString(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 
 	time_value := input.(time.Time)
@@ -4336,7 +4335,6 @@ func UDN_Math(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart,
 	}
 	return result
 }
-
 
 func UDN_Nil(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// Return nil

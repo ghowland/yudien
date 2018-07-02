@@ -1988,7 +1988,13 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 			options["sort"] = nil
 
 			// Set up what variables we will use to get the data
-			graph_item["field_selector"] = "data_json.duration"
+			if input_map["monitor_json_selector"] == nil {
+				graph_item["field_selector"] = "data_json.duration"
+			} else {
+				graph_item["field_selector"] = input_map["monitor_json_selector"]
+			}
+
+			// X axis
 			graph_item["field_x"] = "created"
 
 			// Get the data
@@ -2009,8 +2015,9 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 	return return_data
 }
 
-func GetMapKeysAsSelector(data map[string]interface{}, prefix string) []string {
+func GetMapKeysAsSelector(data map[string]interface{}, prefix string) ([]string, []interface{}) {
 	keys := make([]string, 0)
+	values := make([]interface{}, 0)
 
 	for key, key_value := range data {
 
@@ -2018,21 +2025,26 @@ func GetMapKeysAsSelector(data map[string]interface{}, prefix string) []string {
 		case map[string]interface{}:
 			key_prefix := fmt.Sprintf("%s%s.", prefix, key)
 
-			new_keys := GetMapKeysAsSelector(key_value.(map[string]interface{}), key_prefix)
+			new_keys, new_values := GetMapKeysAsSelector(key_value.(map[string]interface{}), key_prefix)
 			for _, new_key := range new_keys {
 				keys = append(keys, new_key)
+			}
+			for _, new_value := range new_values {
+				values = append(values, new_value)
 			}
 
 			break
 		default:
 			key_str := fmt.Sprintf("%s%s", prefix, key)
 			keys = append(keys, key_str)
+
+			values = append(values, key_value)
 		}
 	}
 
 	sort.Strings(keys)
 
-	return keys
+	return keys, values
 }
 
 func DashboardItemGetFieldOptions(field_selector string, time_series_metric map[string]interface{}) []map[string]interface{} {
@@ -2040,16 +2052,16 @@ func DashboardItemGetFieldOptions(field_selector string, time_series_metric map[
 
 	// Get all the names
 	prefix := ""
-	field_names := GetMapKeysAsSelector(time_series_metric, prefix)
+	field_names, field_values := GetMapKeysAsSelector(time_series_metric, prefix)
 
 	UdnLogLevel(nil, log_trace, "DashboardItemGetFieldOptions: Field Names: %v\n", field_names)
 
-	for _, name := range field_names {
+	for index, name := range field_names {
 		field_item := make(map[string]interface{})
 
 		//label=name,name=name,value=_id,selected=selected
-		field_item["label"] = name
-		field_item["name"] = name
+		name_html := fmt.Sprintf("%s  [%T]", name, field_values[index])
+		field_item["name"] = HtmlClean(name_html)
 		field_item["value"] = name
 
 		if name == field_selector {
