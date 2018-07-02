@@ -1918,3 +1918,79 @@ func DateRangeParseFromMap(page_args map[string]interface{}, default_duration_st
 
 	return result_str
 }
+
+func UDN_Custom_Dashboard_Item_Edit(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	dashboard_item_id_or_nil := args[1]
+	input_map := GetResult(args[2], type_map).(map[string]interface{})
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	data := DashboardItemEdit(internal_database_name, dashboard_item_id_or_nil, input_map)
+
+	result := UdnResult{}
+	result.Result = data
+
+	return result
+}
+
+func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil interface{}, input_map map[string]interface{}) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	//// All queries must have business_id in their table schema, because we need to enforce security
+	//business := GetUserBusiness(internal_database_name)
+
+	// Assume this is a new dashboard_item
+	graph := make(map[string]interface{})
+	
+	// If this is an existing dashboard item.  Load it...
+	if dashboard_item_id_or_nil != nil {
+		dashboard_item_id := GetResult(dashboard_item_id_or_nil, type_int).(int64)
+
+		graph = DatamanGet("dashboard_item", int(dashboard_item_id), options)
+	} else {
+		graph["name"] = fmt.Sprintf("%s", time.Now().Format(time_format_db))
+	}
+
+	UdnLogLevel(nil, log_trace, "DashboardItemEdit: Starting Graph: %s\n", JsonDump(graph))
+	UdnLogLevel(nil, log_trace, "DashboardItemEdit: Input Map: %s\n", JsonDump(input_map))
+
+
+	// Return data structure
+	return_data := make(map[string]interface{})
+	return_data["data_point_array"] = make([]map[string]interface{}, 0)	// These are all the different data elements we want to render in this graph
+
+	// -- Process the input_map and determine what to data to populate into our return data --
+
+	// If this is a new graph
+	if graph["_id"] == nil {
+		// Look inside input_map and determine what to initially populate the return_data with
+		if input_map["service_monitor_id"] != nil {
+			service_monitor_id := GetResult(input_map["service_monitor_id"], type_int).(int64)
+
+			// We are getting directed to render information ahout this service_monitor, so start off the graph with a default representation
+			service_monitor := DatamanGet("service_monitor", int(service_monitor_id), options)
+
+			graph_item := map[string]interface{}{
+				"name": fmt.Sprintf("Monitor: %s", service_monitor["name"]),
+			}
+
+			// Get the time series for this
+			business_environment_namespace_metric := DatamanGet("business_environment_namespace_metric", int(service_monitor["business_environment_namespace_metric_id"].(int64)), options)
+
+			filter := map[string]interface{}{
+				"time_store_item_id": []interface{}{"=", business_environment_namespace_metric["time_store_item_id"]},
+				"created": []interface{}{">", time.Now().Add(time.Duration(-3600 * 1000000000))},
+			}
+			options["sort"] = []string{"created"}
+			graph_item["time_series"] = DatamanFilter("time_store_partition_timestorepartitionid", filter, options)
+			options["sort"] = nil
+
+			// Add this to the graph information
+			return_data["data_point_array"] = append(return_data["data_point_array"].([]map[string]interface{}), graph_item)
+		}
+	}
+
+	return return_data
+}
+

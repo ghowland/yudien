@@ -388,6 +388,8 @@ func InitUdn() {
 
 		"__custom_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	// CUSTOM: Post change submit, process the data
 		"__customer_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	//TODO(g):REMOVE: This one is a typo.  Switch to the above __custom_*// CUSTOM: Post change submit, process the data
+
+		"__custom_dashboard_item_edit": UDN_Custom_Dashboard_Item_Edit,   	// CUSTOM:...
 	}
 
 	PartTypeName = map[int]string{
