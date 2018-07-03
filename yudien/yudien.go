@@ -12,33 +12,6 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
-const (
-	part_unknown  = iota
-	part_function = iota
-	part_item     = iota
-	part_string   = iota
-	part_compound = iota
-	part_list     = iota
-	part_map      = iota
-	part_map_key  = iota
-)
-
-const (
-	type_int          = iota
-	type_float        = iota
-	type_string       = iota
-	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
-	type_map          = iota // map[string]interface{}
-)
-
-const ( // order matters for log levels
-	log_off   = iota
-	log_error = iota
-	log_warn  = iota
-	log_info  = iota
-	log_debug = iota
-	log_trace = iota
-)
 
 func DescribeUdnPart(part *UdnPart) string {
 

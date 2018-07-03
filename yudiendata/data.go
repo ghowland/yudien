@@ -294,6 +294,19 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		delete(record, "_record_label")
 	}
 
+
+	// Put the deep fields into their containers
+	for k, v := range record {
+		if strings.Contains(k, "__") {
+			parts := strings.Split(k, "__")
+			part_array := GetResult(parts, type_array).([]interface{})
+
+			// Update the record
+			UdnLogLevel(nil, log_trace, "DatamanSet: %s: %s: %v\n", collection_name, k, part_array)
+			MapSet(UseArgArrayOrFirstArgString(part_array), v, record)
+		}
+	}
+
 	// Fix data manually, for now
 	for k, v := range record {
 		if v == "true" {
@@ -326,6 +339,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 			delete(record, k)
 		}
 	}
+
 
 	// Fixup the record, if its not a new one, by getti
 	// ng any values

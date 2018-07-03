@@ -26,6 +26,23 @@ import (
 	"gopkg.in/russross/blackfriday.v2"
 )
 
+const (
+	type_int          = iota
+	type_float        = iota
+	type_string       = iota
+	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
+	type_map          = iota // map[string]interface{}
+)
+
+const ( // order matters for log levels
+	log_off   = iota
+	log_error = iota
+	log_warn  = iota
+	log_info  = iota
+	log_debug = iota
+	log_trace = iota
+)
+
 func UDN_Comment(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	result := UdnResult{}
 	result.Result = input

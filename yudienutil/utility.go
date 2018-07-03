@@ -17,6 +17,7 @@ import (
 	"text/template"
 )
 
+
 const (
 	part_unknown  = iota
 	part_function = iota
@@ -34,6 +35,15 @@ const (
 	type_string       = iota
 	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
 	type_map          = iota // map[string]interface{}
+)
+
+const ( // order matters for log levels
+	log_off   = iota
+	log_error = iota
+	log_warn  = iota
+	log_info  = iota
+	log_debug = iota
+	log_trace = iota
 )
 
 func GetResult(input interface{}, type_value int) interface{} {
@@ -408,7 +418,6 @@ func ConvertMapArrayToMap(map_array []map[string]interface{}, key string) map[st
 	return result
 }
 
-
 func SprintMap(map_data map[string]interface{}) string {
 	output := ""
 
@@ -515,7 +524,6 @@ func JsonLoadMapIfValid(text *string) (map[string]interface{}, error) {
 	return new_map, err
 }
 
-
 func JsonLoadArray(text string) ([]interface{}, error) {
 	new_array := make([]interface{}, 0)
 
@@ -523,7 +531,6 @@ func JsonLoadArray(text string) ([]interface{}, error) {
 
 	return new_array, err
 }
-
 
 func MapListToDict(map_array []map[string]interface{}, key string) map[string]interface{} {
 	// Build a map of all our web site page widgets, so we can
@@ -729,4 +736,269 @@ func TemplateInterface(template_item interface{}, text string) string {
 	result := item.String
 
 	return result
+}
+
+
+func UseArgArrayOrFirstArgString(args []interface{}) []interface{} {
+	// If we were given a single dotted string, expand it into our arg array
+	if len(args) == 1 {
+		switch args[0].(type) {
+		case string:
+			// If this has dots in it, then it can be exploded to become an array of args
+			if strings.Contains(args[0].(string), ".") {
+				new_args := SimpleDottedStringToArray(args[0].(string))
+
+				return new_args
+			}
+		}
+	}
+
+	return args
+}
+
+
+func GetChildResult(parent interface{}, child interface{}) DynamicResult {
+	type_str := fmt.Sprintf("%T", parent)
+	//fmt.Printf("\n\nGetChildResult: %s: %s: %v\n\n", type_str, child, SnippetData(parent, 300))
+
+	result := DynamicResult{}
+
+	// Check if the parent is an array or a map
+	if strings.HasPrefix(type_str, "[]") {
+		// Array access - check what type of array the parent is
+		switch parent.(type) {
+		case []string:
+			parent_array := parent.([]string)
+			index := GetResult(child, type_int).(int64)
+
+			if index >= 0 && index < int64(len(parent_array)) {
+				result.Result = parent_array[index]
+			}
+		case []interface{}:
+			parent_array := parent.([]interface{})
+			index := GetResult(child, type_int).(int64)
+
+			if index >= 0 && index < int64(len(parent_array)) {
+				result.Result = parent_array[index]
+			}
+		case []map[string]interface{}:
+			parent_array := parent.([]map[string]interface{})
+			index := GetResult(child, type_int).(int64)
+
+			if index >= 0 && index < int64(len(parent_array)) {
+				result.Result = parent_array[index]
+			}
+		default:
+			// Array type not recognized - return parent for now
+			result.Result = parent
+		}
+
+		result.Type = type_array
+
+		return result
+
+	} else {
+		child_str := GetResult(child, type_string).(string)
+
+		// Map access
+		parent_map := parent.(map[string]interface{})
+
+		result.Result = parent_map[child_str]
+		result.Type = type_map
+
+		return result
+	}
+}
+
+func SetChildResult(parent interface{}, child interface{}, value interface{}) {
+	type_str := fmt.Sprintf("%T", parent)
+	UdnLogLevel(nil, log_trace, "\n\nSetChildResult: %s: %v: %v\n\n", type_str, child, SnippetData(parent, 300))
+
+	// Check if the parent is an array or a map
+	if strings.HasPrefix(type_str, "[]") {
+		// Array access - check what type of array the parent is
+		switch parent.(type) {
+		case []string:
+			parent_array := parent.([]string)
+			index := GetResult(child, type_int).(int64)
+
+			if index >= 0 && index < int64(len(parent_array)) {
+				parent_array[index] = value.(string)
+			}
+		case []interface{}:
+			parent_array := parent.([]interface{})
+			index := GetResult(child, type_int).(int64)
+
+			if index >= 0 && index < int64(len(parent_array)) {
+				parent_array[index] = value
+			}
+		case []map[string]interface{}:
+			parent_array := parent.([]map[string]interface{})
+			index := GetResult(child, type_int).(int64)
+
+			if index >= 0 && index < int64(len(parent_array)) {
+				parent_array[index] = value.(map[string]interface{})
+			}
+		default:
+			// type is not recognized - do nothing for now
+		}
+
+	} else {
+		child_str := GetResult(child, type_string).(string)
+
+		// Map access
+		parent_map := parent.(map[string]interface{})
+
+		// Set the value
+		parent_map[child_str] = DeepCopy(value)
+	}
+}
+
+func GetArgsFromArgsOrStrings(args []interface{}) []interface{} {
+	out_args := make([]interface{}, 0)
+
+	for _, arg := range args {
+		switch arg.(type) {
+		case string:
+			// If this has dots in it, then it can be exploded to become an array of args
+			if strings.Contains(arg.(string), ".") {
+				new_args := SimpleDottedStringToArray(arg.(string))
+
+				for _, new_arg := range new_args {
+					out_args = AppendArray(out_args, new_arg)
+				}
+			} else {
+				out_args = AppendArray(out_args, arg)
+			}
+		default:
+			out_args = AppendArray(out_args, arg)
+		}
+	}
+
+	//fmt.Printf("\n\nGetArgsFromArgsOrStrings: %v   ===>>>  %v\n\n", args, out_args)
+
+	return out_args
+}
+
+func _MapGet(args []interface{}, udn_data interface{}) interface{} {
+	// This is what we will use to Set the data into the last map[string]
+	last_argument := GetResult(args[len(args)-1], type_string).(string)
+
+	// Start at the top of udn_data, and work down
+	var cur_udn_data interface{}
+	cur_udn_data = udn_data
+
+	// Go to the last element, so that we can set it with the last arg
+	for count := 0; count < len(args)-1; count++ {
+		arg := GetResult(args[count], type_string).(string)
+
+		if count != 0 {
+			//fmt.Printf("Get: Cur UDN Data: Before change: %s: %v\n\n", arg, JsonDump(cur_udn_data))
+		}
+
+		child_result := GetChildResult(cur_udn_data, arg)
+
+		if child_result.Result != nil {
+			if child_result.Type == type_array {
+				cur_udn_data = child_result.Result
+			} else {
+				cur_udn_data = child_result.Result
+			}
+		} else {
+			// Make a new map, simulating something being here.  __set will create this, so this make its bi-directinally the same...
+			cur_udn_data = make(map[string]interface{})
+		}
+	}
+
+	//fmt.Printf("Get: Last Arg data: %s: %s\n\n", last_argument, SnippetData(cur_udn_data, 800))
+
+	// Our result will be a list, of the result of each of our iterations, with a UdnResult per element, so that we can Transform data, as a pipeline
+	final_result := GetChildResult(cur_udn_data, last_argument)
+
+	return final_result.Result
+}
+
+func _MapSet(args []interface{}, input interface{}, udn_data interface{}) {
+
+	// This is what we will use to Set the data into the last map[string]
+	last_argument := GetResult(args[len(args)-1], type_string).(string)
+
+	// Start at the top of udn_data, and work down
+	var cur_udn_data interface{}
+	cur_udn_data = udn_data
+
+	// Go to the last element, so that we can set it with the last arg
+	for count := 0; count < len(args)-1; count++ {
+		child_result := GetChildResult(cur_udn_data, args[count])
+
+		// If we dont have this key, create a map[string]interface{} to allow it to be created easily
+		if child_result.Result == nil {
+			new_map := make(map[string]interface{})
+			SetChildResult(cur_udn_data, args[count], new_map)
+			child_result = GetChildResult(cur_udn_data, args[count])
+		}
+
+		// Go down the depth of maps
+		if child_result.Type == type_array {
+			cur_udn_data = child_result.Result
+		} else {
+			cur_udn_data = child_result.Result
+		}
+	}
+
+	// Set the last element
+	SetChildResult(cur_udn_data, last_argument, input)
+}
+
+func MapGet(args []interface{}, udn_data interface{}) interface{} {
+	// If we were given a single dotted string, expand it into our arg array
+	args = UseArgArrayOrFirstArgString(args)
+
+	// Only try with our first argument converted initially (legacy behavior)
+	result := _MapGet(args, udn_data)
+
+	if result == nil {
+		// Try converting all our arguments if we couldnt get it before.  It might be dotted.
+		args = GetArgsFromArgsOrStrings(args)
+
+		result = _MapGet(args, udn_data)
+	}
+
+	return result
+}
+
+func MapSet(args []interface{}, input interface{}, udn_data interface{}) interface{} {
+	// Determine what our args should be, based on whether the data is available for getting already, allow explicit to override depth-search
+	first_args := UseArgArrayOrFirstArgString(args)
+	result := _MapGet(first_args, udn_data)
+	if result == nil {
+		// If we didn't find this value in it's explicit (dotted) string location, then expand the dots
+		args = GetArgsFromArgsOrStrings(args)
+	} else {
+		args = first_args
+	}
+
+	_MapSet(args, input, udn_data)
+
+	// Input is a pass-through
+	return input
+}
+
+func MapIndexSet(args []interface{}, input interface{}, udn_data interface{}) interface{} {
+	// Same as func MapSet but udn_data is returned rather than input
+
+	// Determine what our args should be, based on whether the data is available for getting already, allow explicit to override depth-search
+	first_args := UseArgArrayOrFirstArgString(args)
+	result := _MapGet(first_args, udn_data)
+	if result == nil {
+		// If we didn't find this value in it's explicit (dotted) string location, then expand the dots
+		args = GetArgsFromArgsOrStrings(args)
+	} else {
+		args = first_args
+	}
+
+	_MapSet(args, input, udn_data)
+
+	// Return the updated udn_data
+	return udn_data
 }
