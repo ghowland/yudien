@@ -204,6 +204,12 @@ func GetResult(input interface{}, type_value int) interface{} {
 				new_array = AppendArray(new_array, item)
 			}
 			return new_array
+		} else if strings.HasPrefix(type_str, "[]string") {
+			new_array := make([]interface{}, 0)
+			for _, item := range input.([]string) {
+				new_array = AppendArray(new_array, item)
+			}
+			return new_array
 		} else if strings.HasPrefix(type_str, "[]") {
 			return input
 		} else if type_str == "*list.List" {
@@ -812,7 +818,7 @@ func GetChildResult(parent interface{}, child interface{}) DynamicResult {
 
 func SetChildResult(parent interface{}, child interface{}, value interface{}) {
 	type_str := fmt.Sprintf("%T", parent)
-	UdnLogLevel(nil, log_trace, "\n\nSetChildResult: %s: %v: %v\n\n", type_str, child, SnippetData(parent, 300))
+	UdnLogLevel(nil, log_trace, "SetChildResult: %s: %v: %v\n\n", type_str, child, SnippetData(parent, 300))
 
 	// Check if the parent is an array or a map
 	if strings.HasPrefix(type_str, "[]") {
@@ -918,7 +924,7 @@ func _MapGet(args []interface{}, udn_data interface{}) interface{} {
 	return final_result.Result
 }
 
-func _MapSet(args []interface{}, input interface{}, udn_data interface{}) {
+func Direct_MapSet(args []interface{}, input interface{}, udn_data interface{}) {
 
 	// This is what we will use to Set the data into the last map[string]
 	last_argument := GetResult(args[len(args)-1], type_string).(string)
@@ -930,6 +936,8 @@ func _MapSet(args []interface{}, input interface{}, udn_data interface{}) {
 	// Go to the last element, so that we can set it with the last arg
 	for count := 0; count < len(args)-1; count++ {
 		child_result := GetChildResult(cur_udn_data, args[count])
+
+		UdnLogLevel(nil, log_trace, "Direct_MapSet: %d: %v\n\n", count, child_result)
 
 		// If we dont have this key, create a map[string]interface{} to allow it to be created easily
 		if child_result.Result == nil {
@@ -978,7 +986,7 @@ func MapSet(args []interface{}, input interface{}, udn_data interface{}) interfa
 		args = first_args
 	}
 
-	_MapSet(args, input, udn_data)
+	Direct_MapSet(args, input, udn_data)
 
 	// Input is a pass-through
 	return input
@@ -997,7 +1005,7 @@ func MapIndexSet(args []interface{}, input interface{}, udn_data interface{}) in
 		args = first_args
 	}
 
-	_MapSet(args, input, udn_data)
+	Direct_MapSet(args, input, udn_data)
 
 	// Return the updated udn_data
 	return udn_data

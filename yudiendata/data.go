@@ -303,7 +303,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 
 			// Update the record
 			UdnLogLevel(nil, log_trace, "DatamanSet: %s: %s: %v\n", collection_name, k, part_array)
-			MapSet(UseArgArrayOrFirstArgString(part_array), v, record)
+			Direct_MapSet(part_array, v, record)
 		}
 	}
 
