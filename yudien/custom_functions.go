@@ -1998,6 +1998,7 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 			graph_item["field_x"] = "created"
 
 			// Get the data
+			//TODO(g): We could potentially save these values into the Dashboard and make it "locked down".  Not sure this is ever useful, but it might be if they want to keep their outage information, and they will remove the metrics eventually...
 			graph_item["time_series_values"] = ArrayMapToSeries(time_series_array, graph_item["field_selector"].(string))
 			graph_item["time_series_times"] = ArrayMapToSeries(time_series_array, graph_item["field_x"].(string))
 
@@ -2007,10 +2008,22 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 				graph_item["field_options"] = make([]map[string]interface{}, 0)
 			}
 
+
 			// Add this to the graph information
 			return_data["data_point_array"] = append(return_data["data_point_array"].([]map[string]interface{}), graph_item)
 		}
+	} else {
+		// Else, this is an saved graph
 	}
+
+	// Process more input_map stuff
+	if input_map["dashboard_item_name"] != nil {
+		//TODO(g): This goes into return_data, not the graph/dashboard_item.  It's muddled at the moment, needs to be clarified
+		return_data["name"] = input_map["dashboard_item_name"]
+	}
+
+	// Save this stuff?
+	//TODO(g): Decide whether to always save or not...  Should only be done on demand.  input_map["save_dashboard_item"]==true, then we set it to nil or whatever
 
 	return return_data
 }
