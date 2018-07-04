@@ -2119,10 +2119,11 @@ func ArrayMapToSeries(array_map []map[string]interface{}, map_key string) []inte
 func UDN_Custom_Dataman_Create_Filter_Html(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
 	field_label := GetResult(args[1], type_string).(string)
-	filter_map := GetResult(args[2], type_map).(map[string]interface{})
+	filter_array := GetResult(args[2], type_array).([]interface{})
+	input_map := GetResult(args[3], type_map).(map[string]interface{})
 
 	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
-	html := DatamanCreateFilterHtml(internal_database_name, field_label, filter_map)
+	html := DatamanCreateFilterHtml(internal_database_name, field_label, filter_array, input_map)
 
 	result := UdnResult{}
 	result.Result = html
@@ -2130,13 +2131,72 @@ func UDN_Custom_Dataman_Create_Filter_Html(db *sql.DB, udn_schema map[string]int
 	return result
 }
 
-func DatamanCreateFilterHtml(internal_database_name string, field_label string, filter_map map[string]interface{}) string {
+func DatamanCreateFilterHtml(internal_database_name string, field_label string, filter_array []interface{}, input_map map[string]interface{}) string {
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
+	UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: field_label: %s: %s\n", field_label, JsonDump(filter_array))
+
+	filter := map[string]interface{}{}
+	options["sort"] = []string{"alias"}
+	compare_array := DatamanFilter("type_compare", filter, options)
+	compare_map := MapArrayToMap(compare_array, "alias")
+	options["sort"] = nil
+
+	html_field_array := make([]map[string]interface{}, 0)
+
+	for index, outer_map := range filter_array {
+		for field, inner_map := range outer_map.(map[string]interface{}) {
+			for operator, value := range inner_map.(map[string]interface{}) {
+				item_field_label := fmt.Sprintf("%s__%d", field_label, index)
+
+				UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: %s: item: %s %s %s\n", item_field_label, field, operator, JsonDump(value))
+
+				web_widget_html := GetWebWidgetHtml(compare_map[operator].(map[string]interface{})["web_widget_name"].(string))
+
+				// Use the input_map
+				data := MapCopy(input_map)
+				data["_field_label"] = item_field_label
+				data["value"] = value
+				data["label"] = field
+				data["name"] = fmt.Sprintf("%s_%d", input_map["name"], index)
+
+				// Template
+				data["_output"] = TemplateFromMap(web_widget_html, data)
+
+
+				html_field_array = append(html_field_array, data)
+			}
+		}
+	}
+
 	html := ""
+
+	for _, html_field_item := range html_field_array {
+		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: HTML Field Item: %s\n", JsonDump(html_field_item))
+
+		html += fmt.Sprintf("%s\n", html_field_item["_output"])
+	}
 
 	return html
 }
 
+func GetWebWidgetHtml(name string) string {
+	options := make(map[string]interface{})
+
+	filter := map[string]interface{}{
+		"name": []interface{}{"=", name},
+	}
+	web_widget_array := DatamanFilter("web_widget", filter, options)
+
+	//UdnLogLevel(nil, log_trace, "GetWebWidgetHtml: %s: %v\n", name, web_widget_array)
+
+	html := ""
+
+	if len(web_widget_array) > 0 {
+		html = web_widget_array[0]["html"].(string)
+	}
+
+	return html
+}
 

@@ -618,14 +618,19 @@ func UDN_StringTemplateFromValueShort(db *sql.DB, udn_schema map[string]interfac
 
 	actual_input = GetResult(actual_input, type_map)
 
+	// Use the actual_input, which may be input or arg_1
+	input_template_map := GetResult(actual_input, type_map).(map[string]interface{})
+
 	template_str := GetResult(args[0], type_string).(string)
+
+	template_str = TemplateShortFromMap(template_str, input_template_map)
+
+	/*
 
 	//UdnLogLevel(udn_schema, log_trace, "Short Template From Value: Template String: %s Template Input: %v\n\n", SnippetData(actual_input, 60), SnippetData(template_str, 60))
 	UdnLogLevel(udn_schema, log_trace, "Short Template From Value: Template Input: %s\n\n", JsonDump(actual_input))
 	UdnLogLevel(udn_schema, log_trace, "Short Template From Value: Incoming Template String: %s\n\n", template_str)
 
-	// Use the actual_input, which may be input or arg_1
-	input_template_map := GetResult(actual_input, type_map).(map[string]interface{})
 
 	for key, value := range input_template_map {
 		//fmt.Printf("Key: %v   Value: %v\n", key, value)
@@ -634,6 +639,7 @@ func UDN_StringTemplateFromValueShort(db *sql.DB, udn_schema map[string]interfac
 		UdnLogLevel(udn_schema, log_trace, "Short Template From Value: Value String: %s == '%s'\n\n", key, value_str)
 		template_str = strings.Replace(template_str, key_replace, value_str, -1)
 	}
+	*/
 
 	result := UdnResult{}
 	result.Result = template_str
@@ -658,7 +664,6 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 	UdnLogLevel(udn_schema, log_trace, "String Template From Value: Template Input: Post Conversion Input: %v\n\n", SnippetData(actual_input, 600))
 
 	template_str := GetResult(args[0], type_string).(string)
-	template_str = strings.Replace(template_str, "\\", "", -1)
 
 	UdnLogLevel(udn_schema, log_trace, "String Template From Value: Template Input: %s Template String: %v\n\n", SnippetData(actual_input, 60), SnippetData(template_str, 600))
 
@@ -668,6 +673,9 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 	input_template := NewTextTemplateMap()
 	input_template.Map = GetResult(actual_input, type_map).(map[string]interface{})
 
+	output := TemplateFromMap(template_str, input_template.Map)
+
+	/*
 	item_template := template.Must(template.New("text").Parse(template_str))
 
 	item := StringFile{}
@@ -675,12 +683,14 @@ func UDN_StringTemplateFromValue(db *sql.DB, udn_schema map[string]interface{}, 
 	if err != nil {
 		log.Panic(err)
 	}
+	*/
 
 	result := UdnResult{}
-	result.Result = item.String
+	result.Result = output
 
 	return result
 }
+
 
 func UDN_StringTemplateMultiWrap(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 

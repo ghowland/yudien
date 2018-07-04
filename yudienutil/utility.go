@@ -1010,3 +1010,47 @@ func MapIndexSet(args []interface{}, input interface{}, udn_data interface{}) in
 	// Return the updated udn_data
 	return udn_data
 }
+
+
+func TemplateShortFromMap(template_string string, template_map map[string]interface{}) string {
+	//UdnLogLevel(nil, log_trace, "Short Template From Value: Template Input: %s\n\n", JsonDump(template_map))
+	//UdnLogLevel(nil, log_trace, "Short Template From Value: Incoming Template String: %s\n\n", template_string)
+
+	for key, value := range template_map {
+		//UdnLogLevel(nil, log_trace, "Key: %v   Value: %v\n", key, value)
+		key_replace := fmt.Sprintf("{{{%s}}}", key)
+		value_str := GetResult(value, type_string).(string)
+
+		//UdnLogLevel(nil, log_trace, "Short Template From Value: Value String: %s == '%s'\n\n", key, value_str)
+		template_string = strings.Replace(template_string, key_replace, value_str, -1)
+	}
+
+	return template_string
+}
+
+
+func TemplateFromMap(template_string string, template_map map[string]interface{}) string {
+
+	template_string = strings.Replace(template_string, "\\", "", -1)
+
+	UdnLogLevel(nil, log_trace, "String Template From Value: Template Input: Post Conversion Input: %v\n\n", SnippetData(template_map, 600))
+
+
+	UdnLogLevel(nil, log_trace, "String Template From Value: Template Input: %s Template String: %v\n\n", SnippetData(template_map, 60), SnippetData(template_string, 600))
+
+	UdnLogLevel(nil, log_trace, "String Template From Value: Template Input: %s\n\n", JsonDump(template_map))
+
+	// Use the actual_input, which may be input or arg_1
+	input_template := NewTextTemplateMap()
+	input_template.Map = GetResult(template_map, type_map).(map[string]interface{})
+
+	item_template := template.Must(template.New("text").Parse(template_string))
+
+	item := StringFile{}
+	err := item_template.Execute(&item, input_template)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return item.String
+}
