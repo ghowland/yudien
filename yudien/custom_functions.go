@@ -2116,3 +2116,27 @@ func ArrayMapToSeries(array_map []map[string]interface{}, map_key string) []inte
 	return result_array
 }
 
+func UDN_Custom_Dataman_Create_Filter_Html(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	field_label := GetResult(args[1], type_string).(string)
+	filter_map := GetResult(args[2], type_map).(map[string]interface{})
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	html := DatamanCreateFilterHtml(internal_database_name, field_label, filter_map)
+
+	result := UdnResult{}
+	result.Result = html
+
+	return result
+}
+
+func DatamanCreateFilterHtml(internal_database_name string, field_label string, filter_map map[string]interface{}) string {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	html := ""
+
+	return html
+}
+
+
