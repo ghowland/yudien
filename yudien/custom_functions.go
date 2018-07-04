@@ -2172,10 +2172,44 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 
 	html := ""
 
+	core_row := GetWebWidgetHtml("core_row")
+	core_row_col := GetWebWidgetHtml("core_row_col")
+	core_button := GetWebWidgetHtml("core_button")
+
 	for _, html_field_item := range html_field_array {
 		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: HTML Field Item: %s\n", JsonDump(html_field_item))
 
-		html += fmt.Sprintf("%s\n", html_field_item["_output"])
+		/*
+		// Column - Controls
+		item_data := map[string]interface{}{
+			"value": TemplateFromMap(core_icon, map[string]interface{}{"icon": " icon-trash-alt", "onclick": "alert('Delete me')"}),
+			"size": "4",
+		}
+		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: Column 1: %s\n", JsonDump(item_data))
+		item_col := TemplateFromMap(core_row_col, item_data)
+		*/
+
+		delete_icon := TemplateFromMap(core_button, map[string]interface{}{"icon": " icon-trash-alt", "onclick": "alert('Delete me')", "rounded": true, "color": "primary", "value": ""})
+
+		column_output := fmt.Sprintf("<span>%s\n%s</span>", delete_icon, html_field_item["_output"])
+
+		// Column - Item
+		item_data := map[string]interface{}{
+			"value": column_output,
+			"size": "4",
+		}
+		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: Column 2: %s\n", JsonDump(item_data))
+		item_col := TemplateFromMap(core_row_col, item_data)
+
+		// Row
+		item_data = map[string]interface{}{
+			"value": item_col,
+		}
+		item_row := TemplateFromMap(core_row, item_data)
+
+		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: Final: %s\n", item_row)
+
+		html += fmt.Sprintf("%s\n", item_row)
 	}
 
 	return html
