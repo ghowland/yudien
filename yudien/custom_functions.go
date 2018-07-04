@@ -2158,7 +2158,8 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 				data := MapCopy(input_map)
 				data["_field_label"] = item_field_label
 				data["value"] = value
-				data["label"] = field
+				data["label"] = fmt.Sprintf("%s %s", field, operator)
+				data["color"] = "primary"
 				data["name"] = fmt.Sprintf("%s_%d", input_map["name"], index)
 
 				// Template
@@ -2170,28 +2171,55 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 		}
 	}
 
-	html := ""
-
-	core_row := GetWebWidgetHtml("core_row")
-	core_row_col := GetWebWidgetHtml("core_row_col")
+	core_table := GetWebWidgetHtml("core_table_simple")
+	core_icon_list := GetWebWidgetHtml("core_icon_list")
 	core_button := GetWebWidgetHtml("core_button")
 
 	for _, html_field_item := range html_field_array {
+		icon_map_delete := map[string]interface{}{"icon": " icon-trash-alt", "onclick": "alert('Delete me')", "color": "primary"}
+		icon_map_disable := map[string]interface{}{"icon": " icon-volume-mute2", "onclick": "alert('Disable temporarily to test')", "color": "danger"}
+		icon_map_array := []interface{}{icon_map_delete, icon_map_disable}
+		icon_map_array_map := map[string]interface{}{
+			"item": icon_map_array,
+		}
+
+		icon_list := TemplateFromMap(core_icon_list, icon_map_array_map)
+
+		html_field_item["icons"] = icon_list
+	}
+
+	// Add final row to the html_field_array that has a button for adding new Rules
+	button_item := map[string]interface{}{
+		"icons": "",
+		"_output": TemplateFromMap(core_button, map[string]interface{}{"value": "Add New Rule", "icon": "icon-add", "onclick": "alert('Add new rule!')", "color": "primary"}),
+	}
+	html_field_array = append(html_field_array, button_item)
+
+	table_data := map[string]interface{}{
+		"headers": []string{"", "Filter Rule"},
+		"columns": []string{"icons", "_output"},
+		"widths": map[string]interface{}{
+			"icons": "80",
+			"_output": "",
+		},
+		"items": html_field_array,
+	}
+
+	html := TemplateFromMap(core_table, table_data)
+
+	/*
+	for _, html_field_item := range html_field_array {
 		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: HTML Field Item: %s\n", JsonDump(html_field_item))
 
-		/*
-		// Column - Controls
-		item_data := map[string]interface{}{
-			"value": TemplateFromMap(core_icon, map[string]interface{}{"icon": " icon-trash-alt", "onclick": "alert('Delete me')"}),
-			"size": "4",
+		icon_map_delete := map[string]interface{}{"icon": " icon-trash-alt", "onclick": "alert('Delete me')", "color": "primary"}
+		icon_map_disable := map[string]interface{}{"icon": " icon-volume-mute2", "onclick": "alert('Disable temporarily to test')", "color": "danger"}
+		icon_map_array := []interface{}{icon_map_delete, icon_map_disable}
+		icon_map_array_map := map[string]interface{}{
+			"item": icon_map_array,
 		}
-		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: Column 1: %s\n", JsonDump(item_data))
-		item_col := TemplateFromMap(core_row_col, item_data)
-		*/
 
-		delete_icon := TemplateFromMap(core_button, map[string]interface{}{"icon": " icon-trash-alt", "onclick": "alert('Delete me')", "rounded": true, "color": "primary", "value": ""})
+		icon_list := TemplateFromMap(core_icon_list, icon_map_array_map)
 
-		column_output := fmt.Sprintf("<span>%s\n%s</span>", delete_icon, html_field_item["_output"])
 
 		// Column - Item
 		item_data := map[string]interface{}{
@@ -2210,7 +2238,7 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: Final: %s\n", item_row)
 
 		html += fmt.Sprintf("%s\n", item_row)
-	}
+	}*/
 
 	return html
 }
