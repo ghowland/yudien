@@ -2148,11 +2148,20 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 	for index, outer_map := range filter_array {
 		for field, inner_map := range outer_map.(map[string]interface{}) {
 			for operator, value := range inner_map.(map[string]interface{}) {
-				item_field_label := fmt.Sprintf("%s__%d", field_label, index)
+
+				//operator_base64 := Base64Encode(operator)
+
+				item_field_label := fmt.Sprintf("%s__%d__%s__%s", field_label, index, field, operator)
 
 				UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: %s: item: %s %s %s\n", item_field_label, field, operator, JsonDump(value))
 
-				web_widget_html := GetWebWidgetHtml(compare_map[operator].(map[string]interface{})["web_widget_name"].(string))
+				web_widget_name := compare_map[operator].(map[string]interface{})["web_widget_name"].(string)
+				web_widget_html := GetWebWidgetHtml(web_widget_name)
+
+				if web_widget_name == "core_form_input_tag_list" {
+					//UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: core_form_input_tag_list: %v (%T)\n", value, value)
+					value = ArrayStringJoin(value.([]interface{}), ",")
+				}
 
 				// Use the input_map
 				data := MapCopy(input_map)
@@ -2162,9 +2171,11 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 				data["color"] = "primary"
 				data["name"] = fmt.Sprintf("%s_%d", input_map["name"], index)
 
+
 				// Template
 				data["_output"] = TemplateFromMap(web_widget_html, data)
 
+				UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: Field Array: %s: %s\n", item_field_label, JsonDump(data))
 
 				html_field_array = append(html_field_array, data)
 			}

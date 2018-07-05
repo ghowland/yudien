@@ -2934,7 +2934,9 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 		database := parts[0]
 		table := parts[1]
 		record_pkey := parts[2]
-		field := parts[3]
+
+		//part_count := len(parts)
+		field := strings.Join(parts[3:], ".")
 
 		database_map := make(map[string]interface{})
 		table_map := make(map[string]interface{})
@@ -2970,8 +2972,69 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 
 	UdnLogLevel(nil, log_trace,"Change: Submit: Collected: %s\n", JsonDump(submit_map))
 
+	// Look for __ separated fields, which are deep fields (JSON).  Turn them into deep maps
+	for database, database_items := range submit_map {
+		for table, records := range database_items.(map[string]interface{}) {
+			for record_id, record := range records.(map[string]interface{}) {
+				for key, value := range record.(map[string]interface{}) {
+					if strings.Contains(key, "__") {
+						key_parts := strings.Split(key, "__")
+
+						UdnLogLevel(nil, log_trace,"Change: Submit: Deep Parts: %s: %s: %s: %v\n", database, table, record_id, key_parts)
+
+						// Track our current data container (map/array) with cur_container, so we can step down the parts
+						var cur_container interface{}
+						var last_container interface{}
+						cur_container = record
+						var last_key interface{}
+						for _, part_key := range key_parts {
+							cur_map := cur_container.(map[string]interface{})
+
+							if cur_map[part_key] == nil {
+									cur_map[part_key] = make(map[string]interface{})
+							}
+							last_container = cur_container
+							cur_container = cur_map[part_key]
+							last_key = part_key
+
+						}
+
+						UdnLogLevel(nil, log_trace,"Change: Submit: Pre-Update Data: %s\n", JsonDump(record))
+						UdnLogLevel(nil, log_trace,"Change: Submit: Update Value: %s: %v: %v\n", key, last_container, value)
+
+						last_container.(map[string]interface{})[last_key.(string)] = value
+
+						delete(record.(map[string]interface{}), key)
+					}
+				}
+			}
+		}
+	}
+
+	UdnLogLevel(nil, log_trace,"Change: Submit: Deep Fields Processed: %s\n", JsonDump(submit_map))
+
+	// Look for __ separated fields, which are deep fields (JSON).  Turn them into deep maps
+	for database, database_items := range submit_map {
+		for table, records := range database_items.(map[string]interface{}) {
+			for record_id, record := range records.(map[string]interface{}) {
+				for key, value := range record.(map[string]interface{}) {
+					switch value.(type) {
+					case map[string]interface{}:
+						UdnLogLevel(nil, log_trace,"Change: Submit: JSON Convert: %s: %s: %s: %v\n", database, table, record_id, key)
+
+						record.(map[string]interface{})[key] = JsonConvertRecordMap(value.(map[string]interface{}))
+					}
+				}
+			}
+		}
+	}
 
 
+	UdnLogLevel(nil, log_trace,"Change: Submit: Aborting Submit for DEBUG: %s\n", JsonDump(submit_map))
+
+	// Return the error map:  Field Labels -> Error Message for User correction
+	result.Result = error_map
+	return result		//DEBUG - Exit early, dont SUBMIT **** <<------   <<<-----=====------
 
 	// Check all our records for validation errors, and return early if they are any
 	for database, database_map := range submit_map {

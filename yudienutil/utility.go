@@ -15,6 +15,7 @@ import (
 	"github.com/mitchellh/copystructure"
 	"reflect"
 	"text/template"
+	"encoding/base64"
 )
 
 
@@ -1070,5 +1071,71 @@ func ArrayStringJoin(input_val []interface{}, separator string) string {
 	}
 
 	return result_string
+}
+
+func Base64Encode(text string) string {
+	encoded := base64.URLEncoding.EncodeToString([]byte(text))
+
+	return encoded
+}
+
+func Base64Decode(text string) (string, error) {
+	decoded := ""
+
+	decoded_bytes, err := base64.URLEncoding.DecodeString(text)
+	if err == nil {
+		decoded = string(decoded_bytes)
+	}
+
+	return decoded, err
+}
+
+// Convert a JSON map from all-maps to arrays where the keys are all ints, and if the final values are a CSV string into an array of strings
+func JsonConvertRecordMap(field_map map[string]interface{}) map[string]interface{} {
+	for key, value := range field_map {
+		switch value.(type) {
+		case map[string]interface{}:
+			UdnLogLevel(nil, log_trace, "JsonConvertRecordMap: %s: %v\n", key, value)
+		
+			// Test all the keys to see if they are all ints, assume they are and falsify
+			keys_all_ints := true
+			value_map := value.(map[string]interface{})
+			
+			for field_key, _ := range value_map {
+				_, err := strconv.ParseInt(field_key, 10, 64)
+				if err != nil {
+					keys_all_ints = false
+				}
+			} 
+
+			if keys_all_ints {
+				UdnLogLevel(nil, log_trace, "JsonConvertRecordMap: %s: Keys all ints -- Convert!\n", key)
+
+				// Make our new array
+				new_value := make([]interface{}, 0)
+
+				map_keys := MapGetKeys(value_map)
+				for _, map_key := range map_keys {
+					new_value = append(new_value, value_map[map_key])
+				}
+
+				field_map[key] = new_value
+			}
+		}
+	}
+
+	return field_map
+}
+
+func MapGetKeys(data map[string]interface{}) []string {
+	string_array := make([]string, 0)
+
+	for key, _ := range data {
+		string_array = append(string_array, key)
+	}
+
+	sort.Strings(string_array)
+
+	return string_array
 }
 
