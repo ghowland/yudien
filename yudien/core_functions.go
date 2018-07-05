@@ -1879,7 +1879,6 @@ func UDN_ArrayMapFilterArrayContains(db *sql.DB, udn_schema map[string]interface
 	return result
 }
 
-
 func UDN_ArrayStringJoin(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_val := GetResult(input, type_array).([]interface{})
 
@@ -1889,18 +1888,11 @@ func UDN_ArrayStringJoin(db *sql.DB, udn_schema map[string]interface{}, udn_star
 		input_val = GetResult(args[1], type_array).([]interface{})
 	}
 
+
+	
 	UdnLogLevel(udn_schema, log_trace, "Array String Join: Separator: %s: %v\n", separator, input_val)
 
-	result_string := ""
-	for _, item := range input_val {
-		if result_string != "" {
-			result_string += separator
-		}
-		
-		item_str := GetResult(item, type_string).(string)
-		
-		result_string += item_str
-	}
+	result_string := ArrayStringJoin(input_val, separator)
 
 	result := UdnResult{}
 	result.Result = result_string

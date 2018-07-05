@@ -1056,3 +1056,19 @@ func TemplateFromMap(template_string string, template_map map[string]interface{}
 
 	return item.String
 }
+
+func ArrayStringJoin(input_val []interface{}, separator string) string {
+	result_string := ""
+	for _, item := range input_val {
+		if result_string != "" {
+			result_string += separator
+		}
+
+		item_str := GetResult(item, type_string).(string)
+
+		result_string += item_str
+	}
+
+	return result_string
+}
+
