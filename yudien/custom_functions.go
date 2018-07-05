@@ -2207,39 +2207,6 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 
 	html := TemplateFromMap(core_table, table_data)
 
-	/*
-	for _, html_field_item := range html_field_array {
-		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: HTML Field Item: %s\n", JsonDump(html_field_item))
-
-		icon_map_delete := map[string]interface{}{"icon": " icon-trash-alt", "onclick": "alert('Delete me')", "color": "primary"}
-		icon_map_disable := map[string]interface{}{"icon": " icon-volume-mute2", "onclick": "alert('Disable temporarily to test')", "color": "danger"}
-		icon_map_array := []interface{}{icon_map_delete, icon_map_disable}
-		icon_map_array_map := map[string]interface{}{
-			"item": icon_map_array,
-		}
-
-		icon_list := TemplateFromMap(core_icon_list, icon_map_array_map)
-
-
-		// Column - Item
-		item_data := map[string]interface{}{
-			"value": column_output,
-			"size": "4",
-		}
-		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: Column 2: %s\n", JsonDump(item_data))
-		item_col := TemplateFromMap(core_row_col, item_data)
-
-		// Row
-		item_data = map[string]interface{}{
-			"value": item_col,
-		}
-		item_row := TemplateFromMap(core_row, item_data)
-
-		UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: Final: %s\n", item_row)
-
-		html += fmt.Sprintf("%s\n", item_row)
-	}*/
-
 	return html
 }
 
