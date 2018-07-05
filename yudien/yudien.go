@@ -224,6 +224,7 @@ func InitUdn() {
 		"__array_map_filter_contains":  UDN_ArrayMapFilterContains, // Returns all maps in an array, which keys values contains any of the possible array elements.  This works on arrays (, maps (match key/value), or single items (match)    //TODO(g): Add the non-array checks, only implemented array so far.
 		"__array_map_filter_array_contains":  UDN_ArrayMapFilterArrayContains, // Returns all maps in an array, compares two arrays, and returns an array of all the matches between the 2 list.  Default is "any".  Options will be expanded to get more functionality when needed (need use case).
 
+		"__array_string_join":  UDN_ArrayStringJoin, // Join an array of strings into a string (with separator)
 
 		"__map_key_delete": UDN_MapKeyDelete, // Each argument is a key to remove
 		"__map_key_set":    UDN_MapKeySet,    // Sets N keys, like __format, but with no formatting

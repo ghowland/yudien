@@ -382,6 +382,16 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		// Remove any fields that arent present in the record_current
 		for k, _ := range record {
 			if _, has_key := record_current[k]; !has_key {
+				if strings.Contains(k, "__") {
+					//parts := strings.Split(k, "__")
+
+					field_args := SimpleDottedStringToArray(k, "__")
+					field_value := MapGet(field_args, record_current)
+
+					UdnLogLevel(nil, log_trace, "Deep field: %s: %s: %v: %v\n", collection_name, k, field_args, field_value)
+				}
+
+
 				UdnLogLevel(nil, log_debug, "Removing field: %s: %s: %v\n", collection_name, k, record[k])
 				delete(record, k)
 			}

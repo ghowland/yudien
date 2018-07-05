@@ -355,13 +355,13 @@ func SimpleDottedStringToUdnResultList(arg_str string) list.List {
 }
 
 // This function takes a string like "some.elements.here", and makes it into a list of ["some", "elements", here"]
-func SimpleDottedStringToArray(arg_str string) []interface{} {
+func SimpleDottedStringToArray(arg_str string, separator string) []interface{} {
 	args := make([]interface{}, 0)
 
-	arg_array := strings.Split(arg_str, ".")
+	arg_array := strings.Split(arg_str, separator)
 
 	for _, arg := range arg_array {
-		arg_trimmed := strings.Trim(arg, ".")
+		arg_trimmed := strings.Trim(arg, separator)
 
 		//args.PushBack(&udn_result)
 		args = AppendArray(args, arg_trimmed)
@@ -752,7 +752,7 @@ func UseArgArrayOrFirstArgString(args []interface{}) []interface{} {
 		case string:
 			// If this has dots in it, then it can be exploded to become an array of args
 			if strings.Contains(args[0].(string), ".") {
-				new_args := SimpleDottedStringToArray(args[0].(string))
+				new_args := SimpleDottedStringToArray(args[0].(string), ".")
 
 				return new_args
 			}
@@ -868,7 +868,7 @@ func GetArgsFromArgsOrStrings(args []interface{}) []interface{} {
 		case string:
 			// If this has dots in it, then it can be exploded to become an array of args
 			if strings.Contains(arg.(string), ".") {
-				new_args := SimpleDottedStringToArray(arg.(string))
+				new_args := SimpleDottedStringToArray(arg.(string), ".")
 
 				for _, new_arg := range new_args {
 					out_args = AppendArray(out_args, new_arg)
@@ -899,7 +899,9 @@ func _MapGet(args []interface{}, udn_data interface{}) interface{} {
 		arg := GetResult(args[count], type_string).(string)
 
 		if count != 0 {
-			//fmt.Printf("Get: Cur UDN Data: Before change: %s: %v\n\n", arg, JsonDump(cur_udn_data))
+			UdnLogLevel(nil, log_trace, "Get: Cur UDN Data: Before move: %s: %v\n\n", arg, JsonDump(cur_udn_data))
+		} else {
+			UdnLogLevel(nil, log_trace, "Get: First UDN Data: Before move: %s\n\n", arg)
 		}
 
 		child_result := GetChildResult(cur_udn_data, arg)
@@ -916,7 +918,7 @@ func _MapGet(args []interface{}, udn_data interface{}) interface{} {
 		}
 	}
 
-	//fmt.Printf("Get: Last Arg data: %s: %s\n\n", last_argument, SnippetData(cur_udn_data, 800))
+	UdnLogLevel(nil, log_trace, "Get: Last Arg data: %s: %s\n\n", last_argument, SnippetData(cur_udn_data, 800))
 
 	// Our result will be a list, of the result of each of our iterations, with a UdnResult per element, so that we can Transform data, as a pipeline
 	final_result := GetChildResult(cur_udn_data, last_argument)

@@ -79,6 +79,7 @@
     3. [__array_map_template - Array Map Template](#__array_map_template)
     3. [__array_map_to_map - Array Map To Map](#__array_map_to_map)
     3. [__array_map_key_set - Array Map Key Set](#__array_map_key_set)
+    3. [__array_string_join - Array of String Join](#__array_string_join)
     4. [__array_divide - Array Divide](#__array_divide)
 9. [Time](#time)
     1. [__string_to_time - String to Time](#__string_to_time)
@@ -2440,6 +2441,36 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_key_set.uuid.1234
 
 ```
 [{age=10,name=Joe,uuid=1234},{age=20,name=Bob,uuid=1234}]
+```
+
+**Side Effect:** None
+
+
+### __array_string_join::: Array of String Join <a name="__array_string_join"></a>
+
+Join an array of strings (or converted to string) with a separator
+
+**Go:** UDN_ArrayStringJoin
+
+**Input:** Array of Strings
+
+**Args:**
+
+  0. String :: Separator to join strings with
+  1. Array of Strings (optional) :: Override input with arg1
+
+**Output:** String
+
+**Example:**
+
+```
+__input.[Joe,Bob,Tom].__array_string_join.','
+```
+
+**Result:**
+
+```
+'Joe,Bob,Tom'
 ```
 
 **Side Effect:** None

@@ -711,7 +711,7 @@ func MetricMatchRuleTerm(data map[string]interface{}, field string, term string,
 	//UdnLogLevel(nil, log_trace, "Metric Match Rule Term: Data: %s\n", JsonDump(data))
 
 	// Get the field value from the data
-	field_args := SimpleDottedStringToArray(field)
+	field_args := SimpleDottedStringToArray(field, ".")
 	field_value := MapGet(field_args, data)
 	//UdnLogLevel(nil, log_trace, "Metric Match Rule Term: Field Args: %v: %s\n", field_args, field_value)
 

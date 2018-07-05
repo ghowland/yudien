@@ -941,7 +941,7 @@ func UDN_StringAppend(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 
 	// If we only have 1 argument, and it contains dots, we need to break this into a set of args
 	if len(args) == 1 && strings.Contains(args[0].(string), ".") {
-		args = SimpleDottedStringToArray(args[0].(string))
+		args = SimpleDottedStringToArray(args[0].(string), ".")
 	}
 
 	// Get the string we are going to append to
@@ -977,7 +977,7 @@ func UDN_StringClear(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 	arg_0 := GetResult(args[0], type_string).(string)
 
 	// Create a list of UdnResults, so we can pass them as args to the Set command
-	udn_result_args := SimpleDottedStringToArray(arg_0)
+	udn_result_args := SimpleDottedStringToArray(arg_0, ".")
 
 	// Clear
 	result := UdnResult{}
@@ -1875,6 +1875,35 @@ func UDN_ArrayMapFilterArrayContains(db *sql.DB, udn_schema map[string]interface
 
 	result := UdnResult{}
 	result.Result = result_array
+
+	return result
+}
+
+
+func UDN_ArrayStringJoin(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_val := GetResult(input, type_array).([]interface{})
+
+	separator:= GetResult(args[0], type_string).(string)
+
+	if len(args) > 2 {
+		input_val = GetResult(args[1], type_array).([]interface{})
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "Array String Join: Separator: %s: %v\n", separator, input_val)
+
+	result_string := ""
+	for _, item := range input_val {
+		if result_string != "" {
+			result_string += separator
+		}
+		
+		item_str := GetResult(item, type_string).(string)
+		
+		result_string += item_str
+	}
+
+	result := UdnResult{}
+	result.Result = result_string
 
 	return result
 }
@@ -2947,7 +2976,9 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 		UdnLogLevel(nil, log_trace,"Change: Submit: DB: %s  Table: %s  Record: %s  Field: %s  =  %v\n", database, table, record_pkey, field, value)
 	}
 
-	//UdnLogLevel(nil, log_trace,"Change: Submit: Collected: %s\n", JsonDump(submit_map))
+	UdnLogLevel(nil, log_trace,"Change: Submit: Collected: %s\n", JsonDump(submit_map))
+
+
 
 
 	// Check all our records for validation errors, and return early if they are any
