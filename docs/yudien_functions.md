@@ -43,6 +43,8 @@
     4. [__template_short - String Template from Value](#__template_short)
     5. [__string_append - String Append](#__string_append)
     6. [__string_clear - String Clear](#__string_clear)
+    6. [__string_begins_with - String Ends With](#__string_begins_with)
+    6. [__string_ends_with - String Ends With](#__string_ends_with)
     7. [__concat - String Concatenate](#__concat)
     8. [__upper - String Uppercase](#__upper)
     9. [__lower - String Lowercase](#__lower)

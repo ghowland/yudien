@@ -1050,6 +1050,44 @@ func UDN_StringMarkdownFormat(db *sql.DB, udn_schema map[string]interface{}, udn
 	return result
 }
 
+func UDN_StringEndsWith(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_string := GetResult(input, type_string).(string)
+	sub_string := GetResult(args[0], type_string).(string)
+
+	if len(args) > 1 {
+		input_string = GetResult(args[1], type_string).(string)
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "String Ends With: %s: %s\n", input_string, sub_string)
+
+	match_bool := strings.HasSuffix(input_string, sub_string)
+
+	// Return the output
+	result := UdnResult{}
+	result.Result = match_bool
+
+	return result
+}
+
+func UDN_StringBeginsWith(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	input_string := GetResult(input, type_string).(string)
+	sub_string := GetResult(args[0], type_string).(string)
+
+	if len(args) > 1 {
+		input_string = GetResult(args[1], type_string).(string)
+	}
+
+	UdnLogLevel(udn_schema, log_trace, "String Begins With: %s: %s\n", input_string, sub_string)
+
+	match_bool := strings.HasPrefix(input_string, sub_string)
+
+	// Return the output
+	result := UdnResult{}
+	result.Result = match_bool
+
+	return result
+}
+
 func UDN_StringSplit(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	UdnLogLevel(udn_schema, log_trace, "String Concat: %v\n", args)
 

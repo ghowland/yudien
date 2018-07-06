@@ -196,6 +196,9 @@ func InitUdn() {
 		"__concat":        UDN_StringConcat,
 		"__markdown_format": UDN_StringMarkdownFormat, // Format a string as HTML from markdown
 
+		"__string_ends_with": UDN_StringEndsWith, // Returns boolean, if matches end of string
+		"__string_begins_with": UDN_StringEndsWith, // Returns boolean, if matches beginning of string
+
 		"__input":         UDN_Input,          //TODO(g): This takes any input as the first arg, and then passes it along, so we can type in new input to go down the pipeline...
 		"__input_get":     UDN_InputGet,       // Gets information from the input, accessing it like __get
 		"__function":      UDN_StoredFunction, //TODO(g): This uses the udn_stored_function.name as the first argument, and then uses the current input to pass to the function, returning the final result of the function.		Uses the web_site.udn_stored_function_domain_id to determine the stored function
