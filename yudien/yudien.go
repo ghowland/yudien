@@ -272,6 +272,7 @@ func InitUdn() {
 		"__data_tombstone": UDN_DataTombstone, // Dataman "Delete" with a Tombstone marker: _is_deleted=true
 		"__data_field_map_delete": UDN_DataFieldMapDelete, // Data field map delete - Go into JSON data and delete things
 
+
 		"__time":          UDN_Time, // Return current time.Time object, and run AddDate if any args are passed in
 		"__time_string":          UDN_TimeString, // Return string of the time
 		"__time_string_date":          UDN_TimeStringDate, // Return string of the date
@@ -367,6 +368,8 @@ func InitUdn() {
 		"__custom_dashboard_item_edit": UDN_Custom_Dashboard_Item_Edit,   	// CUSTOM:...
 
 		"__custom_dataman_create_filter_html": UDN_Custom_Dataman_Create_Filter_Html,   	// CUSTOM:...
+
+		"__custom_dataman_add_rule": UDN_Custom_Dataman_Add_Rule, // Add a rule for Dataman filter
 	}
 
 	PartTypeName = map[int]string{

@@ -1116,7 +1116,7 @@ func UDN_Input(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart
 		return result
 	}
 
-	UdnLogLevel(udn_schema, log_trace, "Input: %v\n", args[0])
+	//UdnLogLevel(udn_schema, log_trace, "Input: %v\n", args[0])
 
 	result := UdnResult{}
 	result.Result = args[0]

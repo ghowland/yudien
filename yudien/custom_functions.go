@@ -2195,9 +2195,10 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 	}
 
 	// Add final row to the html_field_array that has a button for adding new Rules
+	onclick_string := fmt.Sprintf("GridRenderWidget_%s('dialog_add_rule', 'dialog_target', 'field_label', '%s')", input_map["uuid"], field_label)
 	button_item := map[string]interface{}{
 		"icons": "",
-		"_output": TemplateFromMap(core_button, map[string]interface{}{"value": "Add New Rule", "icon": "icon-add", "onclick": "alert('Add new rule!')", "color": "primary"}),
+		"_output": TemplateFromMap(core_button, map[string]interface{}{"value": "Add New Rule", "icon": "icon-add", "color": "primary", "onclick": onclick_string}),
 	}
 	html_field_array = append(html_field_array, button_item)
 
@@ -2235,3 +2236,39 @@ func GetWebWidgetHtml(name string) string {
 	return html
 }
 
+
+func UDN_Custom_Dataman_Add_Rule(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	input_map := GetResult(args[2], type_map).(map[string]interface{})
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	html := DatamanAddRule(internal_database_name, input_map)
+
+	result := UdnResult{}
+	result.Result = html
+
+	return result
+}
+
+func DatamanAddRule(internal_database_name string, input_map map[string]interface{}) string {
+	UdnLogLevel(nil, log_trace, "DatamanAddRule: %s: %s\n", internal_database_name, JsonDump(input_map))
+
+/*
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: field_label: %s: %s\n", field_label, JsonDump(filter_array))
+
+	filter := map[string]interface{}{}
+	options["sort"] = []string{"alias"}
+	compare_array := DatamanFilter("type_compare", filter, options)
+	compare_map := MapArrayToMap(compare_array, "alias")
+	options["sort"] = nil
+
+*/
+	//html := TemplateFromMap(core_table, table_data)
+
+	html := ""
+
+	return html
+}
