@@ -2893,8 +2893,10 @@ func UDN_DataFieldMapDelete(db *sql.DB, udn_schema map[string]interface{}, udn_s
 }
 
 func DataFieldMapDelete(field_label string) map[string]interface{} {
-	error_map := make(map[string]interface{})
+	return_record := make(map[string]interface{})
 
+	// If this is a deep-field (JSON)
+	//TODO(g): What if it isnt?  Error?  I dont use it for now, but when I have the use case, write the code then.
 	if strings.Contains(field_label, "__") {
 		database, collection, record_pkey, field := ParseFieldLabel(field_label)
 
@@ -2904,13 +2906,13 @@ func DataFieldMapDelete(field_label string) map[string]interface{} {
 
 		record := GetRecordFromRecordLabel(record_label)
 
-		UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Info: %s: %s: %s: %v\n", database, collection, record_pkey, field_parts)
-		UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Before: %s: %s\n", field_label, JsonDump(record))
+		//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Info: %s: %s: %s: %v\n", database, collection, record_pkey, field_parts)
+		//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Before: %s: %s\n", field_label, JsonDump(record))
 
 		var cur_container interface{}
 		cur_container = record
-		var last_container interface{}
-		var last_field interface{}
+		//var last_container interface{}
+		//var last_field interface{}
 
 		for field_index, field_part := range field_parts {
 
@@ -2918,27 +2920,27 @@ func DataFieldMapDelete(field_label string) map[string]interface{} {
 			case map[string]interface{}:
 
 				if field_index < len(field_parts) - 1 {
-					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Walking: Map: %d: %s: %s\n", field_index, field_part, JsonDump(cur_container))
+					//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Walking: Map: %d: %s: %s\n", field_index, field_part, JsonDump(cur_container))
 					cur_container = cur_container.(map[string]interface{})[field_part]
 				} else {
-					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: %d: %s: %s\n", field_index, field_part, JsonDump(cur_container))
+					//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: %d: %s: %s\n", field_index, field_part, JsonDump(cur_container))
 					//NOTE(g): We would assign data into this too, for when I generlize this
 					delete(cur_container.(map[string]interface{}), field_part)
 				}
 
 
-				UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Map: Old Last Field:  %v   New Last Field: %v\n", last_field, field_part)
-				last_field = field_part
+				//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Map: Old Last Field:  %v   New Last Field: %v\n", last_field, field_part)
+				//last_field = field_part
 
 			case []interface{}:
 				field_int, _ := strconv.ParseInt(field_part, 10, 64)
 
 
 				if field_index < len(field_parts) - 1 {
-					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Walking: Array: %d: %d: %s\n", field_index, field_int, JsonDump(cur_container))
+					//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Walking: Array: %d: %d: %s\n", field_index, field_int, JsonDump(cur_container))
 					cur_container = cur_container.([]interface{})[field_int]
 				} else {
-					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: Before: %d: %s: %v: %s\n", field_index, field_part, cur_container.([]interface{})[field_int], JsonDump(cur_container))
+					//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: Before: %d: %s: %v: %s\n", field_index, field_part, cur_container.([]interface{})[field_int], JsonDump(cur_container))
 
 					updated_array := make([]interface{}, 0)
 					for item_index, item := range cur_container.([]interface{}) {
@@ -2948,8 +2950,14 @@ func DataFieldMapDelete(field_label string) map[string]interface{} {
 					}
 					//updated_array := append(cur_container.([]interface{})[:field_int], cur_container.([]interface{})[field_int+1:]...)
 
-					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: Updated Array: %d: %s: %s\n", field_index, field_part, JsonDump(updated_array))
 
+					part_array := GetResult(field_parts[:len(field_parts)-1], type_array).([]interface{})
+					//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Set Directly: %s\n", part_array)
+					Direct_MapSet(part_array, updated_array, record)
+
+					//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: After Record Direct Set: %d: %s: %s\n", JsonDump(record))
+					//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: Updated Array: %d: %s: %s\n", field_index, field_part, JsonDump(updated_array))
+/*
 					//cur_container.([]interface{}) = updated_array
 					switch last_container.(type) {
 					case map[string]interface{}:
@@ -2960,19 +2968,24 @@ func DataFieldMapDelete(field_label string) map[string]interface{} {
 						UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Array-Array Updated Array: %v: %s: %s\n", last_field, JsonDump(last_container), JsonDump(updated_array))
 						last_container.([]interface{})[last_field.(int)] = updated_array
 					}
+*/
 				}
 
-				UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Array: Old Last Field:  %v   New Last Field: %v\n", last_field, field_int)
-				last_field = field_int
+				//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Array: Old Last Field:  %v   New Last Field: %v\n", last_field, field_int)
+				//last_field = field_int
 			}
 
-			last_container = cur_container
+			//last_container = cur_container
 		}
 
-		UdnLogLevel(nil, log_trace, "DataFieldMapDelete: After: %s: %s\n", field_label, JsonDump(record))
+		//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: After: %s: %s\n", field_label, JsonDump(record))
+
+		// Update the record again
+		options := map[string]interface{}{"db": database,}
+		return_record = DatamanSet(collection, record, options)
 	}
 
-	return error_map
+	return return_record
 }
 
 func GetRecordFromRecordLabel(record_label string) map[string]interface{} {
