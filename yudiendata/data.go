@@ -381,19 +381,42 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 
 		// Remove any fields that arent present in the record_current
 		for k, _ := range record {
+			// Key does not exist in
 			if _, has_key := record_current[k]; !has_key {
+				// This is a deep key, and cannot exist on it's own
+				//TODO(g): This feature isnt finished yet.
 				if strings.Contains(k, "__") {
 					//parts := strings.Split(k, "__")
-
 					field_args := SimpleDottedStringToArray(k, "__")
-					field_value := MapGet(field_args, record_current)
-
-					UdnLogLevel(nil, log_trace, "Deep field: %s: %s: %v: %v\n", collection_name, k, field_args, field_value)
+					_ = MapGet(field_args, record_current)
+					//UdnLogLevel(nil, log_trace, "Deep field: %s: %s: %v: %v\n", collection_name, k, field_args, field_value)
 				}
+
+
+
+				//UdnLogLevel(nil, log_debug, "Before Removing field:  Record Current: %s: %s: %v: %s\n", collection_name, k, record_current[k], JsonDump(record_current))
+				//
+				//UdnLogLevel(nil, log_debug, "Before Removing field: %s: %s: %s\n", collection_name, k, JsonDump(record))
 
 
 				UdnLogLevel(nil, log_debug, "Removing field: %s: %s: %v\n", collection_name, k, record[k])
 				delete(record, k)
+			} else {
+				// Update any map records, so we overlay
+				switch record_current[k].(type) {
+				case map[string]interface{}:
+					UdnLogLevel(nil, log_debug, "Map Update Record:  Record Current: %s: %s: %v: %s\n", collection_name, k, record_current[k], JsonDump(record_current))
+
+					UdnLogLevel(nil, log_debug, "Map Update Record: %s: %s: %s\n", collection_name, k, JsonDump(record))
+
+
+					current_value_map := record_current[k].(map[string]interface{})
+					incoming_value_map := record[k].(map[string]interface{})
+
+
+					record[k] = MapUpdate(current_value_map, incoming_value_map)
+
+				}
 			}
 		}
 	} else {
@@ -438,7 +461,11 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 	}
 
 	//UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
-	UdnLogLevel(nil, log_trace, "Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
+	UdnLogLevel(nil, log_trace, "Dataman SET: Query: JSON: %s\n", JsonDump(dataman_query))
+
+	////ABORT -- ABORT
+	//UdnLogLevel(nil, log_trace, "Dataman SET: Query: ABORT ABORT ABORT\n")
+	//return record		//DEBUG- ABORT ABORT ABORT <<----==-------
 
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 

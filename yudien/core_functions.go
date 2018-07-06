@@ -3030,11 +3030,12 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 	}
 
 
-	UdnLogLevel(nil, log_trace,"Change: Submit: Aborting Submit for DEBUG: %s\n", JsonDump(submit_map))
+	UdnLogLevel(nil, log_trace,"Change: Submit: Post JSON Submit for DEBUG: %s\n", JsonDump(submit_map))
+	//UdnLogLevel(nil, log_trace,"Change: Submit: Aborting Submit for DEBUG: %s\n", JsonDump(submit_map))
 
-	// Return the error map:  Field Labels -> Error Message for User correction
-	result.Result = error_map
-	return result		//DEBUG - Exit early, dont SUBMIT **** <<------   <<<-----=====------
+	//// Return the error map:  Field Labels -> Error Message for User correction
+	//result.Result = error_map
+	//return result		//DEBUG - Exit early, dont SUBMIT **** <<------   <<<-----=====------
 
 	// Check all our records for validation errors, and return early if they are any
 	for database, database_map := range submit_map {

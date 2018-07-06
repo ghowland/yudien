@@ -1139,3 +1139,13 @@ func MapGetKeys(data map[string]interface{}) []string {
 	return string_array
 }
 
+func MapUpdate(source_map map[string]interface{}, update_map map[string]interface{}) map[string]interface{} {
+	new_map := MapCopy(source_map)
+
+	for k, v := range update_map {
+		new_map[k] = v
+	}
+
+	return new_map
+}
+

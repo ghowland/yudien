@@ -2149,19 +2149,12 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 		for field, inner_map := range outer_map.(map[string]interface{}) {
 			for operator, value := range inner_map.(map[string]interface{}) {
 
-				//operator_base64 := Base64Encode(operator)
-
 				item_field_label := fmt.Sprintf("%s__%d__%s__%s", field_label, index, field, operator)
 
 				UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: %s: item: %s %s %s\n", item_field_label, field, operator, JsonDump(value))
 
 				web_widget_name := compare_map[operator].(map[string]interface{})["web_widget_name"].(string)
 				web_widget_html := GetWebWidgetHtml(web_widget_name)
-
-				if web_widget_name == "core_form_input_tag_list" {
-					//UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: core_form_input_tag_list: %v (%T)\n", value, value)
-					value = ArrayStringJoin(value.([]interface{}), ",")
-				}
 
 				// Use the input_map
 				data := MapCopy(input_map)
