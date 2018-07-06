@@ -2879,6 +2879,128 @@ func UDN_DataTombstone(db *sql.DB, udn_schema map[string]interface{}, udn_start 
 	return result
 }
 
+func UDN_DataFieldMapDelete(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	UdnLogLevel(udn_schema, log_trace, "Data Tombstone: %v\n", args)
+
+	field_label := GetResult(args[0], type_string).(string)
+
+	record := DataFieldMapDelete(field_label)
+
+	result := UdnResult{}
+	result.Result = record
+
+	return result
+}
+
+func DataFieldMapDelete(field_label string) map[string]interface{} {
+	error_map := make(map[string]interface{})
+
+	if strings.Contains(field_label, "__") {
+		database, collection, record_pkey, field := ParseFieldLabel(field_label)
+
+		field_parts := strings.Split(field, "__")
+
+		record_label := fmt.Sprintf("%s.%s.%s", database, collection, record_pkey)
+
+		record := GetRecordFromRecordLabel(record_label)
+
+		UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Info: %s: %s: %s: %v\n", database, collection, record_pkey, field_parts)
+		UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Before: %s: %s\n", field_label, JsonDump(record))
+
+		var cur_container interface{}
+		cur_container = record
+		var last_container interface{}
+		var last_field interface{}
+
+		for field_index, field_part := range field_parts {
+
+			switch cur_container.(type) {
+			case map[string]interface{}:
+
+				if field_index < len(field_parts) - 1 {
+					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Walking: Map: %d: %s: %s\n", field_index, field_part, JsonDump(cur_container))
+					cur_container = cur_container.(map[string]interface{})[field_part]
+				} else {
+					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: %d: %s: %s\n", field_index, field_part, JsonDump(cur_container))
+					//NOTE(g): We would assign data into this too, for when I generlize this
+					delete(cur_container.(map[string]interface{}), field_part)
+				}
+
+
+				UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Map: Old Last Field:  %v   New Last Field: %v\n", last_field, field_part)
+				last_field = field_part
+
+			case []interface{}:
+				field_int, _ := strconv.ParseInt(field_part, 10, 64)
+
+
+				if field_index < len(field_parts) - 1 {
+					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Walking: Array: %d: %d: %s\n", field_index, field_int, JsonDump(cur_container))
+					cur_container = cur_container.([]interface{})[field_int]
+				} else {
+					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: Before: %d: %s: %v: %s\n", field_index, field_part, cur_container.([]interface{})[field_int], JsonDump(cur_container))
+
+					updated_array := make([]interface{}, 0)
+					for item_index, item := range cur_container.([]interface{}) {
+						if item_index != int(field_int) {
+							updated_array = append(updated_array, item)
+						}
+					}
+					//updated_array := append(cur_container.([]interface{})[:field_int], cur_container.([]interface{})[field_int+1:]...)
+
+					UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Delete: Map: Updated Array: %d: %s: %s\n", field_index, field_part, JsonDump(updated_array))
+
+					//cur_container.([]interface{}) = updated_array
+					switch last_container.(type) {
+					case map[string]interface{}:
+						UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Array-Map Updated Array: %v: %s: %s\n", last_field, JsonDump(last_container), JsonDump(updated_array))
+						last_container.(map[string]interface{})[last_field.(string)] = updated_array
+
+					case []interface{}:
+						UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Array-Array Updated Array: %v: %s: %s\n", last_field, JsonDump(last_container), JsonDump(updated_array))
+						last_container.([]interface{})[last_field.(int)] = updated_array
+					}
+				}
+
+				UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Array: Old Last Field:  %v   New Last Field: %v\n", last_field, field_int)
+				last_field = field_int
+			}
+
+			last_container = cur_container
+		}
+
+		UdnLogLevel(nil, log_trace, "DataFieldMapDelete: After: %s: %s\n", field_label, JsonDump(record))
+	}
+
+	return error_map
+}
+
+func GetRecordFromRecordLabel(record_label string) map[string]interface{} {
+	label_parts := strings.Split(record_label, ".")
+
+	options := make(map[string]interface{})
+	options["db"] = label_parts[0]
+
+	record_id, _ := strconv.ParseInt(label_parts[2], 10, 64)
+	record := DatamanGet(label_parts[1], int(record_id), options)
+
+	return record
+}
+
+func ParseFieldLabel(field_label string) (string, string, string, string) {
+	parts := strings.Split(field_label, ".")
+
+	database := parts[0]
+	collection := parts[1]
+	record_pkey := parts[2]
+
+	//part_count := len(parts)
+	field := strings.Join(parts[3:], ".")
+
+	return database, collection, record_pkey, field
+}
+
+
 func UDN_DataDeleteFilter(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	// DataDelete using filter - can have multiple deletes (deletes are performed one-by-one)
 	UdnLogLevel(udn_schema, log_trace, "Data Delete Filter: %v\n", args)

@@ -2162,6 +2162,8 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 				data["value"] = value
 				data["label"] = fmt.Sprintf("%s %s", field, operator)
 				data["color"] = "primary"
+				data["onclick"] = fmt.Sprintf("RPC('api/delete_field_in_record_json', {data: JSON.stringify({delete_record_field: '%s__%d'})})", field_label, index)
+
 				data["name"] = fmt.Sprintf("%s_%d", input_map["name"], index)
 
 
@@ -2179,10 +2181,10 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 	core_icon_list := GetWebWidgetHtml("core_icon_list")
 	core_button := GetWebWidgetHtml("core_button")
 
+
 	for _, html_field_item := range html_field_array {
-		icon_map_delete := map[string]interface{}{"icon": " icon-trash-alt", "onclick": "alert('Delete me')", "color": "primary"}
-		icon_map_disable := map[string]interface{}{"icon": " icon-volume-mute2", "onclick": "alert('Disable temporarily to test')", "color": "danger"}
-		icon_map_array := []interface{}{icon_map_delete, icon_map_disable}
+		icon_map_delete := map[string]interface{}{"icon": " icon-trash-alt", "color": "primary", "onclick": html_field_item["onclick"]}
+		icon_map_array := []interface{}{icon_map_delete}
 		icon_map_array_map := map[string]interface{}{
 			"item": icon_map_array,
 		}
@@ -2203,7 +2205,7 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 		"headers": []string{"", "Filter Rule"},
 		"columns": []string{"icons", "_output"},
 		"widths": map[string]interface{}{
-			"icons": "80",
+			"icons": "40",
 			"_output": "",
 		},
 		"items": html_field_array,

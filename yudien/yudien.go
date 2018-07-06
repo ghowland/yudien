@@ -270,6 +270,7 @@ func InitUdn() {
 		"__data_delete":    UDN_DataDelete,    // Dataman Get
 		"__data_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
 		"__data_tombstone": UDN_DataTombstone, // Dataman "Delete" with a Tombstone marker: _is_deleted=true
+		"__data_field_map_delete": UDN_DataFieldMapDelete, // Data field map delete - Go into JSON data and delete things
 
 		"__time":          UDN_Time, // Return current time.Time object, and run AddDate if any args are passed in
 		"__time_string":          UDN_TimeString, // Return string of the time
