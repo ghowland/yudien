@@ -297,8 +297,8 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 
 	// Put the deep fields into their containers
 	for k, v := range record {
-		if strings.Contains(k, "__") {
-			parts := strings.Split(k, "__")
+		if strings.Contains(k, "||") {
+			parts := strings.Split(k, "||")
 			part_array := GetResult(parts, type_array).([]interface{})
 
 			// Update the record
@@ -385,9 +385,9 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 			if _, has_key := record_current[k]; !has_key {
 				// This is a deep key, and cannot exist on it's own
 				//TODO(g): This feature isnt finished yet.
-				if strings.Contains(k, "__") {
-					//parts := strings.Split(k, "__")
-					field_args := SimpleDottedStringToArray(k, "__")
+				if strings.Contains(k, "||") {
+					//parts := strings.Split(k, "||")
+					field_args := SimpleDottedStringToArray(k, "||")
 					_ = MapGet(field_args, record_current)
 					//UdnLogLevel(nil, log_trace, "Deep field: %s: %s: %v: %v\n", collection_name, k, field_args, field_value)
 				}
@@ -402,6 +402,8 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 				UdnLogLevel(nil, log_debug, "Removing field: %s: %s: %v\n", collection_name, k, record[k])
 				delete(record, k)
 			} else {
+				//TODO(g): Remove, after confirming all of this is now handled in ChangeSubmit...
+
 				// Update any map records, so we overlay
 				switch record_current[k].(type) {
 				case map[string]interface{}:
@@ -417,6 +419,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 					record[k] = MapUpdate(current_value_map, incoming_value_map)
 
 				}
+
 			}
 		}
 	} else {
@@ -947,7 +950,7 @@ func DatamanDeleteRaw(collection_name string, record_id int64, options map[strin
 		record = result.Return[0]
 
 		if record != nil {
-			record["__record_label"] = GetRecordLabel(selected_db, collection_name, int(record_id))
+			record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record_id))
 		}
 	} else {
 		// Send the error & msg back to the UDN caller

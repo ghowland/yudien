@@ -2935,10 +2935,10 @@ func DataFieldMapDelete(field_label string) map[string]interface{} {
 
 	// If this is a deep-field (JSON)
 	//TODO(g): What if it isnt?  Error?  I dont use it for now, but when I have the use case, write the code then.
-	if strings.Contains(field_label, "__") {
+	if strings.Contains(field_label, "||") {
 		database, collection, record_pkey, field := ParseFieldLabel(field_label)
 
-		field_parts := strings.Split(field, "__")
+		field_parts := strings.Split(field, "||")
 
 		record_label := fmt.Sprintf("%s.%s.%s", database, collection, record_pkey)
 
@@ -3150,8 +3150,8 @@ func UDN_ChangeDataSubmit(db *sql.DB, udn_schema map[string]interface{}, udn_sta
 		for table, records := range database_items.(map[string]interface{}) {
 			for record_id, record := range records.(map[string]interface{}) {
 				for key, value := range record.(map[string]interface{}) {
-					if strings.Contains(key, "__") {
-						key_parts := strings.Split(key, "__")
+					if strings.Contains(key, "||") {
+						key_parts := strings.Split(key, "||")
 
 						UdnLogLevel(nil, log_trace,"Change: Submit: Deep Parts: %s: %s: %s: %v\n", database, table, record_id, key_parts)
 

@@ -2149,7 +2149,7 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 		for field, inner_map := range outer_map.(map[string]interface{}) {
 			for operator, value := range inner_map.(map[string]interface{}) {
 
-				item_field_label := fmt.Sprintf("%s__%d__%s__%s", field_label, index, field, operator)
+				item_field_label := fmt.Sprintf("%s||%d||%s||%s", field_label, index, field, operator)
 
 				UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: %s: item: %s %s %s\n", item_field_label, field, operator, JsonDump(value))
 
@@ -2162,7 +2162,7 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 				data["value"] = value
 				data["label"] = fmt.Sprintf("%s %s", field, operator)
 				data["color"] = "primary"
-				data["onclick"] = fmt.Sprintf("RPC('api/delete_field_in_record_json', {data: JSON.stringify({delete_record_field: '%s__%d'})})", field_label, index)
+				data["onclick"] = fmt.Sprintf("RPC('api/delete_field_in_record_json', {data: JSON.stringify({delete_record_field: '%s||%d'})})", field_label, index)
 
 				data["name"] = fmt.Sprintf("%s_%d", input_map["name"], index)
 
@@ -2236,7 +2236,6 @@ func GetWebWidgetHtml(name string) string {
 	return html
 }
 
-
 func UDN_Custom_Dataman_Add_Rule(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	input_map := GetResult(args[0], type_map).(map[string]interface{})
 
@@ -2269,7 +2268,7 @@ func DatamanAddRule(input_map map[string]interface{}) string {
 	data := map[string]interface{}{}
 	data[data_map["name"].(string)] = data_operator
 
-	fields := strings.Split(field, "__")
+	fields := strings.Split(field, "||")
 	field_array := GetResult(fields, type_array).([]interface{})
 
 	current_value := MapGet(field_array, record)
