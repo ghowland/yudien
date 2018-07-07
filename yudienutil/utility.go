@@ -900,9 +900,9 @@ func _MapGet(args []interface{}, udn_data interface{}) interface{} {
 		arg := GetResult(args[count], type_string).(string)
 
 		if count != 0 {
-			UdnLogLevel(nil, log_trace, "Get: Cur UDN Data: Before move: %s: %v\n\n", arg, JsonDump(cur_udn_data))
+			//UdnLogLevel(nil, log_trace, "Get: Cur UDN Data: Before move: %s: %v\n\n", arg, JsonDump(cur_udn_data))
 		} else {
-			UdnLogLevel(nil, log_trace, "Get: First UDN Data: Before move: %s\n\n", arg)
+			//UdnLogLevel(nil, log_trace, "Get: First UDN Data: Before move: %s\n\n", arg)
 		}
 
 		child_result := GetChildResult(cur_udn_data, arg)
@@ -919,7 +919,7 @@ func _MapGet(args []interface{}, udn_data interface{}) interface{} {
 		}
 	}
 
-	UdnLogLevel(nil, log_trace, "Get: Last Arg data: %s: %s\n\n", last_argument, SnippetData(cur_udn_data, 800))
+	//UdnLogLevel(nil, log_trace, "Get: Last Arg data: %s: %s\n\n", last_argument, SnippetData(cur_udn_data, 800))
 
 	// Our result will be a list, of the result of each of our iterations, with a UdnResult per element, so that we can Transform data, as a pipeline
 	final_result := GetChildResult(cur_udn_data, last_argument)
@@ -940,7 +940,7 @@ func Direct_MapSet(args []interface{}, input interface{}, udn_data interface{}) 
 	for count := 0; count < len(args)-1; count++ {
 		child_result := GetChildResult(cur_udn_data, args[count])
 
-		UdnLogLevel(nil, log_trace, "Direct_MapSet: %d: %v\n\n", count, child_result)
+		//UdnLogLevel(nil, log_trace, "Direct_MapSet: %d: %v\n\n", count, child_result)
 
 		// If we dont have this key, create a map[string]interface{} to allow it to be created easily
 		if child_result.Result == nil {

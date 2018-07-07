@@ -2238,11 +2238,10 @@ func GetWebWidgetHtml(name string) string {
 
 
 func UDN_Custom_Dataman_Add_Rule(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
-	internal_database_name := GetResult(args[0], type_string).(string)
-	input_map := GetResult(args[2], type_map).(map[string]interface{})
+	input_map := GetResult(args[0], type_map).(map[string]interface{})
 
 	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
-	html := DatamanAddRule(internal_database_name, input_map)
+	html := DatamanAddRule(input_map)
 
 	result := UdnResult{}
 	result.Result = html
@@ -2250,22 +2249,46 @@ func UDN_Custom_Dataman_Add_Rule(db *sql.DB, udn_schema map[string]interface{}, 
 	return result
 }
 
-func DatamanAddRule(internal_database_name string, input_map map[string]interface{}) string {
-	UdnLogLevel(nil, log_trace, "DatamanAddRule: %s: %s\n", internal_database_name, JsonDump(input_map))
+func DatamanAddRule(input_map map[string]interface{}) string {
+	UdnLogLevel(nil, log_trace, "DatamanAddRule: %s\n", JsonDump(input_map))
 
-/*
+	data_map := input_map["data"].(map[string]interface{})
+
+	database, collection, record_pkey, field := ParseFieldLabel(data_map["field_label"].(string))
+
+
 	options := make(map[string]interface{})
-	options["db"] = internal_database_name
+	options["db"] = database
 
-	UdnLogLevel(nil, log_trace, "DatamanCreateFilterHtml: field_label: %s: %s\n", field_label, JsonDump(filter_array))
+	record_id, _ := strconv.ParseInt(record_pkey, 10, 64)
+	record := DatamanGet(collection, int(record_id), options)
 
-	filter := map[string]interface{}{}
-	options["sort"] = []string{"alias"}
-	compare_array := DatamanFilter("type_compare", filter, options)
-	compare_map := MapArrayToMap(compare_array, "alias")
-	options["sort"] = nil
+	data_operator := map[string]interface{}{}
+	data_operator[data_map["operator"].(string)] = ""
 
-*/
+	data := map[string]interface{}{}
+	data[data_map["name"].(string)] = data_operator
+
+	fields := strings.Split(field, "__")
+	field_array := GetResult(fields, type_array).([]interface{})
+
+	current_value := MapGet(field_array, record)
+	if current_value != nil {
+		current_value = append(current_value.([]interface{}), data)
+	} else {
+		current_value = []interface{}{data}
+	}
+
+	UdnLogLevel(nil, log_trace, "DatamanAddRule: Current: %s\n", JsonDump(current_value))
+
+	//UdnLogLevel(nil, log_trace, "DataFieldMapDelete: Set Directly: %s\n", part_array)
+	Direct_MapSet(field_array, current_value, record)
+
+	// Save it
+	DatamanSet(collection, record, options)
+
+	UdnLogLevel(nil, log_trace, "DatamanAddRule: Result: %s\n", JsonDump(record))
+
 	//html := TemplateFromMap(core_table, table_data)
 
 	html := ""
