@@ -378,11 +378,11 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 
 	// Update the time_store_item, with the s_e_n_m
 	time_store_item_result["business_environment_namespace_metric_id"] = business_environment_namespace_metric_result["_id"]
-	_ = DatamanSet("time_store_item", time_store_item_result, options)
+	time_store_item_final := DatamanSet("time_store_item", time_store_item_result, options)
 
 
 	data := make(map[string]interface{})
-	data["uuid"] = fmt.Sprintf("%d", service_monitor_result["_id"])
+	data["uuid"] = fmt.Sprintf("%d", time_store_item_final["_id"])
 	data["executor"] = "monitor"
 	executor_args := make(map[string]interface{})
 	data_returner_args := make(map[string]interface{})
@@ -1467,6 +1467,12 @@ func TaskMan_AddTask(internal_database_name string, service_monitor_id int64, ts
 	}
 	connection_database := connection_database_array[0]
 
+	// Get the Metric (b_e_n_metric)
+	business_environment_namespace_metric := DatamanGet("business_environment_namespace_metric", int(service_monitor["business_environment_namespace_metric_id"].(int64)), options)
+
+	// Get the Time Store Item
+	time_store_item := DatamanGet("time_store_item", int(business_environment_namespace_metric["time_store_item_id"].(int64)), options)
+
 	// Static values we use in data
 	fieldname_customer_service_id := "time_store_item_id"
 	fieldname_created := "created"
@@ -1476,7 +1482,7 @@ func TaskMan_AddTask(internal_database_name string, service_monitor_id int64, ts
 	interval := service_monitor["interval_ms"].(int64) / 1000
 
 	data := make(map[string]interface{})
-	data["uuid"] = fmt.Sprintf("%d", service_monitor["_id"])
+	data["uuid"] = fmt.Sprintf("%d", time_store_item["_id"])
 	data["executor"] = "monitor"
 	executor_args := make(map[string]interface{})
 	data_returner_args := make(map[string]interface{})
