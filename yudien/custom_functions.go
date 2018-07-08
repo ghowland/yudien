@@ -539,7 +539,7 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 
 
 	filter := map[string]interface{}{
-		"name": []interface{}{"in", metric_name_array},
+		//"name": []interface{}{"in", metric_name_array},		// Name is in the labelset now as __name__
 	}
 	//TODO(g): May want to add a sort option that can be passed in as arg3, since we could organize these somehow.  Remove comment if not needed.
 	name_filtered := DatamanFilter("business_environment_namespace_metric", filter, options)
@@ -588,9 +588,12 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 	}
 
 
+
+	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Filter: Result: %s\n", JsonDump(labelset_filtered))
+
 	result := UdnResult{}
 	result.Result = labelset_filtered
-
+	
 	return result
 }
 
@@ -723,7 +726,9 @@ func MetricMatchRuleTerm(data map[string]interface{}, field string, term string,
 	if term == "IN" {
 		found_term := false
 
-		for _, item := range value.([]interface{}) {
+		value_array := strings.Split(value.(string), ",")
+
+		for _, item := range value_array {
 			field_value_str := GetResult(field_value, type_string).(string)
 			item_str := GetResult(item, type_string).(string)
 
@@ -812,9 +817,9 @@ func MetricPopulateOutage(internal_database_name string, config map[string]inter
 		"business_id": []interface{}{"=", health_check["business_id"]},
 	}
 	//TODO(g): May want to add a sort option that can be passed in as arg3, since we could organize these somehow.  Remove comment if not needed.
-	outage_array := DatamanFilter("service_outage", filter, options)
+	outage_array := DatamanFilter("outage", filter, options)
 
-	var service_outage map[string]interface{}
+	var outage map[string]interface{}
 
 	// If there are no open outages, create a new Outage
 	if len(outage_array) == 0 {
@@ -832,45 +837,45 @@ func MetricPopulateOutage(internal_database_name string, config map[string]inter
 			service_id = business_service_array[0]["service_id"].(int64)
 		}
 
-		new_service_outage := make(map[string]interface{})
+		new_outage := make(map[string]interface{})
 
-		new_service_outage["business_id"] = health_check["business_id"]
-		new_service_outage["service_id"] = service_id
-		new_service_outage["time_start"] = time.Now()
+		new_outage["business_id"] = health_check["business_id"]
+		new_outage["service_id"] = service_id
+		new_outage["time_start"] = time.Now()
 
 		// Save the new outage
-		service_outage := DatamanSet("service_outage", new_service_outage, options)
-		UdnLogLevel(nil, log_trace, "CUSTOM: Metric: New Outage: %d\n", service_outage["_id"])
+		outage := DatamanSet("outage", new_outage, options)
+		UdnLogLevel(nil, log_trace, "CUSTOM: Metric: New Outage: %d\n", outage["_id"])
 	} else {
-		service_outage = outage_array[0]
+		outage = outage_array[0]
 	}
 
 	// Get the time_store_item for this Health Check value
 	time_store_item := DatamanGet("time_store_item", int(time_store_item_id), options)
 
 	// Add this alert to the new Outage
-	new_service_outage_item := make(map[string]interface{})
-	//new_service_outage_item["business_id"] = health_check["business_id"]
-	new_service_outage_item["service_outage_id"] = service_outage["_id"]
-	new_service_outage_item["service_outage_item_type_id"] = 1	// Activated
-	new_service_outage_item["health_check_id"] = health_check["_id"]
-	new_service_outage_item["time_start"] = time.Now()
-	new_service_outage_item["business_environment_namespace_metric_id"] = time_store_item["business_environment_namespace_metric_id"]
-	new_service_outage_item["name"] = fmt.Sprintf("%s: Failed: %f%%  Required: %f%%", health_check["name"], value, alert_threshold)
+	new_outage_item := make(map[string]interface{})
+	//new_outage_item["business_id"] = health_check["business_id"]
+	new_outage_item["outage_id"] = outage["_id"]
+	new_outage_item["outage_item_type_id"] = 1	// Activated
+	new_outage_item["health_check_id"] = health_check["_id"]
+	new_outage_item["time_start"] = time.Now()
+	new_outage_item["business_environment_namespace_metric_id"] = time_store_item["business_environment_namespace_metric_id"]
+	new_outage_item["name"] = fmt.Sprintf("%s: Failed: %f%%  Required: %f%%", health_check["name"], value, alert_threshold)
 
-	service_outage_item := DatamanInsert("service_outage_item", new_service_outage_item, options)
+	outage_item := DatamanInsert("outage_item", new_outage_item, options)
 
 	// Outage Alert...  Starting
-	OutageAlert(internal_database_name, service_outage, 1, health_check["escalation_policy_id"])
+	OutageAlert(internal_database_name, outage, 1, health_check["escalation_policy_id"])
 
-	UdnLogLevel(nil, log_trace, "CUSTOM: Metric: Populate Outage: Service Outage Item: %v\n", service_outage_item)
+	UdnLogLevel(nil, log_trace, "CUSTOM: Metric: Populate Outage: Service Outage Item: %v\n", outage_item)
 
 	/*
 	// See if we already have a notice on this
-	filter["service_outage_id"] = service_outage["_id"]
+	filter["outage_id"] = outage["_id"]
 	filter["time_store_item_id"] = true
 	filter["time_stop"] = nil
-	service_outage_item_array := DatamanFilter("service_outage_item", filter, options)
+	outage_item_array := DatamanFilter("outage_item", filter, options)
 	*/
 
 	// Kick off the Escalation Policy to determine if it's time to Alert
@@ -905,13 +910,13 @@ func ProcessOpenOutages(internal_database_name string) {
 		"time_stop": []interface{}{"=", nil},
 	}
 	options["sort"] = []string{"_id"}		// Always in the same order, so we have a consistent default
-	service_outage_item_array := DatamanFilter("service_outage_item", filter, options)
+	outage_item_array := DatamanFilter("outage_item", filter, options)
 	options["sort"] = nil
 
-	// Call GetMetricValues from our open service_outage_item array, to test if they have changed
-	for _, service_outage_item := range service_outage_item_array {
-		health_check := DatamanGet("health_check", int(service_outage_item["helath_check_id"].(int64)), options)
-		businsess_environment_namespace := DatamanGet("businsess_environment_namespace", int(service_outage_item["business_environment_namespace_metric_id"].(int64)), options)
+	// Call GetMetricValues from our open outage_item array, to test if they have changed
+	for _, outage_item := range outage_item_array {
+		health_check := DatamanGet("health_check", int(outage_item["helath_check_id"].(int64)), options)
+		businsess_environment_namespace := DatamanGet("businsess_environment_namespace", int(outage_item["business_environment_namespace_metric_id"].(int64)), options)
 
 		businsess_environment_namespace_array := []map[string]interface{}{businsess_environment_namespace}
 		time_store_values := MetricGetValues(internal_database_name, health_check["duration_ms"].(int64), health_check["offset_ms"].(int64), businsess_environment_namespace_array)
@@ -927,9 +932,9 @@ func ProcessOpenOutages(internal_database_name string) {
 		// If this Health Check is no longer failing...
 		if health_check_percentage < alert_threshold {
 			// Heal this outage_item and store it
-			service_outage_item["time_stop"] = time.Now()
+			outage_item["time_stop"] = time.Now()
 
-			_ = DatamanSet("service_outage_item", service_outage_item, options)
+			_ = DatamanSet("outage_item", outage_item, options)
 		}
 	}
 
@@ -937,26 +942,26 @@ func ProcessOpenOutages(internal_database_name string) {
 	filter = map[string]interface{}{
 		"time_stop": []interface{}{"=", nil},
 	}
-	service_outage_array := DatamanFilter("service_outage", filter, options)
+	outage_array := DatamanFilter("outage", filter, options)
 
 	// Check all the outages to see if they are still open, or are now closed
-	for _, service_outage := range service_outage_array {
-		service_outage_item_array := DatamanFilter("service_outage_item", filter, options)
+	for _, outage := range outage_array {
+		outage_item_array := DatamanFilter("outage_item", filter, options)
 
 		// If all of them have been closed, then close this Outage
-		if len(service_outage_item_array) == 0 {
-			service_outage["time_stop"] = time.Now()
+		if len(outage_item_array) == 0 {
+			outage["time_stop"] = time.Now()
 
-			service_outage_result := DatamanSet("service_outage", service_outage, options)
+			outage_result := DatamanSet("outage", outage, options)
 
 			// Outage Alert...  Stopping
-			OutageAlert(internal_database_name, service_outage_result, 3, nil)
+			OutageAlert(internal_database_name, outage_result, 3, nil)
 		}
 	}
 
 }
 
-func OutageAlert(internal_database_name string, service_outage map[string]interface{}, outage_alert_notication_type int64, escalation_policy_id interface{}) {
+func OutageAlert(internal_database_name string, outage map[string]interface{}, outage_alert_notication_type int64, escalation_policy_id interface{}) {
 	// Check to see if there are any open outages
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
@@ -964,11 +969,11 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 	//TODO(g): Make a decision making system here.  For now, I am just doing the simple "make alert when told" thing.
 
 	filter := map[string]interface{}{
-		"service_outage_id": []interface{}{"=", service_outage["_id"]},
+		"outage_id": []interface{}{"=", outage["_id"]},
 		"time_stop": []interface{}{"=", nil},
 	}
 	options["sort"] = []string{"time_start"}		// Always in the same order, so we have a consistent default
-	service_outage_item_array := DatamanFilter("service_outage_item", filter, options)
+	outage_item_array := DatamanFilter("outage_item", filter, options)
 	options["sort"] = nil
 
 	// If outage_alert_notication_type==1 Create an Alert and Mark it for Send
@@ -976,15 +981,15 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 		outage_name := "Unknown"
 
 		// Find first outage item that isnt closed
-		for _, service_outage_item := range service_outage_item_array {
-			if service_outage_item["time_stop"] == nil && service_outage_item["name"] != nil {
-				outage_name = service_outage_item["name"].(string)
+		for _, outage_item := range outage_item_array {
+			if outage_item["time_stop"] == nil && outage_item["name"] != nil {
+				outage_name = outage_item["name"].(string)
 				break
 			}
 		}
 
 		new_alert := make(map[string]interface{})
-		new_alert["business_id"] = service_outage["business_id"]
+		new_alert["business_id"] = outage["business_id"]
 		new_alert["name"] = fmt.Sprintf("Outage Created: %s", outage_name)
 
 		//TODO(g): I only set this once, and on the first Health Check.  We could have a NON-URGENT be first, then later URGENTs are discovered, so need to do more data validation around this
@@ -994,9 +999,9 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 
 		new_alert_notification := make(map[string]interface{})
 		new_alert_notification["alert_id"] = alert["_id"]
-		new_alert_notification["business_id"] = service_outage["business_id"]
+		new_alert_notification["business_id"] = outage["business_id"]
 		new_alert_notification["shared_group_id"] = 7 // Outage
-		new_alert_notification["record_id"] = service_outage["_id"]
+		new_alert_notification["record_id"] = outage["_id"]
 		new_alert_notification["alert_notification_type_id"] = outage_alert_notication_type
 		new_alert_notification["content_subject"] = fmt.Sprintf("Outage Created: %s", outage_name)
 		new_alert_notification["content_body"] = fmt.Sprintf("Outage Created Body: %s", outage_name)
@@ -1007,7 +1012,7 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 
 		escalation_policy_item_id, escalation_policy_item_info := GetAlertEscalationPolicyItemIdAndInfo(internal_database_name, alert)
 		if escalation_policy_item_id == -1 {
-			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No Escalation Policy found for Alert: Service Outage: %v -- Alert: %v\n", service_outage, alert)
+			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No Escalation Policy found for Alert: Service Outage: %v -- Alert: %v\n", outage, alert)
 			return
 		}
 
@@ -1015,42 +1020,42 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 		new_alert_notification["escalation_policy_item_info"] = escalation_policy_item_info
 		new_alert_notification["business_user_contact_id"] = GetEscalationPolicyUserContactId(internal_database_name, alert["escalation_policy_id"].(int64), time.Now())
 
-		alert_notification := DatamanInsert("alert_notification", new_alert_notification, options)
+		_ = DatamanInsert("alert_notification", new_alert_notification, options)
 
-		// Make the service_outage_alert_notification record
-		new_service_outage_alert_notification := make(map[string]interface{})
-		new_service_outage_alert_notification["service_outage_id"] = service_outage["_id"]
-		new_service_outage_alert_notification["alert_notification_id"] = alert_notification["_id"]
+		// Make the outage_alert record
+		new_outage_alert := make(map[string]interface{})
+		new_outage_alert["outage_id"] = outage["_id"]
+		new_outage_alert["alert_id"] = alert["_id"]
 
-		_ = DatamanInsert("service_outage_alert_notification", new_service_outage_alert_notification, options)
+		_ = DatamanInsert("outage_alert", new_outage_alert, options)
 
 	} else if outage_alert_notication_type == 3 {
 		outage_name := "Unknown"
 
 		filter := map[string]interface{}{
-			"service_outage_id": []interface{}{"=", service_outage["_id"]},
+			"outage_id": []interface{}{"=", outage["_id"]},
 		}
 		options["sort"] = []string{"time_stop"}		// Always in the same order, so we have a consistent default
-		service_outage_item_array := DatamanFilter("service_outage_item", filter, options)
+		outage_item_array := DatamanFilter("outage_item", filter, options)
 		options["sort"] = nil
 
 		// Find first outage item that isnt closed
-		for _, service_outage_item := range service_outage_item_array {
-			if service_outage_item["name"] != nil {
-				outage_name = service_outage_item["name"].(string)
+		for _, outage_item := range outage_item_array {
+			if outage_item["name"] != nil {
+				outage_name = outage_item["name"].(string)
 				break
 			}
 		}
 
 		var alert map[string]interface{}
 
-		// Find the alert, by getting the service_outage_alert_notifications
+		// Find the alert, by getting the outage_alerts
 		filter = map[string]interface{}{
-			"service_outage_id": []interface{}{"=", service_outage["_id"]},
+			"outage_id": []interface{}{"=", outage["_id"]},
 		}
-		service_outage_alert_notification_array := DatamanFilter("service_outage_alert_notification", filter, options)
-		if len(service_outage_alert_notification_array) != 0 {
-			alert_notification_id := service_outage_alert_notification_array[0]["alert_notification_id"].(int64)
+		outage_alert_array := DatamanFilter("outage_alert", filter, options)
+		if len(outage_alert_array) != 0 {
+			alert_notification_id := outage_alert_array[0]["alert_notification_id"].(int64)
 
 			alert_notification := DatamanGet("alert_notification", int(alert_notification_id), options)
 			alert = DatamanGet("alert", int(alert_notification["alert_id"].(int64)), options)
@@ -1058,15 +1063,15 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 		}
 
 		if alert == nil {
-			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No alert found: Service Outage %v\n", service_outage)
+			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No alert found: Service Outage %v\n", outage)
 			return
 		}
 
 		new_alert_notification := make(map[string]interface{})
 		new_alert_notification["alert_id"] = alert["_id"]
-		new_alert_notification["business_id"] = service_outage["business_id"]
+		new_alert_notification["business_id"] = outage["business_id"]
 		new_alert_notification["shared_group_id"] = 7 // Outage
-		new_alert_notification["record_id"] = service_outage["_id"]
+		new_alert_notification["record_id"] = outage["_id"]
 		new_alert_notification["alert_notification_type_id"] = outage_alert_notication_type
 		new_alert_notification["content_subject"] = fmt.Sprintf("Outage Created: %s", outage_name)
 		new_alert_notification["content_body"] = fmt.Sprintf("Outage Created Body: %s", outage_name)
@@ -1077,7 +1082,7 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 
 		escalation_policy_item_id, escalation_policy_item_info := GetAlertEscalationPolicyItemIdAndInfo(internal_database_name, alert)
 		if escalation_policy_item_id == -1 {
-			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No Escalation Policy found for Alert: Service Outage: %v -- Alert: %v\n", service_outage, alert)
+			UdnLogLevel(nil, log_error, "OutageAlert: ERROR: No Escalation Policy found for Alert: Service Outage: %v -- Alert: %v\n", outage, alert)
 			return
 		}
 
@@ -1087,12 +1092,12 @@ func OutageAlert(internal_database_name string, service_outage map[string]interf
 
 		alert_notification := DatamanInsert("alert_notification", new_alert_notification, options)
 
-		// Make the service_outage_alert_notification record
-		new_service_outage_alert_notification := make(map[string]interface{})
-		new_service_outage_alert_notification["service_outage_id"] = service_outage["_id"]
-		new_service_outage_alert_notification["alert_notification_id"] = alert_notification["_id"]
+		// Make the outage_alert record
+		new_outage_alert := make(map[string]interface{})
+		new_outage_alert["outage_id"] = outage["_id"]
+		new_outage_alert["alert_notification_id"] = alert_notification["_id"]
 
-		_ = DatamanInsert("service_outage_alert_notification", new_service_outage_alert_notification, options)
+		_ = DatamanInsert("outage_alert", new_outage_alert, options)
 	}
 
 }
