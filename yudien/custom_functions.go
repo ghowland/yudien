@@ -269,7 +269,7 @@ func GetTimeOfDayDuration(hour int, minute int, second int) time.Duration {
 
 	return time_seconds_duration
 }
-
+/*
 func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
 	database_table := GetResult(args[1], type_string).(string)
@@ -409,7 +409,7 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 	UdnLogLevel(udn_schema, log_trace, "CUSTOM: TaskMan: Add Task: Result: %s\n", JsonDump(http_result))
 
 	return result
-}
+}*/
 
 func HttpsRequest(hostname string, port int, uri string, method string, client_cert string, client_key string, certificate_authority string, data_json string) []byte {
 	// Use strings, not file loading
@@ -430,7 +430,7 @@ func HttpsRequest(hostname string, port int, uri string, method string, client_c
 
 	url := fmt.Sprintf("https://%s:%d/%s", hostname, port, uri)
 
-	UdnLogLevel(nil, log_trace, "HttpsRequest: URL: %s\n", url)
+	UdnLogLevel(nil, log_trace, "HttpsRequest: URL: %s: %s\n", method, url)
 
 	// Form the request
 	request, err := http.NewRequest(method, url, bytes.NewBuffer([]byte(data_json)))
@@ -447,7 +447,7 @@ func HttpsRequest(hostname string, port int, uri string, method string, client_c
 	}
 	defer resp.Body.Close()
 
-	UdnLogLevel(nil, log_trace, "HttpsRequest: %s: %d\n", resp.Status, resp.StatusCode)
+	UdnLogLevel(nil, log_trace, "HttpsRequest: %s: %s: %d\n", method, resp.Status, resp.StatusCode)
 
 	// Dump response
 	data, err := ioutil.ReadAll(resp.Body)
@@ -1396,6 +1396,7 @@ func MonitorPostProcessChange(internal_database_name string, ts_database_table s
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
+	// Find Monitors that dont have metrics, create the metrics and add to TaskMan
 	filter := make(map[string]interface{})
 	filter["business_environment_namespace_metric_id"] = []interface{}{"=", nil}
 	monitor_list := DatamanFilter("service_monitor", filter, options)
@@ -1445,12 +1446,91 @@ func MonitorPostProcessChange(internal_database_name string, ts_database_table s
 		}
 	}
 
+	// Go through all our monitors and update any that have changed, add any that are missing, remove (STOP) any that we dont know about
+	MonitorUpdateAll(internal_database_name, ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
+
+
 	// If we have errors, put them back in with field_label dotted keys, so we can re-render them in the form
 	error_map := make(map[string]interface{})
 	return error_map
 }
 
-func TaskMan_AddTask(internal_database_name string, service_monitor_id int64, ts_database_table string, ts_connection_database_name string, ts_tablename string, api_server_connection_table string, api_server_connection_id int64) bool {
+func MonitorUpdateAll(internal_database_name string, ts_database_table string, ts_connection_database_name string, ts_tablename string, api_server_connection_table string, api_server_connection_id int64) {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	filter := make(map[string]interface{})
+	monitor_list := DatamanFilter("service_monitor", filter, options)
+
+	// Get all our current TaskMan tasks
+	tasks := TaskMan_GetTasks(internal_database_name, api_server_connection_table, api_server_connection_id)
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: Tasks: %s\n", JsonDump(tasks))
+
+	time_store_item_monitor_map := make(map[string]map[string]interface{})
+
+	for _, service_monitor := range monitor_list {
+		business_environment_namespace_metric := DatamanGet("business_environment_namespace_metric", int(service_monitor["business_environment_namespace_metric_id"].(int64)), options)
+
+		UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: %s: %d\n", service_monitor["name"], business_environment_namespace_metric["time_store_item_id"])
+
+		time_store_item_id_str := fmt.Sprintf("%d", business_environment_namespace_metric["time_store_item_id"])
+
+		if tasks[time_store_item_id_str] != nil {
+			UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: FOUND: %s: %d\n", service_monitor["name"], business_environment_namespace_metric["time_store_item_id"])
+
+			TaskMan_StopTask(internal_database_name, business_environment_namespace_metric["time_store_item_id"].(int64), api_server_connection_table, api_server_connection_id)
+			TaskMan_AddTask_Delay(internal_database_name, service_monitor["_id"].(int64), ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
+		} else {
+			UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: NOT FOUND: %s: %d\n", service_monitor["name"], business_environment_namespace_metric["time_store_item_id"])
+
+			TaskMan_AddTask(internal_database_name, service_monitor["_id"].(int64), ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
+		}
+
+		time_store_item_monitor_map[time_store_item_id_str] = service_monitor
+	}
+
+	// Update the tasks after our above changes
+	tasks = TaskMan_GetTasks(internal_database_name, api_server_connection_table, api_server_connection_id)
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: Task Map: %s\n", JsonDump(tasks))
+	UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: Time Store Monitor Map: %s\n", JsonDump(time_store_item_monitor_map))
+
+
+	// Go through all the tasks and any that we dont know about, remove
+	for task_key, _ := range tasks {
+		UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: Testing for Missing: %s: %v\n\n", task_key, time_store_item_monitor_map[task_key])
+		if time_store_item_monitor_map[task_key] == nil {
+			task_id, err := strconv.ParseInt(task_key, 10, 64)
+			if err != nil {
+				UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: Remove: Error parsing key: %s\n", task_key)
+			} else {
+				UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: Remove: Stopping: %s\n", task_key)
+				TaskMan_StopTask(internal_database_name, task_id, api_server_connection_table, api_server_connection_id)
+			}
+		}
+	}
+}
+
+func TaskMan_GetTasks(internal_database_name string, api_server_connection_table string, api_server_connection_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
+
+	data := make(map[string]interface{})
+	http_result := HttpsRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), taskman_server["default_path"].(string), "GET", taskman_server["client_certificate"].(string), taskman_server["client_private_key"].(string), taskman_server["certificate_authority"].(string), JsonDump(data))
+
+	result_map, err := JsonLoadMap(string(http_result))
+	if err != nil {
+		UdnLogLevel(nil, log_trace, "TaskMan_GetTasks: Error JSON Parse: %s\n", err)
+		UdnLogLevel(nil, log_trace, "TaskMan_GetTasks: Error: Result: %s\n", string(http_result))
+	}
+
+	return result_map
+}
+
+func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts_database_table string, ts_connection_database_name string, ts_tablename string, api_server_connection_table string, api_server_connection_id int64) map[string]interface{} {
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
@@ -1462,8 +1542,8 @@ func TaskMan_AddTask(internal_database_name string, service_monitor_id int64, ts
 	}
 	connection_database_array := DatamanFilter(ts_database_table, filter, options)
 	if len(connection_database_array) == 0 {
-		UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Add Task: Error getting Connection Database: %d\n", len(connection_database_array))
-		return false
+		UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Get Data: Error getting Connection Database: %d\n", len(connection_database_array))
+		return nil
 	}
 	connection_database := connection_database_array[0]
 
@@ -1499,6 +1579,58 @@ func TaskMan_AddTask(internal_database_name string, service_monitor_id int64, ts
 	monitor_args["url"] = service_monitor["data_json"].(map[string]interface{})["url"]
 	executor_args["monitor_args"] = monitor_args
 	data["executor_args"] = executor_args
+
+	return data
+}
+
+func TaskMan_UpdateTask(internal_database_name string, service_monitor_id int64, ts_database_table string, ts_connection_database_name string, ts_tablename string, api_server_connection_table string, api_server_connection_id int64) bool {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	data := TaskMan_GetData(internal_database_name, service_monitor_id, ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Update Task: %s\n", JsonDump(data))
+
+	taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
+
+	uri_path := fmt.Sprintf("%s/%s", taskman_server["default_path"].(string), data["uuid"])
+
+	http_result := HttpsRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), uri_path, "POST", taskman_server["client_certificate"].(string), taskman_server["client_private_key"].(string), taskman_server["certificate_authority"].(string), JsonDump(data))
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Update Task: Result: %s\n", JsonDump(http_result))
+
+	return true
+}
+
+func TaskMan_StopTask(internal_database_name string, time_store_item_id int64, api_server_connection_table string, api_server_connection_id int64) bool {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
+
+	uri_path := fmt.Sprintf("%s/%d", taskman_server["default_path"].(string), time_store_item_id)
+
+	http_result := HttpsRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), uri_path, "STOP", taskman_server["client_certificate"].(string), taskman_server["client_private_key"].(string), taskman_server["certificate_authority"].(string), JsonDump(make(map[string]interface{})))
+
+	UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Stop Task: Result: %s\n", JsonDump(http_result))
+
+	return true
+}
+
+func TaskMan_AddTask_Delay(internal_database_name string, service_monitor_id int64, ts_database_table string, ts_connection_database_name string, ts_tablename string, api_server_connection_table string, api_server_connection_id int64) bool {
+	// Defer the add for a few seconds, allowing the stop to finish
+	time.Sleep(5 * time.Second)
+
+	result := TaskMan_AddTask(internal_database_name, service_monitor_id, ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
+
+	return result
+}
+
+func TaskMan_AddTask(internal_database_name string, service_monitor_id int64, ts_database_table string, ts_connection_database_name string, ts_tablename string, api_server_connection_table string, api_server_connection_id int64) bool {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	data := TaskMan_GetData(internal_database_name, service_monitor_id, ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
 
 	UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Add Task: %s\n", JsonDump(data))
 
