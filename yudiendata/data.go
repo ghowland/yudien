@@ -245,7 +245,7 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 		record["_record_label"] = GetRecordLabel(selected_db, collection_name, record_id)
 
 		// If we have an Active Tombstone record, and we arent ignoring it
-		if record["_is_deleted"] != nil && options["ignore_tombstones"] != nil && record["_is_deleted"] == true && options["ignore_tombstones"] != true {
+		if (record["_is_deleted"] != nil && options["ignore_tombstones"] != nil && record["_is_deleted"] == true && options["ignore_tombstones"] != true) || (record["_is_secret"] == true && options["expose_secrets"] != true) {
 			record["_error"] = "This record has been deleted with a Tombstone: _is_deleted = true"
 			UdnLogLevel(nil, log_error, "Dataman GET: %s: ERRORS: %s\n", record["_record_label"], record["_error"])
 		}
@@ -662,7 +662,7 @@ func DatamanFilter(collection_name string, filter_input_map map[string]interface
 	for _, record := range result.Return {
 		// Ensure we remove any records with _is_deleted==true unless options.ignore_tombstones==true
 		// If we have an Active Tombstone record, and we arent ignoring it
-		if record["_is_deleted"] != nil && record["_is_deleted"] == true {
+		if (record["_is_deleted"] != nil && options["ignore_tombstones"] != nil && record["_is_deleted"] == true && options["ignore_tombstones"] != true) || (record["_is_secret"] == true && options["expose_secrets"] != true) {
 			if  options["ignore_tombstones"] != nil && options["ignore_tombstones"] == true {
 				final_record_array = append(final_record_array, record)
 			} else {
@@ -731,7 +731,7 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 	for _, record := range result.Return {
 		// Ensure we remove any records with _is_deleted==true unless options.ignore_tombstones==true
 		// If we have an Active Tombstone record, and we arent ignoring it
-		if record["_is_deleted"] != nil && record["_is_deleted"] == true {
+		if (record["_is_deleted"] != nil && options["ignore_tombstones"] != nil && record["_is_deleted"] == true && options["ignore_tombstones"] != true) || (record["_is_secret"] == true && options["expose_secrets"] != true) {
 			if  options["ignore_tombstones"] != nil && options["ignore_tombstones"] == true {
 				final_record_array = append(final_record_array, record)
 			} else {

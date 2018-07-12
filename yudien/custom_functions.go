@@ -1537,26 +1537,15 @@ func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts
 	service_monitor := DatamanGet("service_monitor", int(service_monitor_id), options)
 	service_monitor_type := DatamanGet("service_monitor_type", int(service_monitor["service_monitor_type_id"].(int64)), options)
 
-	filter := map[string]interface{}{
-		"name": []interface{}{"=", ts_connection_database_name},
-	}
-	connection_database_array := DatamanFilter(ts_database_table, filter, options)
-	if len(connection_database_array) == 0 {
-		UdnLogLevel(nil, log_trace, "CUSTOM: TaskMan: Get Data: Error getting Connection Database: %d\n", len(connection_database_array))
-		return nil
-	}
-	connection_database := connection_database_array[0]
+	business := DatamanGet("business", int(service_monitor["business_id"].(int64)), options)
+	business_user_robot := DatamanGet("business_user", int(business["taskman_robot_business_user_id"].(int64)), options)
 
-	// Get the Metric (b_e_n_metric)
+	business_environment_namespace := DatamanGet("business_environment_namespace", int(service_monitor["business_environment_namespace_id"].(int64)), options)
 	business_environment_namespace_metric := DatamanGet("business_environment_namespace_metric", int(service_monitor["business_environment_namespace_metric_id"].(int64)), options)
+
 
 	// Get the Time Store Item
 	time_store_item := DatamanGet("time_store_item", int(business_environment_namespace_metric["time_store_item_id"].(int64)), options)
-
-	// Static values we use in data
-	fieldname_customer_service_id := "time_store_item_id"
-	fieldname_created := "created"
-	fieldname_data_json := "data_json"
 
 	// Interval, in seconds, from milliseconds
 	interval := service_monitor["interval_ms"].(int64) / 1000
@@ -1565,13 +1554,13 @@ func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts
 	data["uuid"] = fmt.Sprintf("%d", time_store_item["_id"])
 	data["executor"] = "monitor"
 	executor_args := make(map[string]interface{})
+	executor_args["data_returner"] = "tsapi"
 	data_returner_args := make(map[string]interface{})
-	data_returner_args["type"] = connection_database["database_type"]
-	data_returner_args["info"] = connection_database["database_connect_string"]
-	data_returner_args["tablename"] = ts_tablename
-	data_returner_args["fieldname_customer_service_id"] = fieldname_customer_service_id
-	data_returner_args["fieldname_created"] = fieldname_created
-	data_returner_args["fieldname_data_json"] = fieldname_data_json
+	data_returner_args["url"] = fmt.Sprintf("http://localhost:8888/v1/metrics/mm/%s/%s/write", business_environment_namespace["name"], business_environment_namespace_metric["name"])
+	data_returner_args["username"] = business_user_robot["name"]		// unique names for now
+	data_returner_args["password"] = business_user_robot["password"]
+	label_map := make(map[string]interface{})
+	data_returner_args["labels"] = label_map
 	executor_args["data_returner_args"] = data_returner_args
 	executor_args["interval"] = fmt.Sprintf("%ds", interval)
 	executor_args["monitor"] = service_monitor_type["name_taskman"]
