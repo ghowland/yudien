@@ -1541,6 +1541,9 @@ func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts
 	business_user_robot := DatamanGet("business_user", int(business["taskman_robot_business_user_id"].(int64)), options)
 
 	business_environment_namespace := DatamanGet("business_environment_namespace", int(service_monitor["business_environment_namespace_id"].(int64)), options)
+
+	environment := DatamanGet("environment", int(business_environment_namespace["environment_id"].(int64)), options)
+
 	business_environment_namespace_metric := DatamanGet("business_environment_namespace_metric", int(service_monitor["business_environment_namespace_metric_id"].(int64)), options)
 
 
@@ -1556,10 +1559,12 @@ func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts
 	executor_args := make(map[string]interface{})
 	executor_args["data_returner"] = "tsapi"
 	data_returner_args := make(map[string]interface{})
-	data_returner_args["url"] = fmt.Sprintf("http://localhost:8888/v1/metrics/mm/%s/%s/write", business_environment_namespace["name"], business_environment_namespace_metric["name"])
+	data_returner_args["url"] = fmt.Sprintf("http://localhost:8888/v1/metrics/mm/%s/%s/write", environment["api_name"], business_environment_namespace["api_name"])
 	data_returner_args["username"] = business_user_robot["name"]		// unique names for now
-	data_returner_args["password"] = business_user_robot["password"]
+	data_returner_args["password"] = business_user_robot["password_digest"]
 	label_map := make(map[string]interface{})
+	label_map["service_monitor_id"] = fmt.Sprintf("%d", service_monitor["_id"])
+	label_map["type"] = service_monitor_type["name_taskman"]
 	data_returner_args["labels"] = label_map
 	executor_args["data_returner_args"] = data_returner_args
 	executor_args["interval"] = fmt.Sprintf("%ds", interval)
