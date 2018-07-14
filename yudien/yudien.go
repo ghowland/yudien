@@ -373,6 +373,8 @@ func InitUdn() {
 		"__custom_dataman_create_filter_html": UDN_Custom_Dataman_Create_Filter_Html,   	// CUSTOM:...
 
 		"__custom_dataman_add_rule": UDN_Custom_Dataman_Add_Rule, // Add a rule for Dataman filter
+
+		"__custom_tsapi_business_update": UDN_Custom_TSAPI_Business_Update,		// CUSTOM:...
 	}
 
 	PartTypeName = map[int]string{

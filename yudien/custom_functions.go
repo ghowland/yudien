@@ -412,20 +412,32 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 }*/
 
 func HttpsRequest(hostname string, port int, uri string, method string, client_cert string, client_key string, certificate_authority string, data_json string) []byte {
-	// Use strings, not file loading
-	cert, err := tls.X509KeyPair([]byte(client_cert), []byte(client_key))
-	if err != nil {
-		log.Panic(err)
+
+	transport := &http.Transport{}
+
+	// If we have a client cert, make a TLS client config
+	if client_cert != "" {
+		// Use strings, not file loading
+		cert, err := tls.X509KeyPair([]byte(client_cert), []byte(client_key))
+		if err != nil {
+			log.Panic(err)
+		}
+		
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(certificate_authority))
+
+		// Setup HTTPS client
+		//tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caCertPool,}		// This will restrict the client to connect to a valid CA
+		tlsConfig := &tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{cert}}
+		tlsConfig.BuildNameToCertificate()
+
+		transport = &http.Transport{TLSClientConfig: tlsConfig}
+	} else {
+		// No client cert
+		tlsConfig := &tls.Config{InsecureSkipVerify: true}
+		tlsConfig.BuildNameToCertificate()
 	}
 
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM([]byte(certificate_authority))
-
-	// Setup HTTPS client
-	//tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caCertPool,}		// This will restrict the client to connect to a valid CA
-	tlsConfig := &tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{cert}}
-	tlsConfig.BuildNameToCertificate()
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
 
 	url := fmt.Sprintf("https://%s:%d/%s", hostname, port, uri)
@@ -448,6 +460,43 @@ func HttpsRequest(hostname string, port int, uri string, method string, client_c
 	defer resp.Body.Close()
 
 	UdnLogLevel(nil, log_trace, "HttpsRequest: %s: %s: %d\n", method, resp.Status, resp.StatusCode)
+
+	// Dump response
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return data
+}
+
+
+func HttpRequest(hostname string, port int, uri string, method string, data_json string) []byte {
+
+	transport := &http.Transport{}
+
+	client := &http.Client{Transport: transport}
+
+	url := fmt.Sprintf("http://%s:%d/%s", hostname, port, uri)
+
+	UdnLogLevel(nil, log_trace, "HttpRequest: URL: %s: %s\n", method, url)
+
+	// Form the request
+	request, err := http.NewRequest(method, url, bytes.NewBuffer([]byte(data_json)))
+	if err != nil {
+		log.Panic(err)
+	}
+	request.Header.Add("Content-Type", "application/json")
+
+
+	// Do the request
+	resp, err := client.Do(request)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer resp.Body.Close()
+
+	UdnLogLevel(nil, log_trace, "HttpRequest: %s: %s: %d\n", method, resp.Status, resp.StatusCode)
 
 	// Dump response
 	data, err := ioutil.ReadAll(resp.Body)
@@ -1559,7 +1608,7 @@ func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts
 	executor_args := make(map[string]interface{})
 	executor_args["data_returner"] = "tsapi"
 	data_returner_args := make(map[string]interface{})
-	data_returner_args["url"] = fmt.Sprintf("http://localhost:8888/v1/metrics/mm/%s/%s/write", environment["api_name"], business_environment_namespace["api_name"])
+	data_returner_args["url"] = fmt.Sprintf("http://localhost:8888/v1/metrics/mm/%s/%s/mmp/write", environment["api_name"], business_environment_namespace["api_name"])
 	data_returner_args["username"] = business_user_robot["name"]		// unique names for now
 	data_returner_args["password"] = business_user_robot["password_digest"]
 	label_map := make(map[string]interface{})
@@ -2431,3 +2480,54 @@ func DatamanAddRule(input_map map[string]interface{}) string {
 
 	return html
 }
+
+func UDN_Custom_TSAPI_Business_Update(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	internal_database_name := GetResult(args[0], type_string).(string)
+	api_server_connection_table := GetResult(args[1], type_string).(string)
+	api_server_connection_id := GetResult(args[2], type_int).(int64)
+
+	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
+	TSAPI_BusinessUpdate(internal_database_name, api_server_connection_table, api_server_connection_id)
+
+	result := UdnResult{}
+	result.Result = nil
+
+	return result
+}
+
+func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_table string, api_server_connection_id int64) {
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	//TODO(g): Get this from the user login info...
+	business_id := 1
+
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: %d\n", business_id)
+
+	//business := DatamanGet("business", business_id, options)
+	//business_user := DatamanGet("business_user", int(business["taskman_robot_business_user_id"].(int64)), options)
+
+	taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
+
+	// Business
+	data := make(map[string]interface{})
+	data["name"] = fmt.Sprintf("%d", business_id)
+
+	http_result := HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "v1/business", "POST", JsonDump(data))
+
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business: %s\n", http_result)
+
+	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "v1/business", "GET", JsonDump(make(map[string]interface{})))
+
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business GET: %s\n", http_result)
+
+/*	// Business User
+	data := make(map[string]interface{})
+	data["name"] = fmt.Sprintf("%d", business_id)
+
+	http_result := HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "/v1/business", "POST", JsonDump(data))
+
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business: %s\n", http_result)
+*/
+}
+
