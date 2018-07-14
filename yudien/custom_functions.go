@@ -411,7 +411,7 @@ func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, u
 	return result
 }*/
 
-func HttpsRequest(hostname string, port int, uri string, method string, client_cert string, client_key string, certificate_authority string, data_json string) []byte {
+func HttpsRequest(hostname string, port int, path string, method string, client_cert string, client_key string, certificate_authority string, data_json string) []byte {
 
 	transport := &http.Transport{}
 
@@ -440,7 +440,7 @@ func HttpsRequest(hostname string, port int, uri string, method string, client_c
 
 	client := &http.Client{Transport: transport}
 
-	url := fmt.Sprintf("https://%s:%d/%s", hostname, port, uri)
+	url := fmt.Sprintf("https://%s:%d/%s", hostname, port, path)
 
 	UdnLogLevel(nil, log_trace, "HttpsRequest: URL: %s: %s\n", method, url)
 
@@ -471,13 +471,13 @@ func HttpsRequest(hostname string, port int, uri string, method string, client_c
 }
 
 
-func HttpRequest(hostname string, port int, uri string, method string, data_json string) []byte {
+func HttpRequest(hostname string, port int, path string, method string, data_json string) []byte {
 
 	transport := &http.Transport{}
 
 	client := &http.Client{Transport: transport}
 
-	url := fmt.Sprintf("http://%s:%d/%s", hostname, port, uri)
+	url := fmt.Sprintf("http://%s:%d/%s", hostname, port, path)
 
 	UdnLogLevel(nil, log_trace, "HttpRequest: URL: %s: %s\n", method, url)
 
@@ -2504,8 +2504,8 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 
 	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: %d\n", business_id)
 
-	//business := DatamanGet("business", business_id, options)
-	//business_user := DatamanGet("business_user", int(business["taskman_robot_business_user_id"].(int64)), options)
+	business := DatamanGet("business", business_id, options)
+	robot_user := DatamanGet("business_user", int(business["taskman_robot_business_user_id"].(int64)), options)
 
 	taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
 
@@ -2517,17 +2517,102 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 
 	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business: %s\n", http_result)
 
+	// Get the list of businesses
 	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "v1/business", "GET", JsonDump(make(map[string]interface{})))
 
-	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business GET: %s\n", http_result)
+	var tsapi_business_id int
+	business_array, err := JsonLoadArray(string(http_result))
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business GET: %s (%v)\n", business_array, err)
+	for _, business_item := range business_array {
+		business_map := business_item.(map[string]interface{})
+		if business_map["name"] == data["name"] {
+			tsapi_business_id = int(business_map["id"].(float64))
+			break
+		}
+	}
 
-/*	// Business User
-	data := make(map[string]interface{})
-	data["name"] = fmt.Sprintf("%d", business_id)
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: Found TSAPI Business: %d\n", tsapi_business_id)
 
-	http_result := HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "/v1/business", "POST", JsonDump(data))
 
-	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business: %s\n", http_result)
-*/
+	// Add Business User
+	data = make(map[string]interface{})
+	data["name"] = robot_user["name"]
+	data["business_id"] = tsapi_business_id
+	data["secret_digest"] = robot_user["password_digest"]
+	data["permissions"] = []interface{}{map[string]interface{}{
+		"source": map[string]interface{}{
+			"type": "=~",
+			"value": ".*",
+		},
+		"environment": map[string]interface{}{
+			"type": "=~",
+			"value": ".*",
+		},
+		"namespace": map[string]interface{}{
+			"type": "=~",
+			"value": ".*",
+		},
+	}}
+
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Insert User Payload: %s\n", JsonDump(data))
+
+
+	path := fmt.Sprintf("v1/business/%d/user", tsapi_business_id)
+
+	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data))
+
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business User POST: %s\n", http_result)
+
+	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(make(map[string]interface{})))
+	business_user_array, err := JsonLoadArray(string(http_result))
+	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business User GET: %s (%v)\n", business_user_array, err)
+
+
+	// Add Environment
+	filter := map[string]interface{}{"business_id": []interface{}{"=", business_id}}
+	environment_array := DatamanFilter("environment", filter, options)
+
+	for _, environment := range environment_array {
+		data = make(map[string]interface{})
+		data["name"] = environment["api_name"]
+
+		path := fmt.Sprintf("v1/business/%d/environment", tsapi_business_id)
+
+		http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data))
+		UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business Environment Insert: %s\n", http_result)
+
+
+		http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(data))
+		environment_array, err := JsonLoadArray(string(http_result))
+		UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Environment GET: %s (%v)\n", environment_array, err)
+
+		for _, environment_item := range environment_array {
+			environment_map := environment_item.(map[string]interface{})
+			// Find the environment, and then add all it's namespaces
+			if environment_map["name"] == environment["api_name"] {
+				filter := map[string]interface{}{
+					"business_id": []interface{}{"=", business_id},
+					"environment_id": []interface{}{"=", environment["_id"]},
+				}
+				namespace_array := DatamanFilter("business_environment_namespace", filter, options)
+				for _, namespace := range namespace_array {
+					data = make(map[string]interface{})
+					data["name"] = namespace["api_name"]
+					data["environment_id"] = environment_map["id"]
+					data["source"] = "api"
+					data["retention_duration"] = "5s"	//TODO(g): Is this the total retention time?
+
+					UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: Data: Business Namespace Insert: %s\n", JsonDump(data))
+
+					path := fmt.Sprintf("v1/business/%d/namespace", tsapi_business_id)
+
+					http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data))
+					UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business Namespace Insert: %s\n", http_result)
+				}
+			}
+		}
+	}
+
+
 }
 
