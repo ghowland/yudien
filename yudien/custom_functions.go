@@ -17,6 +17,8 @@ import (
 	"bytes"
 	"net/smtp"
 	"sort"
+	"encoding/base64"
+	"net/url"
 )
 
 const (
@@ -471,7 +473,7 @@ func HttpsRequest(hostname string, port int, path string, method string, client_
 }
 
 
-func HttpRequest(hostname string, port int, path string, method string, data_json string) []byte {
+func HttpRequest(hostname string, port int, path string, method string, data_json string, user string, password string) []byte {
 
 	transport := &http.Transport{}
 
@@ -488,6 +490,13 @@ func HttpRequest(hostname string, port int, path string, method string, data_jso
 	}
 	request.Header.Add("Content-Type", "application/json")
 
+	// Basic auth, is user is set
+	if user != "" {
+		auth_str := fmt.Sprintf("%s:%s", user, password)
+		auth_base64 := base64.StdEncoding.EncodeToString([]byte(auth_str))
+		UdnLogLevel(nil, log_trace, "HttpRequest: Auth: %s:   Basic %s\n", auth_str, auth_base64)
+		request.Header.Add("Authorization"," Basic " + auth_base64)
+	}
 
 	// Do the request
 	resp, err := client.Do(request)
@@ -1595,7 +1604,6 @@ func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts
 
 	business_environment_namespace_metric := DatamanGet("business_environment_namespace_metric", int(service_monitor["business_environment_namespace_metric_id"].(int64)), options)
 
-
 	// Get the Time Store Item
 	time_store_item := DatamanGet("time_store_item", int(business_environment_namespace_metric["time_store_item_id"].(int64)), options)
 
@@ -1612,6 +1620,7 @@ func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts
 	data_returner_args["username"] = business_user_robot["name"]		// unique names for now
 	data_returner_args["password"] = business_user_robot["password_digest"]
 	label_map := make(map[string]interface{})
+	label_map["__name__"] = business_environment_namespace_metric["name"]
 	label_map["service_monitor_id"] = fmt.Sprintf("%d", service_monitor["_id"])
 	label_map["type"] = service_monitor_type["name_taskman"]
 	data_returner_args["labels"] = label_map
@@ -2111,8 +2120,11 @@ func UDN_Custom_Dashboard_Item_Edit(db *sql.DB, udn_schema map[string]interface{
 	dashboard_item_id_or_nil := args[1]
 	input_map := GetResult(args[2], type_map).(map[string]interface{})
 
+	api_server_connection_table := GetResult(args[3], type_string).(string)
+	api_server_connection_id := GetResult(args[4], type_int).(int64)
+
 	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
-	data := DashboardItemEdit(internal_database_name, dashboard_item_id_or_nil, input_map)
+	data := DashboardItemEdit(internal_database_name, dashboard_item_id_or_nil, input_map, api_server_connection_table, api_server_connection_id)
 
 	result := UdnResult{}
 	result.Result = data
@@ -2120,7 +2132,7 @@ func UDN_Custom_Dashboard_Item_Edit(db *sql.DB, udn_schema map[string]interface{
 	return result
 }
 
-func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil interface{}, input_map map[string]interface{}) map[string]interface{} {
+func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil interface{}, input_map map[string]interface{}, api_server_connection_table string, api_server_connection_id int64) map[string]interface{} {
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
@@ -2138,6 +2150,9 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 	} else {
 		graph["name"] = fmt.Sprintf("%s", time.Now().Format(time_format_db))
 	}
+
+
+
 
 	UdnLogLevel(nil, log_trace, "DashboardItemEdit: Starting Graph: %s\n", JsonDump(graph))
 	UdnLogLevel(nil, log_trace, "DashboardItemEdit: Input Map: %s\n", JsonDump(input_map))
@@ -2193,6 +2208,42 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 			} else {
 				graph_item["field_options"] = make([]map[string]interface{}, 0)
 			}
+
+			business_environment_namespace := DatamanGet("business_environment_namespace", int(service_monitor["business_environment_namespace_id"].(int64)), options)
+			environment := DatamanGet("environment", int(business_environment_namespace["environment_id"].(int64)), options)
+
+			business := DatamanGet("business", int(business_environment_namespace["business_id"].(int64)), options)
+			robot_business_user := DatamanGet("business_user", int(business["taskman_robot_business_user_id"].(int64)), options)
+
+			source := "mm"
+			env := environment["api_name"]
+			namespace := business_environment_namespace["api_name"]
+			query := fmt.Sprintf("%s", business_environment_namespace_metric["name"])
+
+			utc_offset := time.Duration(7 * time.Hour)	//TODO(g): I shouldnt need to do this it wont work when running in different time zones, but shortcut until I figure it out properly
+			start := time.Now().Add(-3600 * time.Second + utc_offset).UTC().Unix()
+			end := time.Now().Add(utc_offset).UTC().Unix()
+			step := 20
+
+
+			user := robot_business_user["name"].(string)
+			password := robot_business_user["password_digest"].(string)
+
+			query_arg := url.Values{}
+			query_arg.Add("query", query)
+			query_encoded := query_arg.Encode()
+
+			path := fmt.Sprintf("v1/metrics/%s/%s/%s/prometheus/api/v1/query_range?%s&start=%d&end=%d&step=%d", source, env, namespace, query_encoded, start, end, step)
+
+			UdnLogLevel(nil, log_trace, "DashboardItemEdit: TSAPI Prom Path: Business: %s\n", path)
+
+			taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
+
+			http_result := HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(make(map[string]interface{})), user, password)
+
+			UdnLogLevel(nil, log_trace, "DashboardItemEdit: TSAPI Prom Result: Business: %s\n", http_result)
+
+
 
 
 			// Add this to the graph information
@@ -2513,12 +2564,12 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 	data := make(map[string]interface{})
 	data["name"] = fmt.Sprintf("%d", business_id)
 
-	http_result := HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "v1/business", "POST", JsonDump(data))
+	http_result := HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "v1/business", "POST", JsonDump(data), "", "")
 
 	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business: %s\n", http_result)
 
 	// Get the list of businesses
-	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "v1/business", "GET", JsonDump(make(map[string]interface{})))
+	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), "v1/business", "GET", JsonDump(make(map[string]interface{})), "", "")
 
 	var tsapi_business_id int
 	business_array, err := JsonLoadArray(string(http_result))
@@ -2559,11 +2610,11 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 
 	path := fmt.Sprintf("v1/business/%d/user", tsapi_business_id)
 
-	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data))
+	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data), "", "")
 
 	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business User POST: %s\n", http_result)
 
-	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(make(map[string]interface{})))
+	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(make(map[string]interface{})), "", "")
 	business_user_array, err := JsonLoadArray(string(http_result))
 	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business User GET: %s (%v)\n", business_user_array, err)
 
@@ -2578,11 +2629,11 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 
 		path := fmt.Sprintf("v1/business/%d/environment", tsapi_business_id)
 
-		http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data))
+		http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data), "", "")
 		UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business Environment Insert: %s\n", http_result)
 
 
-		http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(data))
+		http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(data), "", "")
 		environment_array, err := JsonLoadArray(string(http_result))
 		UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Environment GET: %s (%v)\n", environment_array, err)
 
@@ -2606,13 +2657,11 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 
 					path := fmt.Sprintf("v1/business/%d/namespace", tsapi_business_id)
 
-					http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data))
+					http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data), "", "")
 					UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business Namespace Insert: %s\n", http_result)
 				}
 			}
 		}
 	}
-
-
 }
 
