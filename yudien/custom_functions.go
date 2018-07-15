@@ -494,7 +494,7 @@ func HttpRequest(hostname string, port int, path string, method string, data_jso
 	if user != "" {
 		auth_str := fmt.Sprintf("%s:%s", user, password)
 		auth_base64 := base64.StdEncoding.EncodeToString([]byte(auth_str))
-		UdnLogLevel(nil, log_trace, "HttpRequest: Auth: %s:   Basic %s\n", auth_str, auth_base64)
+		//UdnLogLevel(nil, log_trace, "HttpRequest: Auth: %s:   Basic %s\n", auth_str, auth_base64)
 		request.Header.Add("Authorization"," Basic " + auth_base64)
 	}
 
@@ -505,7 +505,7 @@ func HttpRequest(hostname string, port int, path string, method string, data_jso
 	}
 	defer resp.Body.Close()
 
-	UdnLogLevel(nil, log_trace, "HttpRequest: %s: %s: %d\n", method, resp.Status, resp.StatusCode)
+	UdnLogLevel(nil, log_trace, "HttpRequest: %s: %s\n", method, resp.Status)
 
 	// Dump response
 	data, err := ioutil.ReadAll(resp.Body)
@@ -2218,26 +2218,25 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 			source := "mm"
 			env := environment["api_name"]
 			namespace := business_environment_namespace["api_name"]
-			query := fmt.Sprintf("%s", business_environment_namespace_metric["name"])
+			//query := fmt.Sprintf("%s", business_environment_namespace_metric["name"])
 
-			utc_offset := time.Duration(7 * time.Hour)	//TODO(g): I shouldnt need to do this it wont work when running in different time zones, but shortcut until I figure it out properly
-			start := time.Now().Add(-3600 * time.Second + utc_offset).UTC().Unix()
-			end := time.Now().Add(utc_offset).UTC().Unix()
+			start := time.Now().Add(-1 * time.Hour).Unix()
+			end := time.Now().Unix()
 			step := 20
 
 
 			user := robot_business_user["name"].(string)
 			password := robot_business_user["password_digest"].(string)
 
+			taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
+
 			query_arg := url.Values{}
-			query_arg.Add("query", query)
+			query_arg.Add("query", fmt.Sprintf("{service_monitor_id=\"%d\"}", service_monitor_id))
 			query_encoded := query_arg.Encode()
 
 			path := fmt.Sprintf("v1/metrics/%s/%s/%s/prometheus/api/v1/query_range?%s&start=%d&end=%d&step=%d", source, env, namespace, query_encoded, start, end, step)
 
 			UdnLogLevel(nil, log_trace, "DashboardItemEdit: TSAPI Prom Path: Business: %s\n", path)
-
-			taskman_server := DatamanGet(api_server_connection_table, int(api_server_connection_id), options)
 
 			http_result := HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(make(map[string]interface{})), user, password)
 
