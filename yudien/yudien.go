@@ -375,6 +375,8 @@ func InitUdn() {
 		"__custom_dataman_add_rule": UDN_Custom_Dataman_Add_Rule, // Add a rule for Dataman filter
 
 		"__custom_tsapi_business_update": UDN_Custom_TSAPI_Business_Update,		// CUSTOM:...
+
+		"__custom_login": UDN_Custom_Login,		// CUSTOM:...
 	}
 
 	PartTypeName = map[int]string{

@@ -19,6 +19,8 @@ import (
 	"sort"
 	"encoding/base64"
 	"net/url"
+	"github.com/segmentio/ksuid"
+	"encoding/json"
 )
 
 const (
@@ -2650,7 +2652,7 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 					data["name"] = namespace["api_name"]
 					data["environment_id"] = environment_map["id"]
 					data["source"] = "mm"
-					data["retention_duration"] = "5s"	//TODO(g): Is this the total retention time?
+					//data["retention_duration"] = "5s"	//TODO(g): Is this the total retention time?
 
 					UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: Data: Business Namespace Insert: %s\n", JsonDump(data))
 
@@ -2664,3 +2666,136 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 	}
 }
 
+func UDN_Custom_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	result := UdnResult{}
+
+	//business_name := GetResult(args[0], type_string).(string)
+	username := GetResult(args[1], type_string).(string)
+	password := GetResult(args[2], type_string).(string)
+
+	ldap_user := LdapLogin(username, password)
+
+	user_map := make(map[string]interface{})
+
+	// This is for using this without LDAP.
+	//TODO(z): Allow multiple static users from config file rather than just admin for now
+	ldap_override_admin := true
+
+	// Get the user data, if they authed
+	if ldap_user.IsAuthenticated == true {
+		user_map["first_name"] = ldap_user.FirstName
+		user_map["full_name"] = ldap_user.FullName
+		user_map["email"] = ldap_user.Email
+		user_map["home_dir"] = ldap_user.HomeDir
+		user_map["uid"] = ldap_user.Uid
+		user_map["username"] = ldap_user.Username
+		user_map["groups"] = ldap_user.Groups
+		user_map["error"] = ""
+
+		// Store it in UDN global as well
+		//TODO(g): Save into the DB as our User Session...
+		udn_data["ldap_user"] = user_map
+
+		UdnLogLevel(udn_schema, log_info,"LDAP Authenticated: %s\n\n", user_map["username"])
+
+	} else if user, user_found := DevelopmentUsers[username]; user_found && ldap_override_admin && username == user.Username && password == user.Password {
+		user_map["first_name"] = user.Data.FirstName
+		user_map["full_name"] = user.Data.FirstName + " " + user.Data.LastName
+		user_map["email"] = user.Data.Email
+		user_map["home_dir"] = user.Data.HomeDir
+		user_map["uid"] = user.Data.Uid
+		user_map["username"] = user.Data.Username
+		user_map["groups"] = user.Data.Groups
+		user_map["error"] = ""
+
+		ldap_user.Username = user_map["username"].(string)
+
+		UdnLogLevel(udn_schema, log_info,"LDAP Override: Admin User\n\n")
+
+	} else {
+		user_map["error"] = ldap_user.Error
+
+		result.Result = user_map
+		result.Error = ldap_user.Error
+
+		UdnLogLevel(udn_schema, log_error, "LDAP ERROR: %s\n\n", result.Error)
+
+		return result
+	}
+
+	// Get the user (if it exists)
+	filter := map[string]interface{}{}
+	filter["name"] = []interface{}{"=", ldap_user.Username}
+
+	filter_options := make(map[string]interface{})
+	user_data_result := DatamanFilter("user", filter, filter_options)
+
+	UdnLogLevel(udn_schema, log_debug, "DatamanFilter: RESULT: %v\n", user_data_result)
+
+	var user_data map[string]interface{}
+
+	if len(user_data_result) == 0 {
+		// Need to create this user
+		user_data = make(map[string]interface{})
+		user_data["name"] = ldap_user.Username
+		user_data["email"] = ldap_user.Email
+		user_data["name_full"] = ldap_user.FullName
+		user_data["user_domain_id"] = 1 //TODO(g): Make dynamic
+
+		// Save the LDAP data
+		user_map_json, err := json.Marshal(user_map)
+		if err != nil {
+			UdnLogLevel(udn_schema, log_error,  "Cannot marshal User Map data: %s\n", err)
+		}
+		user_data["ldap_data_json"] = string(user_map_json)
+
+		// Save the new user into the DB
+		options_map := make(map[string]interface{})
+		user_data = DatamanSet("user", user_data, options_map)
+
+	} else {
+		//TODO(g): Remove once I can use filters...
+		for _, user_data_item := range user_data_result {
+			if user_data_item["name"] == ldap_user.Username {
+				// Save this user
+				user_data = user_data_item
+
+			}
+		}
+	}
+
+	// Get the web_user_session
+	web_user_session := map[string]interface{}{}
+	filter = make(map[string]interface{})
+	filter["user_id"] = []interface{}{"=", user_data["_id"]}
+	filter["web_site_id"] = []interface{}{"=", 1} //TODO(g): Make dynamic
+	filter_options = make(map[string]interface{})
+	web_user_session_filter := DatamanFilter("web_user_session", filter, filter_options)
+
+	if len(web_user_session_filter) == 0 {
+		// If we dont have a session, create one
+		web_user_session["user_id"] = user_data["_id"]
+		web_user_session["web_site_id"] = 1 //TODO(g): Make dynamic
+
+		//TODO(g): Something better than a UUID here?  I think its the best option actually.  Could salt it with a digest...
+		id := ksuid.New()
+		web_user_session["name"] = id.String()
+
+		// Save the new user session
+		options_map := make(map[string]interface{})
+		web_user_session = DatamanSet("web_user_session", web_user_session, options_map)
+
+	} else {
+		// Save the session information
+		web_user_session = web_user_session_filter[0]
+	}
+
+	//TODO(g): Ensure they have a user account in our DB, save the ldap_user data, update UDN with their session data...
+
+
+	//TODO(g): Login returns the SESSION_ID
+
+	result.Result = web_user_session["name"]
+
+	return result
+}
