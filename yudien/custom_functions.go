@@ -2538,7 +2538,7 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 	data = make(map[string]interface{})
 	data["name"] = robot_user["name"]
 	data["business_id"] = tsapi_business_id
-	data["secret_digest"] = robot_user["password_digest"]
+	data["secret"] = robot_user["password_digest"]
 	data["permissions"] = []interface{}{map[string]interface{}{
 		"source": map[string]interface{}{
 			"type": "=~",
@@ -2599,7 +2599,7 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 					data = make(map[string]interface{})
 					data["name"] = namespace["api_name"]
 					data["environment_id"] = environment_map["id"]
-					data["source"] = "api"
+					data["source"] = "mm"
 					data["retention_duration"] = "5s"	//TODO(g): Is this the total retention time?
 
 					UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: Data: Business Namespace Insert: %s\n", JsonDump(data))
