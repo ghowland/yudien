@@ -2242,9 +2242,9 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 
 			http_result := HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(make(map[string]interface{})), user, password)
 
-			UdnLogLevel(nil, log_trace, "DashboardItemEdit: TSAPI Prom Result: Business: %s\n", http_result)
+			tsapi_payload, _ := JsonLoadMap(string(http_result))
 
-
+			return_data["tsapi_render_data"] = TSAPI_Generate_Graph_Data(internal_database_name, tsapi_payload)
 
 
 			// Add this to the graph information
@@ -2264,6 +2264,121 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 	//TODO(g): Decide whether to always save or not...  Should only be done on demand.  input_map["save_dashboard_item"]==true, then we set it to nil or whatever
 
 	return return_data
+}
+
+
+func TSAPI_Generate_Graph_Data(internal_database_name string, tsapi_payload map[string]interface{}) map[string]interface{} {
+	data := make(map[string]interface{})
+
+	options := make(map[string]interface{})
+	options["db"] = internal_database_name
+
+	/*
+		"json_data": [
+		  {
+			"z": [],
+			"x": [],
+			"type": "scatter"
+		  }
+		],
+
+		"json_layout": {
+		  "title": "That One Thing We Measure",
+
+		  "showlegend": false
+
+		},
+
+		"json_options": {
+		  "displayModeBar": false
+		}
+	*/
+
+	title := fmt.Sprintf("TSAPI Title")
+
+	data["json_layout"] = map[string]interface{}{
+		"title": title,
+		"showlegend": true,
+	}
+	data["json_options"] = map[string]interface{}{
+		"displayModeBar": false,
+	}
+
+	// Array of Data Item maps
+	json_data_array := make([]interface{}, 0)
+
+	//UdnLogLevel(nil, log_trace, "TSAPI_Generate_Graph_Data: Payload: %s\n", JsonDump(tsapi_payload))
+
+	tsapi_result := tsapi_payload["data"].(map[string]interface{})["result"].([]interface{})
+
+	for _, item := range tsapi_result {
+		//UdnLogLevel(nil, log_trace, "TSAPI_Generate_Graph_Data: Item: %s\n", JsonDump(item))
+
+		metric_map := item.(map[string]interface{})["metric"].(map[string]interface{})
+		values := item.(map[string]interface{})["values"].([]interface{})
+
+		// Skip this one, it's just the start time and graphs poorly
+		if metric_map["__name__"] == "meta_start_time" {
+			continue
+		}
+
+		label_map := MapCopy(metric_map)
+		delete(label_map, "__name__")
+		delete(label_map, "hostname")
+		text_value := strings.Replace(JsonDump(label_map), "\n", "", -1)
+
+		x_array := make([]interface{}, 0)			// Times - Array of Series(Array)
+		y_array := make([]interface{}, 0)			// Values - Array of Series(Array)
+		text_array := make([]interface{}, 0)			// Text Label per Point - Array of Series(Array)
+
+		for _, value_array := range values {
+			x_value_int := int64(value_array.([]interface{})[0].(float64))
+
+			x_value := time.Unix(x_value_int, 0).Format(time_format_db)
+
+			y_str := value_array.([]interface{})[1].(string)
+			y_value, _ := strconv.ParseFloat(y_str, 64)
+
+			/*
+				  "metric": {
+					"__name__": "duration",
+					"hostname": "Geoffs-MacBook-Pro-2.local",
+					"service_monitor_id": "30",
+					"type": "http"
+				  },
+			*/
+
+			//UdnLogLevel(nil, log_trace, "TSAPI_Generate_Graph_Data: Item Pair: %d  --  %f  (%s)\n", x_value, y_value, y_error)
+
+			x_array = append(x_array, x_value)
+			y_array = append(y_array, y_value)
+			text_array = append(text_array, text_value)
+		}
+
+		// Build the data_item map
+		data_item := map[string]interface{}{
+			"type": "scatter",
+			"mode": "line",
+			"name": fmt.Sprintf("%s", metric_map["__name__"]),
+			"x": x_array,			// Times - Array of Series(Array)
+			"y": y_array,			// Values - Array of Series(Array)
+
+			"text": text_array,		// Text - Array of Series(Array)
+
+			//"mode": "markers",
+			//"marker": map[string]interface{}{
+			//	"size": 12,
+			//},
+		}
+
+		// Append the item
+		json_data_array = append(json_data_array, data_item)
+	}
+
+	data["json_data"] = json_data_array
+	//data["debug_alert"] = true
+
+	return data
 }
 
 func GetMapKeysAsSelector(data map[string]interface{}, prefix string) ([]string, []interface{}) {
