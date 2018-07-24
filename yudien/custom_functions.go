@@ -19,8 +19,7 @@ import (
 	"sort"
 	"encoding/base64"
 	"net/url"
-	"github.com/segmentio/ksuid"
-	"encoding/json"
+	"crypto"
 )
 
 const (
@@ -2301,7 +2300,9 @@ func TSAPI_Generate_Graph_Data(internal_database_name string, tsapi_payload map[
 		"showlegend": true,
 	}
 	data["json_options"] = map[string]interface{}{
-		"displayModeBar": false,
+		"displayModeBar": true,
+		"displaylogo": false,
+		"modeBarButtonsToRemove": []interface{}{"sendDataToCloud", "autoScale2d", "pan2d", "zoom2d", "select2d", "lasso2d", "zoomIn2d", "zoomOut2d"},
 	}
 
 	// Array of Data Item maps
@@ -2318,7 +2319,7 @@ func TSAPI_Generate_Graph_Data(internal_database_name string, tsapi_payload map[
 		values := item.(map[string]interface{})["values"].([]interface{})
 
 		// Skip this one, it's just the start time and graphs poorly
-		if metric_map["__name__"] == "meta_start_time" {
+		if metric_map["__name__"] == "meta_start_time" || metric_map["__name__"] == "meta_duration" {
 			continue
 		}
 
@@ -2363,7 +2364,7 @@ func TSAPI_Generate_Graph_Data(internal_database_name string, tsapi_payload map[
 			"x": x_array,			// Times - Array of Series(Array)
 			"y": y_array,			// Values - Array of Series(Array)
 
-			"text": text_array,		// Text - Array of Series(Array)
+			//"text": text_array,		// Text - Array of Series(Array)
 
 			//"mode": "markers",
 			//"marker": map[string]interface{}{
@@ -2784,133 +2785,136 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 func UDN_Custom_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	result := UdnResult{}
 
+	UdnLogLevel(udn_schema, log_error, "Custom Login: %v\n\n", args)
+
 	//business_name := GetResult(args[0], type_string).(string)
-	username := GetResult(args[1], type_string).(string)
-	password := GetResult(args[2], type_string).(string)
+	internal_database_name := GetResult(args[0], type_string).(string)
+	business_name := GetResult(args[1], type_string).(string)
+	username := GetResult(args[2], type_string).(string)
+	password := GetResult(args[3], type_string).(string)
 
-	ldap_user := LdapLogin(username, password)
-
-	user_map := make(map[string]interface{})
-
-	// This is for using this without LDAP.
-	//TODO(z): Allow multiple static users from config file rather than just admin for now
-	ldap_override_admin := true
-
-	// Get the user data, if they authed
-	if ldap_user.IsAuthenticated == true {
-		user_map["first_name"] = ldap_user.FirstName
-		user_map["full_name"] = ldap_user.FullName
-		user_map["email"] = ldap_user.Email
-		user_map["home_dir"] = ldap_user.HomeDir
-		user_map["uid"] = ldap_user.Uid
-		user_map["username"] = ldap_user.Username
-		user_map["groups"] = ldap_user.Groups
-		user_map["error"] = ""
-
-		// Store it in UDN global as well
-		//TODO(g): Save into the DB as our User Session...
-		udn_data["ldap_user"] = user_map
-
-		UdnLogLevel(udn_schema, log_info,"LDAP Authenticated: %s\n\n", user_map["username"])
-
-	} else if user, user_found := DevelopmentUsers[username]; user_found && ldap_override_admin && username == user.Username && password == user.Password {
-		user_map["first_name"] = user.Data.FirstName
-		user_map["full_name"] = user.Data.FirstName + " " + user.Data.LastName
-		user_map["email"] = user.Data.Email
-		user_map["home_dir"] = user.Data.HomeDir
-		user_map["uid"] = user.Data.Uid
-		user_map["username"] = user.Data.Username
-		user_map["groups"] = user.Data.Groups
-		user_map["error"] = ""
-
-		ldap_user.Username = user_map["username"].(string)
-
-		UdnLogLevel(udn_schema, log_info,"LDAP Override: Admin User\n\n")
-
-	} else {
-		user_map["error"] = ldap_user.Error
-
-		result.Result = user_map
-		result.Error = ldap_user.Error
-
-		UdnLogLevel(udn_schema, log_error, "LDAP ERROR: %s\n\n", result.Error)
-
-		return result
-	}
+	options := map[string]interface{}{"db": internal_database_name}
 
 	// Get the user (if it exists)
 	filter := map[string]interface{}{}
-	filter["name"] = []interface{}{"=", ldap_user.Username}
+	filter["alias"] = []interface{}{"=", business_name}
+	business_array := DatamanFilter("business", filter, options)
 
-	filter_options := make(map[string]interface{})
-	user_data_result := DatamanFilter("user", filter, filter_options)
+	if len(business_array) == 0 {
+		UdnLogLevel(udn_schema, log_debug, "Custom Login: Unknown business: %s: %v\n", business_name, business_array)
+		result.Result = "invalid"
+		return result
+	}
 
-	UdnLogLevel(udn_schema, log_debug, "DatamanFilter: RESULT: %v\n", user_data_result)
+	business := business_array[0]
 
-	var user_data map[string]interface{}
+	filter = map[string]interface{}{}
+	filter["business_id"] = []interface{}{"=", business["_id"]}
+	filter["name"] = []interface{}{"=", username}
 
-	if len(user_data_result) == 0 {
-		// Need to create this user
-		user_data = make(map[string]interface{})
-		user_data["name"] = ldap_user.Username
-		user_data["email"] = ldap_user.Email
-		user_data["name_full"] = ldap_user.FullName
-		user_data["user_domain_id"] = 1 //TODO(g): Make dynamic
+	user_array := DatamanFilter("business_user", filter, options)
 
-		// Save the LDAP data
-		user_map_json, err := json.Marshal(user_map)
-		if err != nil {
-			UdnLogLevel(udn_schema, log_error,  "Cannot marshal User Map data: %s\n", err)
-		}
-		user_data["ldap_data_json"] = string(user_map_json)
+	UdnLogLevel(udn_schema, log_debug, "Custom Login: User Array: %v\n", user_array)
 
-		// Save the new user into the DB
-		options_map := make(map[string]interface{})
-		user_data = DatamanSet("user", user_data, options_map)
-
+	if len(user_array) == 0 {
+		UdnLogLevel(udn_schema, log_debug, "Custom Login: Unknown user: %v\n", username)
+		result.Result = "invalid"
+		return result
 	} else {
-		//TODO(g): Remove once I can use filters...
-		for _, user_data_item := range user_data_result {
-			if user_data_item["name"] == ldap_user.Username {
-				// Save this user
-				user_data = user_data_item
+		user := user_array[0]
 
+		// Test the password
+		hasher := crypto.SHA512.New()
+
+		salted_password := fmt.Sprintf("%s.%s", user["password_salt"], password)
+
+		UdnLogLevel(udn_schema, log_debug, "Custom Login: Password Salt: %s\n", salted_password)
+
+		hasher.Write([]byte(salted_password))
+		password_digest := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+
+		UdnLogLevel(udn_schema, log_debug, "Custom Login: Password Digest: %s\n", password_digest)
+
+		// If the password is correct
+		if password_digest == user["password_digest"] {
+			filter = map[string]interface{}{}
+			filter["business_user_id"] = []interface{}{"=", user["_id"]}
+			user_session_array := DatamanFilter("business_user_session", filter, options)
+
+			// If we dont already have a user session, make one
+			if len(user_session_array) == 0 {
+				// Create a new session token
+				hasher := crypto.SHA512.New()
+
+				session_hash_string := fmt.Sprintf("%s.%s.%s", username, password, time.Now().Format(time_format_db))
+				hasher.Write([]byte(session_hash_string))
+				session_hash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+
+				// Create a user session
+				user_session := map[string]interface{}{
+					"business_user_id": user["_id"],
+					"value": session_hash,
+					"created": time.Now(),
+				}
+
+				user_session_result := DatamanInsert("business_user_session", user_session, options)
+
+				UdnLogLevel(udn_schema, log_debug, "Custom Login: User Session Result: %v\n", user_session_result)
+
+				result.Result = user_session_result["value"]
+			} else {
+				// Return their user session name
+				result.Result = user_session_array[0]["value"]
 			}
+		} else {
+			UdnLogLevel(udn_schema, log_debug, "Custom Login: Passwords do not match: %s != %s\n", password_digest, user["password_digest"])
 		}
 	}
-
-	// Get the web_user_session
-	web_user_session := map[string]interface{}{}
-	filter = make(map[string]interface{})
-	filter["user_id"] = []interface{}{"=", user_data["_id"]}
-	filter["web_site_id"] = []interface{}{"=", 1} //TODO(g): Make dynamic
-	filter_options = make(map[string]interface{})
-	web_user_session_filter := DatamanFilter("web_user_session", filter, filter_options)
-
-	if len(web_user_session_filter) == 0 {
-		// If we dont have a session, create one
-		web_user_session["user_id"] = user_data["_id"]
-		web_user_session["web_site_id"] = 1 //TODO(g): Make dynamic
-
-		//TODO(g): Something better than a UUID here?  I think its the best option actually.  Could salt it with a digest...
-		id := ksuid.New()
-		web_user_session["name"] = id.String()
-
-		// Save the new user session
-		options_map := make(map[string]interface{})
-		web_user_session = DatamanSet("web_user_session", web_user_session, options_map)
-
-	} else {
-		// Save the session information
-		web_user_session = web_user_session_filter[0]
-	}
-
-	//TODO(g): Ensure they have a user account in our DB, save the ldap_user data, update UDN with their session data...
-
-
-	//TODO(g): Login returns the SESSION_ID
-
-	result.Result = web_user_session["name"]
 
 	return result
 }
+
+func UDN_Custom_Auth(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	result := UdnResult{}
+
+	UdnLogLevel(udn_schema, log_error, "Custom Auth: %v\n\n", args)
+
+	//business_name := GetResult(args[0], type_string).(string)
+	internal_database_name := GetResult(args[0], type_string).(string)
+	session := GetResult(args[1], type_string).(string)
+
+	options := map[string]interface{}{"db": internal_database_name}
+
+	// Get the user (if it exists)
+	filter := map[string]interface{}{}
+	filter["value"] = []interface{}{"=", session}
+	business_user_session_array := DatamanFilter("business_user_session", filter, options)
+
+	if len(business_user_session_array) == 0 {
+		UdnLogLevel(udn_schema, log_debug, "Custom Auth: Unknown session: %s\n", session)
+		result.Result = map[string]interface{}{}
+		return result
+	}
+
+	business_user_session := business_user_session_array[0]
+
+	filter = map[string]interface{}{}
+	filter["_id"] = []interface{}{"=", business_user_session["business_user_id"]}
+
+	user_array := DatamanFilter("business_user", filter, options)
+
+	UdnLogLevel(udn_schema, log_debug, "Custom Login: User Array: %v\n", user_array)
+
+	if len(user_array) == 0 {
+		UdnLogLevel(udn_schema, log_debug, "Custom Auth: Unknown user: %v\n", business_user_session)
+		result.Result = map[string]interface{}{}
+		return result
+	} else {
+		user := user_array[0]
+
+		result.Result = user
+	}
+
+	return result
+}
+

@@ -105,6 +105,7 @@ type DatabaseAuthenticationPassword struct {
 type DatabaseAuthentication struct {
 	Name DatabaseAuthenticationName `json:"name"`
 	Password DatabaseAuthenticationPassword `json:"password"`
+	Verify string `json:"verify"`
 }
 
 type AuthenticationConfig struct {
@@ -377,6 +378,7 @@ func InitUdn() {
 		"__custom_tsapi_business_update": UDN_Custom_TSAPI_Business_Update,		// CUSTOM:...
 
 		"__custom_login": UDN_Custom_Login,		// CUSTOM:...
+		"__custom_auth": UDN_Custom_Auth,		// CUSTOM:...
 	}
 
 	PartTypeName = map[int]string{
