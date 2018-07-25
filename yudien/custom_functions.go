@@ -2875,13 +2875,17 @@ func UDN_Custom_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 }
 
 func UDN_Custom_Auth(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
+	result_map := map[string]interface{}{}
 	result := UdnResult{}
+	result.Result = result_map
 
 	UdnLogLevel(udn_schema, log_error, "Custom Auth: %v\n\n", args)
 
 	//business_name := GetResult(args[0], type_string).(string)
 	internal_database_name := GetResult(args[0], type_string).(string)
 	session := GetResult(args[1], type_string).(string)
+
+	result_map["session"] = session
 
 	options := map[string]interface{}{"db": internal_database_name}
 
@@ -2892,7 +2896,6 @@ func UDN_Custom_Auth(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 
 	if len(business_user_session_array) == 0 {
 		UdnLogLevel(udn_schema, log_debug, "Custom Auth: Unknown session: %s\n", session)
-		result.Result = map[string]interface{}{}
 		return result
 	}
 
@@ -2907,12 +2910,11 @@ func UDN_Custom_Auth(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 
 	if len(user_array) == 0 {
 		UdnLogLevel(udn_schema, log_debug, "Custom Auth: Unknown user: %v\n", business_user_session)
-		result.Result = map[string]interface{}{}
 		return result
 	} else {
 		user := user_array[0]
 
-		result.Result = user
+		result_map["user"] = user
 	}
 
 	return result
