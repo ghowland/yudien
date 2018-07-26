@@ -2915,6 +2915,10 @@ func UDN_Custom_Auth(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 		user := user_array[0]
 
 		result_map["user"] = user
+
+		// Get any other data we want, and put it into the result map
+		business := DatamanGet("business", int(user["business_id"].(int64)), options)
+		result_map["business"] = business
 	}
 
 	return result
