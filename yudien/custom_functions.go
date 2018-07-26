@@ -2153,8 +2153,6 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 	}
 
 
-
-
 	UdnLogLevel(nil, log_trace, "DashboardItemEdit: Starting Graph: %s\n", JsonDump(graph))
 	UdnLogLevel(nil, log_trace, "DashboardItemEdit: Input Map: %s\n", JsonDump(input_map))
 
@@ -2235,6 +2233,7 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 			query_arg.Add("query", fmt.Sprintf("{service_monitor_id=\"%d\"}", service_monitor_id))
 			query_encoded := query_arg.Encode()
 
+			// This is the new query
 			path := fmt.Sprintf("v1/metrics/%s/%s/%s/prometheus/api/v1/query_range?%s&start=%d&end=%d&step=%d", source, env, namespace, query_encoded, start, end, step)
 
 			UdnLogLevel(nil, log_trace, "DashboardItemEdit: TSAPI Prom Path: Business: %s\n", path)
@@ -2243,6 +2242,8 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 
 			tsapi_payload, _ := JsonLoadMap(string(http_result))
 
+
+			// This is the new data
 			return_data["tsapi_render_data"] = TSAPI_Generate_Graph_Data(internal_database_name, tsapi_payload)
 
 

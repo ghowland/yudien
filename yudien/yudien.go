@@ -71,6 +71,10 @@ type LoggingConfig struct {
 	Level string `json:"level"`
 }
 
+type WebsiteConfig struct {
+	DefaultWebWidgetThemeId  int `json:"default_web_widget_theme_id"`
+}
+
 type StaticUser struct {
 	Username  string `json:"username"`
 	Password string `json:"password"`
