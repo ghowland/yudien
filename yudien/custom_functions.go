@@ -1,30 +1,31 @@
 package yudien
 
 import (
+	"bytes"
+	"crypto"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
+	"encoding/base64"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/smtp"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
 	. "github.com/ghowland/yudien/yudiencore"
 	. "github.com/ghowland/yudien/yudiendata"
 	. "github.com/ghowland/yudien/yudienutil"
-	"time"
-	"strings"
-	"strconv"
-	"fmt"
-	"crypto/tls"
-	"crypto/x509"
-	"net/http"
-	"log"
-	"io/ioutil"
-	"bytes"
-	"net/smtp"
-	"sort"
-	"encoding/base64"
-	"net/url"
-	"crypto"
 )
 
 const (
-	time_format_db = "2006-01-02 15:04:05"
-	time_format_go = "2006-01-02T15:04:05"
+	time_format_db   = "2006-01-02 15:04:05"
+	time_format_go   = "2006-01-02T15:04:05"
 	time_format_date = "2006-01-02"
 )
 
@@ -34,12 +35,11 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 	start_populating := GetResult(args[2], type_string).(string)
 	business_user_id := GetResult(args[3], type_int).(int64)
 
-	start_populating = strings.Replace(start_populating," ", "T", -1)
+	start_populating = strings.Replace(start_populating, " ", "T", -1)
 
 	start_time, err := time.Parse(time_format_go, start_populating)
 
 	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: %v\n", start_time, err)
-
 
 	result := UdnResult{}
 	result.Result = nil
@@ -125,9 +125,7 @@ func UDN_Custom_PopulateScheduleDutyResponsibility(db *sql.DB, udn_schema map[st
 	timeline_items := DatamanFilter("schedule_timeline_item", filter, options)
 	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Schedule Timeline Items: %v\n", timeline_items)
 
-
 	EvaluateShiftTimes(database, responsibility, shifts, start_time, business_user_id, roster_users, business_users)
-
 
 	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Populate Schedule: Duty Responsibility: Result: %v\n", result.Result)
 
@@ -154,7 +152,7 @@ func EvaluateShiftTimes(database string, responsibility map[string]interface{}, 
 
 	// If we have an automated adjustment of the current user for this responsibility, then get the new current user
 	if responsibility["populate_shift_user_priority_offset"].(int64) != 0 {
-		cur_roster_user = FindNextRosterUser(cur_roster_user["priority"].(int64) + responsibility["populate_shift_user_priority_offset"].(int64), roster_users)
+		cur_roster_user = FindNextRosterUser(cur_roster_user["priority"].(int64)+responsibility["populate_shift_user_priority_offset"].(int64), roster_users)
 	}
 
 	for {
@@ -176,9 +174,9 @@ func EvaluateShiftTimes(database string, responsibility map[string]interface{}, 
 			// Create our timeline record
 			timeline_item := map[string]interface{}{
 				"schedule_timeline_id": responsibility["schedule_timeline_id"],
-				"time_start": shift_start.Format(time_layout),
-				"time_stop": shift_end.Format(time_layout),
-				"business_user_id": cur_roster_user["business_user_id"],
+				"time_start":           shift_start.Format(time_layout),
+				"time_stop":            shift_end.Format(time_layout),
+				"business_user_id":     cur_roster_user["business_user_id"],
 			}
 
 			// Save the timeline item
@@ -187,7 +185,7 @@ func EvaluateShiftTimes(database string, responsibility map[string]interface{}, 
 			// Update our current start time, to be the end of the previous shift
 			cur_start_time = shift_end
 			// Go to the next timeline user
-			cur_roster_user = FindNextRosterUser(cur_roster_user["priority"].(int64) + shift["duty_roster_priority_increment"].(int64), roster_users)
+			cur_roster_user = FindNextRosterUser(cur_roster_user["priority"].(int64)+shift["duty_roster_priority_increment"].(int64), roster_users)
 		}
 
 		// If we have past the time we want to populate until
@@ -241,7 +239,7 @@ func FindRosterUser(business_user_id int64, roster_users []map[string]interface{
 
 func GetShiftTimeStartEnd(start_time time.Time, shift map[string]interface{}, shifts []map[string]interface{}) (time.Time, time.Time) {
 	// Find the shift start
-	shift_start := start_time.AddDate(0, 0, int(shift["start_day_of_week"].(int64)) - int(start_time.Weekday()))
+	shift_start := start_time.AddDate(0, 0, int(shift["start_day_of_week"].(int64))-int(start_time.Weekday()))
 
 	start_hour, start_minute, start_second := shift_start.Clock()
 	start_hour_duration := GetTimeOfDayDuration(start_hour, start_minute, start_second)
@@ -267,11 +265,12 @@ func GetTimeOfDayFromString(time_of_day string) (int, int, int) {
 }
 
 func GetTimeOfDayDuration(hour int, minute int, second int) time.Duration {
-	time_seconds := hour * 60 * 60 + minute * 60 + second
+	time_seconds := hour*60*60 + minute*60 + second
 	time_seconds_duration := time.Duration(time_seconds) * time.Second
 
 	return time_seconds_duration
 }
+
 /*
 func UDN_Custom_TaskMan_AddTask(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
@@ -425,7 +424,7 @@ func HttpsRequest(hostname string, port int, path string, method string, client_
 		if err != nil {
 			log.Panic(err)
 		}
-		
+
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM([]byte(certificate_authority))
 
@@ -454,7 +453,6 @@ func HttpsRequest(hostname string, port int, path string, method string, client_
 	}
 	request.Header.Add("Content-Type", "application/json")
 
-
 	// Do the request
 	resp, err := client.Do(request)
 	if err != nil {
@@ -472,7 +470,6 @@ func HttpsRequest(hostname string, port int, path string, method string, client_
 
 	return data
 }
-
 
 func HttpRequest(hostname string, port int, path string, method string, data_json string, user string, password string) []byte {
 
@@ -496,7 +493,7 @@ func HttpRequest(hostname string, port int, path string, method string, data_jso
 		auth_str := fmt.Sprintf("%s:%s", user, password)
 		auth_base64 := base64.StdEncoding.EncodeToString([]byte(auth_str))
 		//UdnLogLevel(nil, log_trace, "HttpRequest: Auth: %s:   Basic %s\n", auth_str, auth_base64)
-		request.Header.Add("Authorization"," Basic " + auth_base64)
+		request.Header.Add("Authorization", " Basic "+auth_base64)
 	}
 
 	// Do the request
@@ -542,7 +539,7 @@ func CodeExecute(database string, code_id int, config_map map[string]interface{}
 	filter := map[string]interface{}{
 		"code_id": []interface{}{"=", code_id},
 	}
-	options["sort"] = []string{"priority",}
+	options["sort"] = []string{"priority"}
 	code_args := DatamanFilter("code_arg", filter, options)
 
 	// Get the results for our args
@@ -596,9 +593,8 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
-
 	filter := map[string]interface{}{
-		//"name": []interface{}{"in", metric_name_array},		// Name is in the labelset now as __name__
+	//"name": []interface{}{"in", metric_name_array},		// Name is in the labelset now as __name__
 	}
 	//TODO(g): May want to add a sort option that can be passed in as arg3, since we could organize these somehow.  Remove comment if not needed.
 	name_filtered := DatamanFilter("business_environment_namespace_metric", filter, options)
@@ -646,13 +642,11 @@ func UDN_Custom_Metric_Filter(db *sql.DB, udn_schema map[string]interface{}, udn
 		}
 	}
 
-
-
 	UdnLogLevel(udn_schema, log_trace, "CUSTOM: Metric: Filter: Result: %s\n", JsonDump(labelset_filtered))
 
 	result := UdnResult{}
 	result.Result = labelset_filtered
-	
+
 	return result
 }
 
@@ -680,7 +674,7 @@ func MetricGetValues(internal_database_name string, duration_ms int64, offset_ms
 	for _, metric := range input.([]map[string]interface{}) {
 		filter := map[string]interface{}{
 			"time_store_item_id": []interface{}{"=", metric["time_store_item_id"]},
-			"created": []interface{}{">", time.Now().Add(-time.Millisecond * time.Duration(duration_ms))},
+			"created":            []interface{}{">", time.Now().Add(-time.Millisecond * time.Duration(duration_ms))},
 		}
 		//TODO(g): Will have to do N queries for all the different tables the data is in
 		metric_values := DatamanFilter("time_store_partition_timestorepartitionid", filter, options)
@@ -755,7 +749,6 @@ func MetricMatchRules(data map[string]interface{}, rules []interface{}) bool {
 				is_match := MetricMatchRuleTerm(data["data_json"].(map[string]interface{}), field, term, value)
 
 				UdnLogLevel(nil, log_trace, "Metric Match Rules: %s: %v:  Matched: %v\n", field, rule_map, is_match)
-
 
 				if !is_match {
 					matched_all_rules = false
@@ -854,7 +847,6 @@ func UDN_Custom_Metric_Handle_Outage(db *sql.DB, udn_schema map[string]interface
 		}
 	}
 
-
 	result := UdnResult{}
 	result.Result = nil
 
@@ -869,7 +861,6 @@ func MetricPopulateOutage(internal_database_name string, config map[string]inter
 	// Check to see if there are any open outages
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
-
 
 	// Check to see if this alert is part of the open outages, and update them
 	filter := map[string]interface{}{
@@ -886,7 +877,7 @@ func MetricPopulateOutage(internal_database_name string, config map[string]inter
 		filter := map[string]interface{}{
 			"is_default": []interface{}{"=", true},
 		}
-		options["sort"] = []string{"_id"}		// Always in the same order, so we have a consistent default
+		options["sort"] = []string{"_id"} // Always in the same order, so we have a consistent default
 		business_service_array := DatamanFilter("business_service", filter, options)
 		options["sort"] = nil
 
@@ -916,7 +907,7 @@ func MetricPopulateOutage(internal_database_name string, config map[string]inter
 	new_outage_item := make(map[string]interface{})
 	//new_outage_item["business_id"] = health_check["business_id"]
 	new_outage_item["outage_id"] = outage["_id"]
-	new_outage_item["outage_item_type_id"] = 1	// Activated
+	new_outage_item["outage_item_type_id"] = 1 // Activated
 	new_outage_item["health_check_id"] = health_check["_id"]
 	new_outage_item["time_start"] = time.Now()
 	new_outage_item["business_environment_namespace_metric_id"] = time_store_item["business_environment_namespace_metric_id"]
@@ -930,11 +921,11 @@ func MetricPopulateOutage(internal_database_name string, config map[string]inter
 	UdnLogLevel(nil, log_trace, "CUSTOM: Metric: Populate Outage: Service Outage Item: %v\n", outage_item)
 
 	/*
-	// See if we already have a notice on this
-	filter["outage_id"] = outage["_id"]
-	filter["time_store_item_id"] = true
-	filter["time_stop"] = nil
-	outage_item_array := DatamanFilter("outage_item", filter, options)
+		// See if we already have a notice on this
+		filter["outage_id"] = outage["_id"]
+		filter["time_store_item_id"] = true
+		filter["time_stop"] = nil
+		outage_item_array := DatamanFilter("outage_item", filter, options)
 	*/
 
 	// Kick off the Escalation Policy to determine if it's time to Alert
@@ -958,17 +949,15 @@ func ProcessOpenOutages(internal_database_name string) {
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
-
 	//TODO(g): Check to see if we need to alert again, or we can close the outage, or if we are flapping, etc.  This is the state handler.
 
 	// All activated (time_stop==NULL) outage_items, check to see if they have healed, and deal with that
 	//TODO(g)...
 
-
 	filter := map[string]interface{}{
 		"time_stop": []interface{}{"=", nil},
 	}
-	options["sort"] = []string{"_id"}		// Always in the same order, so we have a consistent default
+	options["sort"] = []string{"_id"} // Always in the same order, so we have a consistent default
 	outage_item_array := DatamanFilter("outage_item", filter, options)
 	options["sort"] = nil
 
@@ -1031,7 +1020,7 @@ func OutageAlert(internal_database_name string, outage map[string]interface{}, o
 		"outage_id": []interface{}{"=", outage["_id"]},
 		"time_stop": []interface{}{"=", nil},
 	}
-	options["sort"] = []string{"time_start"}		// Always in the same order, so we have a consistent default
+	options["sort"] = []string{"time_start"} // Always in the same order, so we have a consistent default
 	outage_item_array := DatamanFilter("outage_item", filter, options)
 	options["sort"] = nil
 
@@ -1094,7 +1083,7 @@ func OutageAlert(internal_database_name string, outage map[string]interface{}, o
 		filter := map[string]interface{}{
 			"outage_id": []interface{}{"=", outage["_id"]},
 		}
-		options["sort"] = []string{"time_stop"}		// Always in the same order, so we have a consistent default
+		options["sort"] = []string{"time_stop"} // Always in the same order, so we have a consistent default
 		outage_item_array := DatamanFilter("outage_item", filter, options)
 		options["sort"] = nil
 
@@ -1173,11 +1162,10 @@ func GetEscalationPolicyUserContactId(internal_database_name string, escalation_
 
 	duty_responsibility := DatamanGet("duty_responsibility", int(duty_responsibility_shift["duty_responsibility_id"].(int64)), options)
 
-
 	filter := map[string]interface{}{
 		"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
-		"time_start": []interface{}{"<", at_time},
-		"time_stop": []interface{}{">", at_time},
+		"time_start":           []interface{}{"<", at_time},
+		"time_stop":            []interface{}{">", at_time},
 	}
 	schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
 
@@ -1203,7 +1191,6 @@ func GetEscalationPolicyUserContactId(internal_database_name string, escalation_
 		business_user_contact_id = -1
 	}
 
-
 	return business_user_contact_id
 }
 
@@ -1216,7 +1203,7 @@ func GetAlertEscalationPolicyItemIdAndInfo(internal_database_name string, alert 
 	// Find the first Escalation Policy (parent_id==NULL) for this Alert.  This is where we start.
 	filter := map[string]interface{}{
 		"escalation_policy_id": []interface{}{"=", alert["escalation_policy_id"]},
-		"parent_id": []interface{}{"=", nil},
+		"parent_id":            []interface{}{"=", nil},
 	}
 	escalation_policy_item_array := DatamanFilter("escalation_policy_item", filter, options)
 
@@ -1284,36 +1271,35 @@ func SendAlert(internal_database_name string, alert_notification map[string]inte
 		UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
 	}
 
-
 	/*
-	c, err := smtp.Dial("localhost:25")
-	if err != nil {
-		UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
-	}
-	defer c.Close()
+		c, err := smtp.Dial("localhost:25")
+		if err != nil {
+			UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
+		}
+		defer c.Close()
 
-	// Set the sender and recipient.
-	c.Mail(from_str)
-	c.Rcpt(to_str)
+		// Set the sender and recipient.
+		c.Mail(from_str)
+		c.Rcpt(to_str)
 
-	// Send the email body.
-	wc, err := c.Data()
-	if err != nil {
-		UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
-	}
-	defer wc.Close()
+		// Send the email body.
+		wc, err := c.Data()
+		if err != nil {
+			UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
+		}
+		defer wc.Close()
 
-	buf := bytes.NewBufferString(alert_notification["content_body"].(string))
-	if _, err = buf.WriteTo(wc); err != nil {
-		UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
-	}
+		buf := bytes.NewBufferString(alert_notification["content_body"].(string))
+		if _, err = buf.WriteTo(wc); err != nil {
+			UdnLogLevel(nil, log_error, "SendAlert: %s\n", err)
+		}
 
 	*/
 }
 
 func UDN_Custom_Metric_Escalation_Policy_Oncall(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult {
 	internal_database_name := GetResult(args[0], type_string).(string)
-	escalation_policy_id:= GetResult(args[1], type_int).(int64)
+	escalation_policy_id := GetResult(args[1], type_int).(int64)
 
 	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
 	data := EscalationPolicyGetOncall(internal_database_name, escalation_policy_id, time.Now())
@@ -1340,7 +1326,7 @@ func GetEscalationPolicyInfo(internal_database_name string, escalation_policy_id
 	filter := map[string]interface{}{
 		"escalation_policy_id": []interface{}{"=", escalation_policy_id},
 	}
-	options["sort"] = []string{"format_priority"}		// Always in the same order, so we have a consistent default
+	options["sort"] = []string{"format_priority"} // Always in the same order, so we have a consistent default
 	escalation_policy_item_array := DatamanFilter("escalation_policy_item", filter, options)
 	options["sort"] = nil
 
@@ -1395,8 +1381,8 @@ func GetEscalationPolicyItemInfo(internal_database_name string, escalation_polic
 
 	filter := map[string]interface{}{
 		"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
-		"time_start": []interface{}{"<", at_time},
-		"time_stop": []interface{}{">", at_time},
+		"time_start":           []interface{}{"<", at_time},
+		"time_stop":            []interface{}{">", at_time},
 	}
 	schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
 
@@ -1441,7 +1427,6 @@ func UDN_Custom_Monitor_Post_Process_Change(db *sql.DB, udn_schema map[string]in
 	api_server_connection_id := GetResult(args[4], type_int).(int64)
 	ts_tablename := GetResult(args[5], type_string).(string)
 
-
 	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
 	error_map := MonitorPostProcessChange(internal_database_name, ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
 
@@ -1472,11 +1457,11 @@ func MonitorPostProcessChange(internal_database_name string, ts_database_table s
 
 			// Create the time_store_item for this metric
 			new_time_store_item := map[string]interface{}{
-				"business_id": monitor["business_id"],
-				"time_store_id": time_store["_id"],
+				"business_id":     monitor["business_id"],
+				"time_store_id":   time_store["_id"],
 				"shared_group_id": 1,
-				"record_id": monitor["_id"],
-				"name": monitor["name"],
+				"record_id":       monitor["_id"],
+				"name":            monitor["name"],
 				//"business_environment_namespace_metric_id": nil,
 			}
 
@@ -1485,7 +1470,7 @@ func MonitorPostProcessChange(internal_database_name string, ts_database_table s
 			// Create the business_environment_namespace_metric record
 			new_business_environment_namespace_metric := map[string]interface{}{
 				"business_environment_namespace_id": monitor["business_environment_namespace_id"],
-				"name": monitor["name"],
+				"name":               monitor["name"],
 				"service_monitor_id": monitor["_id"],
 				"time_store_item_id": time_store_item["_id"],
 			}
@@ -1507,7 +1492,6 @@ func MonitorPostProcessChange(internal_database_name string, ts_database_table s
 
 	// Go through all our monitors and update any that have changed, add any that are missing, remove (STOP) any that we dont know about
 	MonitorUpdateAll(internal_database_name, ts_database_table, ts_connection_database_name, ts_tablename, api_server_connection_table, api_server_connection_id)
-
 
 	// If we have errors, put them back in with field_label dotted keys, so we can re-render them in the form
 	error_map := make(map[string]interface{})
@@ -1554,7 +1538,6 @@ func MonitorUpdateAll(internal_database_name string, ts_database_table string, t
 
 	UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: Task Map: %s\n", JsonDump(tasks))
 	UdnLogLevel(nil, log_trace, "CUSTOM: MonitorUpdateAll: Time Store Monitor Map: %s\n", JsonDump(time_store_item_monitor_map))
-
 
 	// Go through all the tasks and any that we dont know about, remove
 	for task_key, _ := range tasks {
@@ -1618,7 +1601,7 @@ func TaskMan_GetData(internal_database_name string, service_monitor_id int64, ts
 	executor_args["data_returner"] = "tsapi"
 	data_returner_args := make(map[string]interface{})
 	data_returner_args["url"] = fmt.Sprintf("http://localhost:8888/v1/metrics/mm/%s/%s/mmp/write", environment["api_name"], business_environment_namespace["api_name"])
-	data_returner_args["username"] = business_user_robot["name"]		// unique names for now
+	data_returner_args["username"] = business_user_robot["name"] // unique names for now
 	data_returner_args["password"] = business_user_robot["password_digest"]
 	label_map := make(map[string]interface{})
 	label_map["__name__"] = business_environment_namespace_metric["name"]
@@ -1705,7 +1688,6 @@ func UDN_Custom_Duty_Shift_Summary(db *sql.DB, udn_schema map[string]interface{}
 	time_start, _ := time.Parse(time_format_go, time_start_str)
 	time_stop, _ := time.Parse(time_format_go, time_stop_str)
 
-
 	// Do all the work here, so I can call it from Go as well as UDN.  Need to cover the complex ground outside of UDN for now.
 	error_map := GetDutyShiftSummary(internal_database_name, duty_id, time_start, time_stop)
 
@@ -1735,8 +1717,8 @@ func GetDutyShiftSummary(internal_database_name string, duty_id int64, time_star
 	for _, duty_responsibility := range duty_responsibility_array {
 		filter := map[string]interface{}{
 			"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
-			"time_stop": []interface{}{">", time_start},
-			"time_start": []interface{}{"<", time_stop},
+			"time_stop":            []interface{}{">", time_start},
+			"time_start":           []interface{}{"<", time_stop},
 		}
 		options["sort"] = []string{"time_start"}
 		schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
@@ -1791,7 +1773,6 @@ func GetDutyShiftSummary(internal_database_name string, duty_id int64, time_star
 		result_array = append(result_array, last_item)
 	}
 
-
 	return result_array
 }
 
@@ -1812,15 +1793,14 @@ func GetDutyResponsibilityCurrentUser(internal_database_name string, duty_respon
 	options := make(map[string]interface{})
 	options["db"] = internal_database_name
 
-
 	duty_responsibility := DatamanGet("duty_responsibility", int(duty_responsibility_id), options)
 
 	now := time.Now()
 
 	filter := map[string]interface{}{
 		"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
-		"time_start": []interface{}{"<", now},
-		"time_stop": []interface{}{">", now},
+		"time_start":           []interface{}{"<", now},
+		"time_stop":            []interface{}{">", now},
 	}
 	options["sort"] = []string{"time_start"}
 	schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
@@ -1855,7 +1835,6 @@ func GetDutyRosterUserShiftInfo(internal_database_name string, duty_roster_id in
 
 	duty_responsibility := DatamanGet("duty_responsibility", int(duty_responsibility_id), options)
 
-
 	filter := map[string]interface{}{
 		"duty_roster_id": []interface{}{"=", duty_roster_id},
 	}
@@ -1872,7 +1851,7 @@ func GetDutyRosterUserShiftInfo(internal_database_name string, duty_roster_id in
 
 		filter := map[string]interface{}{
 			"schedule_timeline_id": []interface{}{"=", duty_responsibility["schedule_timeline_id"]},
-			"business_user_id": []interface{}{"=", business_user["_id"]},
+			"business_user_id":     []interface{}{"=", business_user["_id"]},
 		}
 		options["sort"] = []string{"time_start"}
 		schedule_timeline_item_array := DatamanFilter("schedule_timeline_item", filter, options)
@@ -1962,14 +1941,13 @@ func ActivityDaily(internal_database_name string, table_name string, time_start_
 		start, _ = time.Parse(time_format_db, time_start_str)
 	}
 
-
-	duration_from_start_of_day := time.Duration(start.Hour() * 3600 + start.Second())
+	duration_from_start_of_day := time.Duration(start.Hour()*3600 + start.Second())
 	today_start := start.Add(-duration_from_start_of_day)
 	one_week_ago := today_start.AddDate(0, 0, -days)
 
 	//NOTE(g): No need to filter on the end, because we are tracking to NOW.  Only if we
 	filter := map[string]interface{}{
-		"business_id": []interface{}{"=", business["_id"]},
+		"business_id":         []interface{}{"=", business["_id"]},
 		time_start_field_name: []interface{}{">", one_week_ago},
 		time_start_field_name: []interface{}{">", one_week_ago},
 	}
@@ -1993,9 +1971,9 @@ func ActivityDaily(internal_database_name string, table_name string, time_start_
 	result_map["max"] = 10
 
 	// Popualte the days and initial values
-	for day := 0; day < days ; day++ {
+	for day := 0; day < days; day++ {
 		// Get how many days_ago from the start we will move backwards.  0 being the beginning of today
-		days_ago := (days-1) - day
+		days_ago := (days - 1) - day
 		cur_time := start.AddDate(0, 0, -days_ago)
 
 		day_array[day] = cur_time.Weekday().String()
@@ -2007,9 +1985,9 @@ func ActivityDaily(internal_database_name string, table_name string, time_start_
 		activity_start_str := activity[time_start_field_name].(string)
 		activity_start, _ := time.Parse(time_format_db, activity_start_str)
 
-		for day := 0; day < days ; day++ {
+		for day := 0; day < days; day++ {
 			// Get how many days_ago from the start we will move backwards.  0 being the beginning of today
-			days_ago := (days-1) - day
+			days_ago := (days - 1) - day
 			cur_time := start.AddDate(0, 0, -days_ago)
 			cur_time_next_day := cur_time.AddDate(0, 0, 1)
 
@@ -2022,7 +2000,7 @@ func ActivityDaily(internal_database_name string, table_name string, time_start_
 	}
 
 	// Check for a higher daily max
-	for day := 0; day < days ; day++ {
+	for day := 0; day < days; day++ {
 		if value_array[day].(int) > result_map["max"].(int) {
 			result_map["max"] = value_array[day]
 		}
@@ -2070,9 +2048,9 @@ func DateRangeParseFromMap(page_args map[string]interface{}, default_duration_st
 	result_str := ""
 
 	start := time.Now()
-	duration_from_start_of_day_int := (start.Hour()*3600) + (start.Minute()*60) + start.Second()
+	duration_from_start_of_day_int := (start.Hour() * 3600) + (start.Minute() * 60) + start.Second()
 
-	duration_from_start_of_day := time.Duration(-duration_from_start_of_day_int*1000000000)
+	duration_from_start_of_day := time.Duration(-duration_from_start_of_day_int * 1000000000)
 
 	UdnLogLevel(nil, log_trace, "DateRangeParse: duration_from_start_of_day: %v %T   Default: %s %s\n", duration_from_start_of_day, duration_from_start_of_day, default_duration_start, default_duration_stop)
 	UdnLogLevel(nil, log_trace, "DateRangeParse: duration_from_start_of_day: %v %v %v\n", start.Hour(), start.Minute(), start.Second())
@@ -2080,7 +2058,6 @@ func DateRangeParseFromMap(page_args map[string]interface{}, default_duration_st
 	today_start := start.Add(duration_from_start_of_day)
 	UdnLogLevel(nil, log_trace, "DateRangeParse: today_start: %v\n", today_start)
 	UdnLogLevel(nil, log_trace, "DateRangeParse: page args: %s\n", JsonDump(page_args))
-
 
 	if page_args["from_days_ago"] != nil && page_args["to_days_ago"] != nil {
 		from_days_ago_int := int(GetResult(page_args["from_days_ago"], type_int).(int64))
@@ -2142,7 +2119,7 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 
 	// Assume this is a new dashboard_item
 	graph := make(map[string]interface{})
-	
+
 	// If this is an existing dashboard item.  Load it...
 	if dashboard_item_id_or_nil != nil {
 		dashboard_item_id := GetResult(dashboard_item_id_or_nil, type_int).(int64)
@@ -2152,14 +2129,12 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 		graph["name"] = fmt.Sprintf("%s", time.Now().Format(time_format_db))
 	}
 
-
 	UdnLogLevel(nil, log_trace, "DashboardItemEdit: Starting Graph: %s\n", JsonDump(graph))
 	UdnLogLevel(nil, log_trace, "DashboardItemEdit: Input Map: %s\n", JsonDump(input_map))
 
-
 	// Return data structure
 	return_data := make(map[string]interface{})
-	return_data["data_point_array"] = make([]map[string]interface{}, 0)	// These are all the different data elements we want to render in this graph
+	return_data["data_point_array"] = make([]map[string]interface{}, 0) // These are all the different data elements we want to render in this graph
 
 	// -- Process the input_map and determine what to data to populate into our return data --
 
@@ -2181,7 +2156,7 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 
 			filter := map[string]interface{}{
 				"time_store_item_id": []interface{}{"=", business_environment_namespace_metric["time_store_item_id"]},
-				"created": []interface{}{">", time.Now().Add(time.Duration(-3600 * 1000000000))},
+				"created":            []interface{}{">", time.Now().Add(time.Duration(-3600 * 1000000000))},
 			}
 			options["sort"] = []string{"created"}
 			time_series_array := DatamanFilter("time_store_partition_timestorepartitionid", filter, options)
@@ -2223,7 +2198,6 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 			end := time.Now().Unix()
 			step := 20
 
-
 			user := robot_business_user["name"].(string)
 			password := robot_business_user["password_digest"].(string)
 
@@ -2242,10 +2216,8 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 
 			tsapi_payload, _ := JsonLoadMap(string(http_result))
 
-
 			// This is the new data
 			return_data["tsapi_render_data"] = TSAPI_Generate_Graph_Data(internal_database_name, tsapi_payload)
-
 
 			// Add this to the graph information
 			return_data["data_point_array"] = append(return_data["data_point_array"].([]map[string]interface{}), graph_item)
@@ -2265,7 +2237,6 @@ func DashboardItemEdit(internal_database_name string, dashboard_item_id_or_nil i
 
 	return return_data
 }
-
 
 func TSAPI_Generate_Graph_Data(internal_database_name string, tsapi_payload map[string]interface{}) map[string]interface{} {
 	data := make(map[string]interface{})
@@ -2297,12 +2268,12 @@ func TSAPI_Generate_Graph_Data(internal_database_name string, tsapi_payload map[
 	title := fmt.Sprintf("TSAPI Title")
 
 	data["json_layout"] = map[string]interface{}{
-		"title": title,
+		"title":      title,
 		"showlegend": true,
 	}
 	data["json_options"] = map[string]interface{}{
-		"displayModeBar": true,
-		"displaylogo": false,
+		"displayModeBar":         true,
+		"displaylogo":            false,
 		"modeBarButtonsToRemove": []interface{}{"sendDataToCloud", "autoScale2d", "pan2d", "zoom2d", "select2d", "lasso2d", "zoomIn2d", "zoomOut2d"},
 	}
 
@@ -2329,9 +2300,9 @@ func TSAPI_Generate_Graph_Data(internal_database_name string, tsapi_payload map[
 		delete(label_map, "hostname")
 		text_value := strings.Replace(JsonDump(label_map), "\n", "", -1)
 
-		x_array := make([]interface{}, 0)			// Times - Array of Series(Array)
-		y_array := make([]interface{}, 0)			// Values - Array of Series(Array)
-		text_array := make([]interface{}, 0)			// Text Label per Point - Array of Series(Array)
+		x_array := make([]interface{}, 0)    // Times - Array of Series(Array)
+		y_array := make([]interface{}, 0)    // Values - Array of Series(Array)
+		text_array := make([]interface{}, 0) // Text Label per Point - Array of Series(Array)
 
 		for _, value_array := range values {
 			x_value_int := int64(value_array.([]interface{})[0].(float64))
@@ -2362,8 +2333,8 @@ func TSAPI_Generate_Graph_Data(internal_database_name string, tsapi_payload map[
 			"type": "scatter",
 			"mode": "line",
 			"name": fmt.Sprintf("%s", metric_map["__name__"]),
-			"x": x_array,			// Times - Array of Series(Array)
-			"y": y_array,			// Values - Array of Series(Array)
+			"x":    x_array, // Times - Array of Series(Array)
+			"y":    y_array, // Values - Array of Series(Array)
 
 			//"text": text_array,		// Text - Array of Series(Array)
 
@@ -2521,7 +2492,6 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 
 				data["name"] = fmt.Sprintf("%s_%d", input_map["name"], index)
 
-
 				// Template
 				data["_output"] = TemplateFromMap(web_widget_html, data)
 
@@ -2535,7 +2505,6 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 	core_table := GetWebWidgetHtml("core_table_simple")
 	core_icon_list := GetWebWidgetHtml("core_icon_list")
 	core_button := GetWebWidgetHtml("core_button")
-
 
 	for _, html_field_item := range html_field_array {
 		icon_map_delete := map[string]interface{}{"icon": " icon-trash-alt", "color": "primary", "onclick": html_field_item["onclick"]}
@@ -2552,7 +2521,7 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 	// Add final row to the html_field_array that has a button for adding new Rules
 	onclick_string := fmt.Sprintf("GridRenderWidget_%s('dialog_add_rule', 'dialog_target', 'field_label', '%s')", input_map["uuid"], field_label)
 	button_item := map[string]interface{}{
-		"icons": "",
+		"icons":   "",
 		"_output": TemplateFromMap(core_button, map[string]interface{}{"value": "Add New Rule", "icon": "icon-add", "color": "primary", "onclick": onclick_string}),
 	}
 	html_field_array = append(html_field_array, button_item)
@@ -2561,7 +2530,7 @@ func DatamanCreateFilterHtml(internal_database_name string, field_label string, 
 		"headers": []string{"", "Filter Rule"},
 		"columns": []string{"icons", "_output"},
 		"widths": map[string]interface{}{
-			"icons": "40",
+			"icons":   "40",
 			"_output": "",
 		},
 		"items": html_field_array,
@@ -2609,7 +2578,6 @@ func DatamanAddRule(input_map map[string]interface{}) string {
 	data_map := input_map["data"].(map[string]interface{})
 
 	database, collection, record_pkey, field := ParseFieldLabel(data_map["field_label"].(string))
-
 
 	options := make(map[string]interface{})
 	options["db"] = database
@@ -2702,7 +2670,6 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 
 	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: Found TSAPI Business: %d\n", tsapi_business_id)
 
-
 	// Add Business User
 	data = make(map[string]interface{})
 	data["name"] = robot_user["name"]
@@ -2710,21 +2677,20 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 	data["secret"] = robot_user["password_digest"]
 	data["permissions"] = []interface{}{map[string]interface{}{
 		"source": map[string]interface{}{
-			"type": "=~",
+			"type":  "=~",
 			"value": ".*",
 		},
 		"environment": map[string]interface{}{
-			"type": "=~",
+			"type":  "=~",
 			"value": ".*",
 		},
 		"namespace": map[string]interface{}{
-			"type": "=~",
+			"type":  "=~",
 			"value": ".*",
 		},
 	}}
 
 	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Insert User Payload: %s\n", JsonDump(data))
-
 
 	path := fmt.Sprintf("v1/business/%d/user", tsapi_business_id)
 
@@ -2735,7 +2701,6 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 	http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(make(map[string]interface{})), "", "")
 	business_user_array, err := JsonLoadArray(string(http_result))
 	UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business User GET: %s (%v)\n", business_user_array, err)
-
 
 	// Add Environment
 	filter := map[string]interface{}{"business_id": []interface{}{"=", business_id}}
@@ -2750,7 +2715,6 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 		http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "POST", JsonDump(data), "", "")
 		UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Business Environment Insert: %s\n", http_result)
 
-
 		http_result = HttpRequest(taskman_server["host"].(string), int(taskman_server["port"].(int64)), path, "GET", JsonDump(data), "", "")
 		environment_array, err := JsonLoadArray(string(http_result))
 		UdnLogLevel(nil, log_trace, "TSAPI_BusinessUpdate: HTTP Result: Environment GET: %s (%v)\n", environment_array, err)
@@ -2760,7 +2724,7 @@ func TSAPI_BusinessUpdate(internal_database_name string, api_server_connection_t
 			// Find the environment, and then add all it's namespaces
 			if environment_map["name"] == environment["api_name"] {
 				filter := map[string]interface{}{
-					"business_id": []interface{}{"=", business_id},
+					"business_id":    []interface{}{"=", business_id},
 					"environment_id": []interface{}{"=", environment["_id"]},
 				}
 				namespace_array := DatamanFilter("business_environment_namespace", filter, options)
@@ -2854,8 +2818,8 @@ func UDN_Custom_Login(db *sql.DB, udn_schema map[string]interface{}, udn_start *
 				// Create a user session
 				user_session := map[string]interface{}{
 					"business_user_id": user["_id"],
-					"value": session_hash,
-					"created": time.Now(),
+					"value":            session_hash,
+					"created":          time.Now(),
 				}
 
 				user_session_result := DatamanInsert("business_user_session", user_session, options)
@@ -2924,4 +2888,3 @@ func UDN_Custom_Auth(db *sql.DB, udn_schema map[string]interface{}, udn_start *U
 
 	return result
 }
-

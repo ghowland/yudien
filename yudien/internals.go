@@ -4,11 +4,11 @@ import (
 	"container/list"
 	"database/sql"
 	"fmt"
+	"strings"
+
 	. "github.com/ghowland/yudien/yudiencore"
 	. "github.com/ghowland/yudien/yudienutil"
-	"strings"
 )
-
 
 const (
 	part_unknown  = iota
@@ -20,7 +20,6 @@ const (
 	part_map      = iota
 	part_map_key  = iota
 )
-
 
 func SprintUdnResultList(items list.List) string {
 	output := ""
@@ -56,7 +55,6 @@ func GetUdnResultString(udn_result *UdnResult) string {
 
 	return result_str
 }
-
 
 // Parse a UDN string and return a hierarchy under UdnPart
 func ParseUdnString(db *sql.DB, udn_schema map[string]interface{}, udn_value_source string) *UdnPart {
