@@ -3870,7 +3870,7 @@ func IfResult(value interface{}) bool {
 	} else {
 		// Catch all: Match various "false" equavalent values, as a string representation
 		value_str := fmt.Sprintf("%v", value)
-		if value_str == "0" || value_str == "<nil>" || value_str == "0" || value_str == "false" || value_str == "" {
+		if value_str == "0" || value_str == "<nil>" || value_str == "false" || value_str == "" {
 			return false
 		} else {
 			return true
