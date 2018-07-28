@@ -18,10 +18,9 @@ type udnTestCase struct {
 	Statement string                 `json:"statement"`
 	Args      []interface{}          `json:"args"`
 	Input     interface{}            `json:"input"`
-	InputType string 		 `json:"input_type"`
+	InputType string                 `json:"input_type"`
 	UdnData   map[string]interface{} `json:"udn_data"`
 }
-
 
 func performInputTypeConversion(testCase *udnTestCase) {
 	input := testCase.Input
@@ -30,17 +29,17 @@ func performInputTypeConversion(testCase *udnTestCase) {
 	switch type_str {
 	case "[] string":
 		switch input.(type) {
-			case []interface{}:
-				str_array := make([]string, len(input.([] interface{})))
-				for i, value := range input.([] interface{}) {
-					str_array[i] = value.(string)
-				}
-				testCase.Input = str_array
-			default:
-				log.Panic("unhandled conversion %T", input)
-		}
+		case []interface{}:
+			str_array := make([]string, len(input.([]interface{})))
+			for i, value := range input.([]interface{}) {
+				str_array[i] = value.(string)
+			}
+			testCase.Input = str_array
 		default:
-			log.Panic("unhandled conversion type %T", input)
+			log.Panic("unhandled conversion %T", input)
+		}
+	default:
+		log.Panic("unhandled conversion type %T", input)
 	}
 }
 
