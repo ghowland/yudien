@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	. "github.com/ghowland/yudien/yudiencore"
 	. "github.com/ghowland/yudien/yudiendata"
@@ -51,7 +52,28 @@ type UdnExecutionGroup struct {
 
 type UdnFunc func(db *sql.DB, udn_schema map[string]interface{}, udn_start *UdnPart, args []interface{}, input interface{}, udn_data map[string]interface{}) UdnResult
 
+// TODO: change from a map to disallow mutation outside of the register functions
 var UdnFunctions = map[string]UdnFunc{}
+
+var udnFunctionsMutex sync.Mutex
+
+func RegisterUDNFunction(name string, f UdnFunc) {
+	udnFunctionsMutex.Lock()
+	defer udnFunctionsMutex.Unlock()
+
+	if current, ok := UdnFunctions[name]; ok {
+		log.Fatalf("UDN function already registered with name=%s, current=%v attempted=%v", name, current, f)
+	}
+
+	UdnFunctions[name] = f
+}
+
+// Helper for registering a lot of functions at once
+func RegisterUDNFunctions(funcs map[string]UdnFunc) {
+	for k, v := range funcs {
+		RegisterUDNFunction(k, v)
+	}
+}
 
 type LdapConfig struct {
 	Host        string `json:"host"`
@@ -141,7 +163,7 @@ func InitUdn() {
 	Debug_Udn_Api = false // Legacy Logging
 	Debug_Udn = false     // Legacy Logging - see yudiencore/core.go func UdnLog
 
-	UdnFunctions = map[string]UdnFunc{
+	RegisterUDNFunctions(map[string]UdnFunc{
 		"__comment":      UDN_Comment,
 		"__query":        UDN_QueryById,
 		"__debug_output": UDN_DebugOutput,
@@ -378,7 +400,7 @@ func InitUdn() {
 
 		"__custom_login": UDN_Custom_Login, // CUSTOM:...
 		"__custom_auth":  UDN_Custom_Auth,  // CUSTOM:...
-	}
+	})
 
 	PartTypeName = map[int]string{
 		int(part_unknown):  "Unknown",
