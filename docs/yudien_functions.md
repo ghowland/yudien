@@ -10,6 +10,9 @@
     7. [__set_temp - Set Temp Data](#__set_temp)
     8. [__increment - Increment Value](#__increment)
     9. [__decrement - Decrement Value](#__decrement)
+    9. [__true - True](#__true)
+    9. [__false - False](#__false)
+    9. [__length - Length or Size](#__length)
 2. [Database](#database)
     1. [__data_get - Dataman Get](#__data_get)
     2. [__data_set - Dataman Set](#__data_set)
@@ -40,6 +43,8 @@
     4. [__template_short - String Template from Value](#__template_short)
     5. [__string_append - String Append](#__string_append)
     6. [__string_clear - String Clear](#__string_clear)
+    6. [__string_begins_with - String Ends With](#__string_begins_with)
+    6. [__string_ends_with - String Ends With](#__string_ends_with)
     7. [__concat - String Concatenate](#__concat)
     8. [__upper - String Uppercase](#__upper)
     9. [__lower - String Lowercase](#__lower)
@@ -49,6 +54,7 @@
     11. [__base64_decode - Base64 Decode](#__base64_decode)
     12. [__base64_encode - Base64 Encode](#__base64_encode)
     13. [__html_encode - HTML Encode](#__html_encode)
+    13. [__markdown_format - Markdown Format as HTML](#__markdown_format)
     14. [__num_to_string - Number to String](#__num_to_string)
 7. [Maps](#map)
     1. [__map_key_set - Map Key Set](#__map_key_set)
@@ -56,6 +62,7 @@
     3. [__map_copy - Map Copy](#__map_copy)
     4. [__map_update - Map Update](#__map_update)
     4. [__map_template_key - Map Template Key](#__map_template_key)
+    4. [__map_filter_key - Map Filter Keys](#__map_filter_key)
     5. [__group_by - Group By](#__group_by)
 8. [Array](#array)
     1. [__array_append - Array Append](#__array_append)
@@ -63,12 +70,18 @@
     1. [__array_index - Array Index](#__array_index)
     2. [__array_slice - Array Slice](#__array_slice)
     1. [__array_contains - Array Contains](#__array_contains)
+    3. [__array_map_update - Array Map Update](#__array_map_update)
     3. [__array_map_remap - Array Map Remap](#__array_map_remap)
     3. [__array_map_find - Array Map Find](#__array_map_find)
-    3. [__array_map_find_update - Array Map Find Update](#__array_map_find_update)
+    3. [__array_map_find_update - Array Map Find Update - Depricated use __array_map_filter_update](#__array_map_find_update)
+    3. [__array_map_filter_update - Array Map Filter Update](#__array_map_filter_update)
+    3. [__array_map_filter_in - Array Map Filter Update](#__array_map_filter_in)
+    3. [__array_map_filter_contains - Array Map Filter Update](#__array_map_filter_contains)
+    3. [__array_map_filter_array_contains - Array Map Match](#__array_map_filter_array_contains)
     3. [__array_map_template - Array Map Template](#__array_map_template)
     3. [__array_map_to_map - Array Map To Map](#__array_map_to_map)
     3. [__array_map_key_set - Array Map Key Set](#__array_map_key_set)
+    3. [__array_string_join - Array of String Join](#__array_string_join)
     4. [__array_divide - Array Divide](#__array_divide)
 9. [Time](#time)
     1. [__string_to_time - String to Time](#__string_to_time)
@@ -76,6 +89,7 @@
     3. [__get_local_time - Get Local Time](#__get_local_time)
     4. [__time_to_epoch - Convert Time to Unix Time in Seconds](#__time_to_epoch)
     5. [__time_to_epoch_ms - Convert Time to Unix Time in Milliseconds](#__time_to_epoch_ms)
+    5. [__time - Time Object](#__time)
 10. [Math](#math)
     1. [__math - Math functions](#__math)
 11. [Rendering](#rendering)
@@ -455,6 +469,92 @@ __input.100.__decrement.2
 **Side Effect:** None
 
 **Related Functions:** [__increment](#__increment)
+
+
+### __true ::: True <a name="__true"></a>
+
+ Returns `true` value
+
+**Go:** UDN_True
+
+**Input:** None
+
+**Args:** None
+
+**Output:** boolean - `true`
+
+**Example:**
+
+```
+__true
+```
+
+**Result:**
+
+```
+true
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__false](#__false)
+
+### __false ::: False <a name="__false"></a>
+
+ Returns `false` value
+
+**Go:** UDN_False
+
+**Input:** None
+
+**Args:** None
+
+**Output:** boolean - `false`
+
+**Example:**
+
+```
+__false
+```
+
+**Result:**
+
+```
+false
+```
+
+**Side Effect:** None
+
+**Related Functions:** [__true](#__true)
+
+
+### __length ::: Length or Size of input <a name="__length"></a>
+
+ Returns the length or size of the input.  Only valid for arrays, maps and strings.  Otherwise returns 1.
+
+**Go:** UDN_False
+
+**Input:** array/map/string
+
+**Args:**
+
+  0. array/map/string (optional) - Overrides the input, so this is counted for length instead
+
+**Output:** int - Length or size of the countable input
+
+**Example:**
+
+```
+__input.1234.__length
+```
+
+**Result:**
+
+```
+4
+```
+
+**Side Effect:** None
 
 
 ## Database  <a name="database"></a>
@@ -1450,6 +1550,32 @@ __input.'1 < 2'.__html_encode
 
 **Side Effect:** None
 
+### __markdown_format :: Markdown Format as HTML <a name="__markdown_format"></a>
+
+Converts text in Markdown format to HTML.
+
+**Go:** UDN_StringMarkdownFormat
+
+**Input:** String
+
+**Args:** None
+
+**Output:** String
+
+**Example:**
+
+```
+__input.'1 < 2'.__markdown_format
+```
+
+**Returns:**
+
+```
+1 &lt; 2
+```
+
+**Side Effect:** None
+
 
 ### __num_to_string ::: Number To String  <a name="__num_to_string"></a>
 
@@ -1594,7 +1720,8 @@ Creates a new Map which is a copy/clone of the current one, so you can modify it
 
 **Args:**
 
-  0. String (variadic) :: Key/field to delete in the Map
+  0. Map :: Update map to overlay on top of input
+  1. Map (optional) :: Override the input map, passing in an arg1 map
 
 **Output:** Map
 
@@ -1640,6 +1767,36 @@ __input.{name=Bob}.__map_template_key.'{{uuid}}_{{key}}'.{uuid=1234}
 
 ```
 {1234_name=Bob}
+```
+
+**Side Effect:** None
+
+### __map_filter_key ::: Map Filter Key <a name="__map_filter_key"></a>
+
+Returns a new map, which has a filtered set of keys based on an array of strings passed in as arg0.
+
+This is useful for things such as prefixing a UUID in front of keys, so that they can be injected into HTML pages.
+
+**Go:** UDN_MapTemplateKey
+
+**Input:** Map
+
+**Args:**
+
+  0. Array of Strings :: Keys to match for filtering map keys
+
+**Output:** Map
+
+**Example:**
+
+```
+__input.{item1=Something1,item2=Something2,item3=Something3}.__map_filter_key.[item2,item3]
+```
+
+**Result:**
+
+```
+{item2=Something2,item3=Something3}
 ```
 
 **Side Effect:** None
@@ -1709,6 +1866,35 @@ __input.4.__array_append.test
 
 ```
 [1,2,3,4]
+```
+
+**Side Effect:** None
+
+### __array_append_array ::: Array Append Array <a name="__array_append_array"></a>
+
+Appends the input (array) into the specified target location (args)
+
+**Go:** UDN_ArrayAppend
+
+**Input:** Array of items
+
+**Args:**
+
+  0. Any :: Target array name
+
+**Output:** Array
+
+**Example:**
+
+```
+__input.[1,2,3].__set.test
+__input.[4,5,6].__array_append.test
+```
+
+**Result:**
+
+```
+[1,2,3,4,5,6]
 ```
 
 **Side Effect:** None
@@ -1886,6 +2072,35 @@ __input["Alice", "Bob"].__set.test.array.__input.["Bob"].__array_remove.test_arr
 **Side Effect:** None
 
 
+### __array_map_update ::: Array Map Update <a name="__array_map_update"></a>
+
+Takes an array of maps, overwrites all the update map key/values into the maps
+
+**Go:** UDN_ArrayMapRemap
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Map :: Key/Values to overwrite into incoming map
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10},{age=20}].__array_map_update.{color=1}
+```
+
+**Result:**
+
+```
+[{age=10,color=1},{age=20,color=1}]
+```
+
+**Side Effect:** None
+
+
 ### __array_map_remap ::: Array Map Remap <a name="__array_map_remap"></a>
 
 Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
@@ -1943,7 +2158,7 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find.{age=10}
 **Side Effect:** None
 
 
-### __array_map_find_update ::: Array Map Find Update <a name="__array_map_find_update"></a>
+### __array_map_find_update ::: Array Map Find Update - Depricated use __array_map_filter_update <a name="__array_map_find_update"></a>
 
 Takes an array of maps, and matches it against all the arguments in the first map.  For all elements that match, they are updated with the second map.  The entire array is returned.
 
@@ -1968,6 +2183,135 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_find_update.{age=10}.{
 
 ```
 [{age=10,name=Joe,selected=selected},{age=20,name=Bob}]
+```
+
+**Side Effect:** None
+
+### __array_map_filter_update ::: Array Map Filter Update <a name="__array_map_filter_update"></a>
+
+Takes an array of maps, and matches it against all the arguments in the first map.  For all elements that match, they are updated with the second map.  The entire array is returned.
+
+**Go:** UDN_ArrayMapFilterUpdate
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Map :: This is a key/value map to check against the array of maps, returning the first map which matches all keys/values.
+  1. Map :: This map is used to update all maps that match key/values in arg0
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_update.{age=10}.{selected=selected}
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe,selected=selected},{age=20,name=Bob}]
+```
+
+**Side Effect:** None
+
+
+### __array_map_filter_in ::: Array Map Filter In <a name="__array_map_filter_in"></a>
+
+Takes an array of maps, and matches against a set of filtered elements, which must all be inside of the array of options available in the arg0 array.
+
+**Go:** UDN_ArrayMapFindIn
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Array :: This is an array of elements, which the corresponding key in the input array map must be inside of to match the filter.
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_in.{age=[10,15]}
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe}]
+```
+
+**Side Effect:** None
+
+### __array_map_filter_contains ::: Array Map Filter Contains Any <a name="__array_map_filter_contains"></a>
+
+Takes an array of maps, and matches against a set of filtered elements, which must all be inside of the array of options available in the arg0 array.
+
+**Go:** UDN_ArrayMapFindContainsAny
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. Array :: This is an array of elements, which the corresponding key in the input array map, whose value is an any, that contains at least 1 of the items in the corresponding key in the filter map's array.
+  1. Map (optional) :: This is an Options map.  Current options:  "all" (boolean).  If true, every filter Contains List must be matched on each key.  If false (0), only 1 set of Contains List must be matched to match the filter.
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains.{age=[10,20],name=[Bob]}
+```
+
+**Result:**
+
+```
+[{age=20,name=Bob}]
+```
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_filter_contains.{age=[10],name=[Bob]}.{all=0}
+```
+
+**Result:**
+
+```
+[{age=10,name=Joe},{age=20,name=Bob}]
+```
+
+**Side Effect:** None
+
+### __array_map_filter_array_contains ::: Array Map Filter Array Contains <a name="__array_map_filter_array_contains"></a>
+
+Takes an array of maps, and matches a list against a list, to see if any of the items match, as the default match filter
+
+**Go:** UDN_ArrayMapFindContainsAny
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. String :: Key in each of the maps which contains an array, that we will test
+  1. Array :: This is an array of elements, which the corresponding key in the input array map, whose value is an any, that contains at least 1 of the items in the corresponding key in the filter map's array.
+  2. Map (optional) :: This is an Options map.  Current options:  "all" (boolean).  If true, every filter Contains List must be matched on each key.  If false (0), only 1 set of Contains List must be matched to match the filter.
+
+**Output:** Array of Maps
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe,groups[ops,eng,admin]},{age=20,name=Bob,groups=[ops]}].__array_map_filter_contains.{groups=[admin,eng]}
+```
+
+**Result:**
+
+```
+{age=10,name=Joe,groups[ops,eng,admin]}
 ```
 
 **Side Effect:** None
@@ -2038,6 +2382,36 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_to_map.name
 **Side Effect:** None
 
 
+### __array_map_to_series ::: Array Map To Series <a name="__array_map_to_series"></a>
+
+Takes an array of maps, and returns an array, using only values from a single key.  Used for making time series or graph axes.
+
+**Go:** UDN_ArrayMapToMap
+
+**Input:** Array of Maps
+
+**Args:**
+
+  0. String :: Key to get from array maps, and key to set in result map
+  1. List of Maps (optional) :: Can be passed in as arg1 instead of input
+
+**Output:** Map
+
+**Example:**
+
+```
+__input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_to_map.name
+```
+
+**Result:**
+
+```
+{Joe={age=10,name=Joe},Bob={age=20,name=Bob}}
+```
+
+**Side Effect:** None
+
+
 ### __array_map_key_set ::: Array Map Key Set <a name="__array_map_key_set"></a>
 
 Takes an array of maps, sets a variable number of key/value pairs
@@ -2069,6 +2443,36 @@ __input.[{age=10,name=Joe},{age=20,name=Bob}].__array_map_key_set.uuid.1234
 
 ```
 [{age=10,name=Joe,uuid=1234},{age=20,name=Bob,uuid=1234}]
+```
+
+**Side Effect:** None
+
+
+### __array_string_join::: Array of String Join <a name="__array_string_join"></a>
+
+Join an array of strings (or converted to string) with a separator
+
+**Go:** UDN_ArrayStringJoin
+
+**Input:** Array of Strings
+
+**Args:**
+
+  0. String :: Separator to join strings with
+  1. Array of Strings (optional) :: Override input with arg1
+
+**Output:** String
+
+**Example:**
+
+```
+__input.[Joe,Bob,Tom].__array_string_join.','
+```
+
+**Result:**
+
+```
+'Joe,Bob,Tom'
 ```
 
 **Side Effect:** None
@@ -2246,6 +2650,37 @@ __input.'2018-01-01 00:00:00'.__string_to_time.__time_to_epoch
 
 **Side Effect:** None
 
+
+### __time ::: Time Object <a name="__time"></a>
+
+Returns a time.Time object, default is Now.  All arguments are optional, and modify the time in a positive or negative way
+
+**Go:** UDN_Time
+
+**Input:** None
+
+**Args:**
+
+  0. int (optional) :: Year - Modifies year from current time.  Uses AddDate
+  1. int (optional) :: Month - Modifies month from current time.  Uses AddDate
+  2. int (optional) :: Day - Modifies day from current time.  Uses AddDate
+  2. string (optional) :: Duration - Modifies ns/ms/s/h from current time.  Uses ParseDuration
+
+**Output:** time.Time object
+
+**Example:**
+
+```
+__input.'2018-01-01 00:00:00'.__string_to_time.__time_to_epoch
+```
+
+**Result:**
+
+```
+1514764800000
+```
+
+**Side Effect:** None
 
 ## Math <a name="math"></a>
 

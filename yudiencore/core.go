@@ -4,8 +4,8 @@ import (
 	"container/list"
 	"fmt"
 	"strings"
-	"encoding/json"
 	"io/ioutil"
+	"encoding/json"
 )
 
 const (
@@ -35,6 +35,17 @@ const ( // order matters for log levels
 	log_debug = iota
 	log_trace = iota
 )
+
+type DynamicResult struct {
+	// This is the result
+	Result interface{}
+
+	Type int
+
+	// Error messages
+	Error string
+}
+
 
 var Debug_Udn bool
 var Debug_Udn_Api bool
@@ -186,6 +197,46 @@ func (udn_parent *UdnPart) AddChild(part_type int, value string) *UdnPart {
 
 	return &new_part
 }
+
+
+func UdnError(udn_schema map[string]interface{}, format string, args ...interface{}) {
+	// Format the incoming Printf args, and print them
+	output := fmt.Sprintf("ERROR: " + format, args...)
+
+	fmt.Print(output)
+
+	// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
+	if udn_schema != nil {
+		udn_schema["error_log"] = udn_schema["error_log"].(string) + output
+	}
+}
+
+func UdnLogHtml(udn_schema map[string]interface{}, log_level int, format string, args ...interface{}) {
+	UdnLogLevel(udn_schema, log_level, format, args)
+
+	if (Debug_Udn || udn_schema["udn_debug"].(bool)) && udn_schema["allow_logging"].(bool) {
+		// Format the incoming Printf args, and print them
+		output := fmt.Sprintf(format, args...)
+		fmt.Print(output)
+
+		// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
+		udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
+		// Append to HTML as well, so it shows up.  This is a convenience function for this reason.  Headers and stuff.
+		udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + "<pre>" + HtmlClean(output) + "</pre>"
+	}
+}
+
+
+func HtmlClean(html string) string {
+	html = strings.Replace(html, "<", "&lt;", -1)
+	html = strings.Replace(html, ">", "&gt;", -1)
+	html = strings.Replace(html, "&", "&amp;", -1)
+	html = strings.Replace(html, " ", "&nbsp;", -1)
+
+	return html
+}
+
+
 
 
 
@@ -362,41 +413,4 @@ func ParseUdnLogLevel(level string) int {
 	default:
 		return log_off
 	}
-}
-
-func UdnError(udn_schema map[string]interface{}, format string, args ...interface{}) {
-	// Format the incoming Printf args, and print them
-	output := fmt.Sprintf("ERROR: " + format, args...)
-
-	fmt.Print(output)
-
-	// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
-	if udn_schema != nil {
-		udn_schema["error_log"] = udn_schema["error_log"].(string) + output
-	}
-}
-
-func UdnLogHtml(udn_schema map[string]interface{}, log_level int, format string, args ...interface{}) {
-	UdnLogLevel(udn_schema, log_level, format, args)
-
-	if (Debug_Udn || udn_schema["udn_debug"].(bool)) && udn_schema["allow_logging"].(bool) {
-		// Format the incoming Printf args, and print them
-		output := fmt.Sprintf(format, args...)
-		fmt.Print(output)
-
-		// Append the output into our udn_schema["debug_log"], where we keep raw logs, before wrapping them up for debugging visibility purposes
-		udn_schema["debug_log"] = udn_schema["debug_log"].(string) + output
-		// Append to HTML as well, so it shows up.  This is a convenience function for this reason.  Headers and stuff.
-		udn_schema["debug_output_html"] = udn_schema["debug_output_html"].(string) + "<pre>" + HtmlClean(output) + "</pre>"
-	}
-}
-
-
-func HtmlClean(html string) string {
-	html = strings.Replace(html, "<", "&lt;", -1)
-	html = strings.Replace(html, ">", "&gt;", -1)
-	html = strings.Replace(html, "&", "&amp;", -1)
-	html = strings.Replace(html, " ", "&nbsp;", -1)
-
-	return html
 }

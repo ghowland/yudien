@@ -6,40 +6,12 @@ import (
 	"fmt"
 	"log"
 	"strings"
-
 	. "github.com/ghowland/yudien/yudiencore"
 	. "github.com/ghowland/yudien/yudiendata"
 	. "github.com/ghowland/yudien/yudienutil"
 	"github.com/segmentio/ksuid"
 )
 
-const (
-	part_unknown  = iota
-	part_function = iota
-	part_item     = iota
-	part_string   = iota
-	part_compound = iota
-	part_list     = iota
-	part_map      = iota
-	part_map_key  = iota
-)
-
-const (
-	type_int          = iota
-	type_float        = iota
-	type_string       = iota
-	type_array        = iota // []interface{} - takes: lists, arrays, maps (key/value tuple array, strings (single element array), ints (single), floats (single)
-	type_map          = iota // map[string]interface{}
-)
-
-const ( // order matters for log levels
-	log_off   = iota
-	log_error = iota
-	log_warn  = iota
-	log_info  = iota
-	log_debug = iota
-	log_trace = iota
-)
 
 func DescribeUdnPart(part *UdnPart) string {
 
@@ -99,6 +71,10 @@ type LoggingConfig struct {
 	Level string `json:"level"`
 }
 
+type WebsiteConfig struct {
+	DefaultWebWidgetThemeId  int `json:"default_web_widget_theme_id"`
+}
+
 type StaticUser struct {
 	Username  string `json:"username"`
 	Password string `json:"password"`
@@ -133,6 +109,7 @@ type DatabaseAuthenticationPassword struct {
 type DatabaseAuthentication struct {
 	Name DatabaseAuthenticationName `json:"name"`
 	Password DatabaseAuthenticationPassword `json:"password"`
+	Verify string `json:"verify"`
 }
 
 type AuthenticationConfig struct {
@@ -159,7 +136,7 @@ func Configure(default_database *DatabaseConfig, databases map[string]DatabaseCo
 	UdnLogLevel(nil, log_info,"\n\nConfig: Logging: %v\n\n", logging)
 	//UdnLogLevel(nil, log_info,"\n\nConfig: Authentication: %v\n\n", authentication)
 
-	InitDataman(DefaultDatabase.ConnectOptions, DefaultDatabase.Database, DefaultDatabase.Schema, databases)
+	InitDataman(*DefaultDatabase, databases)
 }
 
 func InitUdn() {
@@ -183,6 +160,7 @@ func InitUdn() {
 		"__end_iterate":  nil,
 		"__while":        UDN_While,	 // While takes a condition (arg_0) and a max (arg_1:int) number of iterations, so it cannot run forever
 		"__end_while":  nil,
+		"__nil":          UDN_Nil,		// Returns nil
 		"__get":          UDN_Get,
 		"__set":          UDN_Set,
 		"__get_index": 	  UDN_GetIndex, // Get data using input rather than args (otherwise same as __get)
@@ -209,6 +187,11 @@ func InitUdn() {
 		"__format":         UDN_MapStringFormat,              //TODO(g): Updates a map with keys and string formats.  Uses the map to format the strings.  Takes N args, doing each arg in sequence, for order control
 		"__template_short": UDN_StringTemplateFromValueShort, // Like __template, but uses {{{fieldname}}} instead of {{index .Max "fieldname"}}, using strings.Replace instead of text/template
 
+		"__true":          UDN_True,
+		"__false":          UDN_False,
+
+		"__length":          UDN_Length,
+
 		//TODO(g): DEPRICATE.  Longer name, same function.
 		"__template_string": UDN_StringTemplateFromValue, // Templates the string passed in as arg_0
 
@@ -216,6 +199,11 @@ func InitUdn() {
 		"__string_clear":  UDN_StringClear, // Initialize a string to empty string, so we can append to it again
 		"__string_replace":  UDN_StringReplace, // Initialize a string to empty string, so we can append to it again
 		"__concat":        UDN_StringConcat,
+		"__markdown_format": UDN_StringMarkdownFormat, // Format a string as HTML from markdown
+
+		"__string_ends_with": UDN_StringEndsWith, // Returns boolean, if matches end of string
+		"__string_begins_with": UDN_StringEndsWith, // Returns boolean, if matches beginning of string
+
 		"__input":         UDN_Input,          //TODO(g): This takes any input as the first arg, and then passes it along, so we can type in new input to go down the pipeline...
 		"__input_get":     UDN_InputGet,       // Gets information from the input, accessing it like __get
 		"__function":      UDN_StoredFunction, //TODO(g): This uses the udn_stored_function.name as the first argument, and then uses the current input to pass to the function, returning the final result of the function.		Uses the web_site.udn_stored_function_domain_id to determine the stored function
@@ -224,23 +212,35 @@ func InitUdn() {
 		"__html_encode":     UDN_HtmlEncode, // Encode HTML symbols so they are not taken as literal HTML
 
 		"__array_append":    UDN_ArrayAppend, // Appends the input into the specified target location (args)
+		"__array_append_array":    UDN_ArrayAppendArray, // Appends an array (input) into the specified location, like __array_append
 		"__array_slice": 	 UDN_ArraySlice, // Slices an input array based on the start and end index
 		"__array_divide":    UDN_ArrayDivide,   // Breaks an array up into a set of arrays, based on a divisor.  Ex: divide=4, a 14 item array will be 4 arrays, of 4/4/4/2 items each.
-		"__array_map_remap": UDN_ArrayMapRemap, // Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
 		"__array_remove":    UDN_ArrayRemove, // Removes the first instance of an element in an array.  Recquires exact match
 		"__array_index":     UDN_ArrayIndex, // Gets the index of the first instance of an element in an array.  Requires exact match
 		"__array_contains":  UDN_ArrayContains, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
-		"__array_map_find":  UDN_ArrayMapFind, // Finds a single map element, and returns the result in a map of {key=key,value=value}
-		"__array_map_find_update":  UDN_ArrayMapFindUpdate, // Finds all map elements that match the find map, and updates them with a passed in map, so we can find the map in-place of matching records.  Returns the array of maps
+		"__array_contains_any":  UDN_ArrayContainsAny, // Returns boolean, if the specific array contains all the of input.  Input can be individual elemnent or an arry (converts to an array).
+		"__array_map_update": UDN_ArrayMapUpdate, // Takes an array of maps, and overwrites all keys with the specified map
+		"__array_map_remap": UDN_ArrayMapRemap, // Takes an array of maps, and makes a new array of maps, based on the arg[0] (map) mapping (key_new=key_old)
 		"__array_map_to_map":  UDN_ArrayMapToMap, // Map an array of maps into a single map, using one of the keys
+		"__array_map_to_series":  UDN_ArrayMapToSeries, // Map an array of maps into a single array, from one of the key.  Like a time series or other list of values.
 		"__array_map_template":  UDN_ArrayMapTemplate, // Update all map's key's values with a template statement from each map's key/values
 		"__array_map_key_set":  UDN_ArrayMapKeySet, // Update all map's with specified keys/values
+		"__array_map_find":  UDN_ArrayMapFind, // Finds a single map element, and returns the result in a map of {key=key,value=value}
+		"__array_map_find_update":  UDN_ArrayMapFindUpdate, //TODO(g): Remove once we transition everything to FilterUpdate, was incorrectly named as the first of it's kind. -- --  Finds all map elements that match the find map, and updates them with a passed in map, so we can find the map in-place of matching records.  Returns the array of maps
+		"__array_map_filter_update":  UDN_ArrayMapFilterUpdate, //TODO(g): Update to FilterUpdate and replace code that uses it.  Unless worth having 2 functions.  Want to keep the name spaces and argument order/types similar accross all of them to avoid the PHP curse.  -- -- Finds all map elements that match the find map, and updates them with a passed in map, so we can find the map in-place of matching records.  Returns the array of maps
+		"__array_map_filter_in":  UDN_ArrayMapFilterIn, // Returns all maps in an array, which keys were in the set of the array elements
+		"__array_map_filter_contains":  UDN_ArrayMapFilterContains, // Returns all maps in an array, which keys values contains any of the possible array elements.  This works on arrays (, maps (match key/value), or single items (match)    //TODO(g): Add the non-array checks, only implemented array so far.
+		"__array_map_filter_array_contains":  UDN_ArrayMapFilterArrayContains, // Returns all maps in an array, compares two arrays, and returns an array of all the matches between the 2 list.  Default is "any".  Options will be expanded to get more functionality when needed (need use case).
+
+		"__array_string_join":  UDN_ArrayStringJoin, // Join an array of strings into a string (with separator)
 
 		"__map_key_delete": UDN_MapKeyDelete, // Each argument is a key to remove
 		"__map_key_set":    UDN_MapKeySet,    // Sets N keys, like __format, but with no formatting
 		"__map_copy":       UDN_MapCopy,      // Make a copy of the current map, in a new map
 		"__map_update":     UDN_MapUpdate,    // Input map has fields updated with arg0 map
 		"__map_template_key":     UDN_MapTemplateKey,    // When we want to re-key a map, such as prefixing a UUID in front of the keys for replacement in an HTML document
+		"__map_filter_array_contains":     UDN_MapFilterArrayContains,    // Filters elements in a map, if one of their keys contains at array we are comparing for containing values of another array
+		"__map_filter_key":     UDN_MapFilterKey,    // Filters elements in a map based on their keys.  If their keys appear in a list, they are in the resulting map.  Otherwise they are filtered out.
 
 		"__render_data": UDN_RenderDataWidgetInstance, // Renders a Data Widget Instance:  arg0 = web_data_widget_instance.id, arg1 = widget_instance map update
 
@@ -251,23 +251,42 @@ func InitUdn() {
 		"__base64_decode": UDN_Base64Decode, // Decode base64
 		"__base64_encode": UDN_Base64Encode, // Encode base64
 
+
 		//TODO(g): Make these the new defaults, which use CM
 		"__change_get":    UDN_DataGet,    // Dataman Get
 		"__change_set":    UDN_DataSet,    // Dataman Set
+		"__change_submit":    UDN_ChangeDataSubmit,    // This accepts dotted notation and figures out what records/fields are being effected.  Example:  {"opsdb.schema_table_field.1050.name":"_id"}
 		"__change_filter": UDN_DataFilter, // Dataman Filter
 		"__change_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
-		//"__change_delete":    UDN_DataDelete,    // Dataman Get
-		//"__change_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
+		//"__change_delete":    UDN_DataDelete,    // Dataman Delete
+		//"__change_delete_filter":    UDN_DataDeleteFilter,    // Dataman Delete Filter
 		//"__change_ensure_exists":    UDN_ChangeEnsureExists,    // Ensure that the specified data exists in the database.  Does not have Dataman equivalent functions, wrapper.
 		//"__change_ensure_not_exists":    UDN_ChangeEnsureNotExists,    // Ensure that the specified data DOES NOT exist in the database.  Does not have Dataman equivalent functions, wrapper.
+
+		"__safe_data_get":    UDN_SafeDataGet,    // Safe Dataman Get - Always connects to the correct database, and checks to ensure that
+		"__safe_data_filter": UDN_SafeDataFilter, // Safe Dataman Filter - Correct DB and added filter args guarantee restricted access
+		"__safe_data_filter_full": UDN_SafeDataFilterFull, // Safe Updated version of DatamanFilter that takes in JSON and allows multi-constraints
+		//"__safe_data_set":    UDN_SafeDataSet,    // Safe Dataman Set - Ensures this is the correct business before allowing the set
+		//"__safe_data_delete":    UDN_SafeDataDelete,    // Safe Dataman Delete
+		//"__safe_data_delete_filter":    UDN_SafeDataDeleteFilter,    // Safe Dataman Delete Filter
 
 
 		"__data_get":    UDN_DataGet,    // Dataman Get
 		"__data_set":    UDN_DataSet,    // Dataman Set
 		"__data_filter": UDN_DataFilter, // Dataman Filter
 		"__data_filter_full": UDN_DataFilterFull, // Updated version of DatamanFilter that takes in JSON and allows multi-constraints
-		//"__data_delete":    UDN_DataDelete,    // Dataman Get
-		//"__data_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
+		"__data_delete":    UDN_DataDelete,    // Dataman Get
+		"__data_delete_filter":    UDN_DataDeleteFilter,    // Dataman Set
+		"__data_tombstone": UDN_DataTombstone, // Dataman "Delete" with a Tombstone marker: _is_deleted=true
+		"__data_field_map_delete": UDN_DataFieldMapDelete, // Data field map delete - Go into JSON data and delete things
+
+
+		"__time":          UDN_Time, // Return current time.Time object, and run AddDate if any args are passed in
+		"__time_string":          UDN_TimeString, // Return string of the time
+		"__time_string_date":          UDN_TimeStringDate, // Return string of the date
+
+		"__time_series_get":    UDN_TimeSeriesGet,    // Time Series: Get
+		"__time_series_filter":    UDN_TimeSeriesFilter,    // Time Series: Filter
 
 		"__compare_equal":     UDN_CompareEqual,    // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
 		"__compare_not_equal": UDN_CompareNotEqual, // Compare equality, takes 2 args and compares them.  Returns 1 if true, 0 if false.  For now, avoiding boolean types...
@@ -324,6 +343,44 @@ func InitUdn() {
 		//"__continue": UDN_IterateContinue,		// Skip to next iteration
 		// -- Dont think I need this -- //"__break": UDN_IterateBreak,				//TODO(g): Break this iteration, we are done.  Is this needed?  Im not sure its needed, and it might suck
 
+		"__log_level": UDN_SetLogLevel,   	// Set the log level
+
+		"__custom_populate_schedule_duty_responsibility": UDN_Custom_PopulateScheduleDutyResponsibility,   			// CUSTOM: Populate Schedule for Duty Responsibilities
+
+		"__code": UDN_Custom_Code,   			// Code Execution from data.  First argument is DB to use, second is code_id, third is input_data override. //NOTE(g): This requires database tables to exist in the DB that match the functions requirements, which most UDN functions dont require.  Putting it in Custom code for now, but it will eventually be integrated into normal UDN once I have the schema population routines implemented.
+
+		"__custom_health_check_promql": UDN_Custom_Health_Check_PromQL,	// CUSTOM: ...
+		//"__custom_metric_filter": UDN_Custom_Metric_Filter,   			// CUSTOM: Fetch Metrics by name/labelset
+		//"__custom_metric_get_values": UDN_Custom_Metric_Get_Values,   			// CUSTOM: Get TS values for list of metrics
+		//"__custom_metric_rule_match_percent": UDN_Custom_Metric_Rule_Match_Percent,   	// CUSTOM: Returns a scalar, % of matches in the rules
+		//"__custom_metric_handle_outage": UDN_Custom_Metric_Handle_Outage,   	// CUSTOM: Handles an any outages from health check failures on metrics
+		//"__custom_metric_process_open_outages": UDN_Custom_Metric_Process_Open_Outages,   	// CUSTOM: Handles an any outages from health check failures on metrics
+		"__custom_metric_process_alert_notifications": UDN_Custom_Metric_Process_Alert_Notifications,   	// CUSTOM: Processes any open Alert Notifications
+		"__custom_metric_escalation_policy_oncall": UDN_Custom_Metric_Escalation_Policy_Oncall,   	// CUSTOM: Get the team/oncall members of the Escalation Policy
+
+		"__custom_duty_shift_summary": UDN_Custom_Duty_Shift_Summary,	// CUSTOM: Get the Duty shift summary over a time range
+		"__current_duty_responsibility_current_user": UDN_Custom_Duty_Responsibility_Current_User, // CUSTOM: ...
+
+		"__customer_duty_roster_user_shift_info": UDN_Custom_Duty_Roster_User_Shift_Info,   	//CUSTOM: ....
+
+		"__custom_weekly_activity": UDN_Custom_Activity_Daily, //CUSTOM: Weekly activity on a database/table/field
+
+		"__custom_date_range_parse": UDN_Custom_Date_Range_Parse, //CUSTOM: Weekly activity on a database/table/field
+
+		//"__customer_duty_responsibility_user_shift_next": UDN_Custom_Duty_Responsibility_User_Shift_Next,   	//CUSTOM: ....
+		//"__customer_duty_responsibility_user_shift_previous": UDN_Custom_Duty_Responsibility_User_Shift_Previous,   	//CUSTOM: ....
+
+		"__custom_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	// CUSTOM: Post change submit, process the data
+		"__customer_monitor_post_process_change": UDN_Custom_Monitor_Post_Process_Change,   	//TODO(g):REMOVE: This one is a typo.  Switch to the above __custom_*// CUSTOM: Post change submit, process the data
+
+		"__custom_dashboard_item_edit": UDN_Custom_Dashboard_Item_Edit,   	// CUSTOM:...
+
+		"__custom_dataman_create_filter_html": UDN_Custom_Dataman_Create_Filter_Html,   	// CUSTOM:...
+
+		"__custom_dataman_add_rule": UDN_Custom_Dataman_Add_Rule, // Add a rule for Dataman filter
+
+		"__custom_login": UDN_Custom_Login,		// CUSTOM:...
+		"__custom_auth": UDN_Custom_Auth,		// CUSTOM:...
 	}
 
 	PartTypeName = map[int]string{

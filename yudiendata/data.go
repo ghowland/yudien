@@ -16,8 +16,8 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/junhsieh/goexamples/fieldbinding/fieldbinding"
-	"time"
 	"github.com/jacksontj/dataman/src/datamantype"
+	"time"
 )
 
 const (
@@ -48,13 +48,25 @@ const ( // order matters for log levels
 	log_trace = iota
 )
 
+const (
+	time_format_db = "2006-01-02 15:04:05"
+	time_format_go = "2006-01-02T15:04:05"
+	time_format_date = "2006-01-02"
+)
+
 type DatabaseConfig struct {
-	ConnectOptions string `json:"connect_opts"`
+	Name string `json:"name"`
 	Database string `json:"database"`
 	Schema string `json:"schema"`
+	User string `json:"user"`
+	Password string `json:"password"`
+	Host string `json:"host"`
+	ConnectOptionsTemplate string `json:"connect_template"`
+	ConnectOptions string `json:"connect_opts"`
 }
 
 var DefaultDatabase *DatabaseConfig
+var AllDatabaseConfig = map[string]DatabaseConfig{}
 
 
 var DatasourceInstance = map[string]*storagenode.DatasourceInstance{}
@@ -119,7 +131,7 @@ func Query(db *sql.DB, sql string) []map[string]interface{} {
 }
 
 // Returns a DatasourceInstance.  If name is "" or not found, it starts with the lowest DB and finds the first collection/table that matches
-func GetDatasourceInstance(options map[string]interface{}) (*storagenode.DatasourceInstance, string) {
+func GetDatasourceInstance(options map[string]interface{}) (*storagenode.DatasourceInstance, string, string) {
 	datasource_instance := DatasourceInstance["_default"]
 	datasource_database := DatasourceDatabase["_default"]
 
@@ -135,9 +147,15 @@ func GetDatasourceInstance(options map[string]interface{}) (*storagenode.Datasou
 		}
 	}
 
+<<<<<<< HEAD
 	UdnLogLevel(nil, log_trace, "Data Source Connection: %s\n", selected_db)
 
 	return datasource_instance, datasource_database
+=======
+	//UdnLogLevel(nil, log_trace, "Data Source Connection: %s\n", selected_db)
+
+	return datasource_instance, datasource_database, selected_db
+>>>>>>> 4c058a4... Clean up
 }
 
 func GetRecordLabel(datasource_database string, collection_name string, record_id int) string {
@@ -155,17 +173,57 @@ func AddJoinAsFlatNamespace(record map[string]interface{}, join_array []interfac
 			join_record := record[join_string].(map[string]interface{})
 
 			for field_name, value := range join_record {
+				// Use dots to reach joined data in flat namespace
 				field_key := fmt.Sprintf("%s.%s", join_name, field_name)
 				record[field_key] = value
+
+				// Use double-underscore too, sometimes we cant use dots
+				field_key = fmt.Sprintf("%s__%s", join_name, field_name)
+				record[field_key] = value
+
+				//UdnLogLevel(nil, log_trace, "AddJoinAsFlatNamespace: %s: %v\n", field_key, value)
 			}
 		}
 	}
 }
 
+func DatamanGetByLabel(record_label string) map[string]interface{} {
+	UdnLogLevel(nil, log_debug, "Dataman GET By Label: %s\n", record_label)
+
+	parts := strings.Split(record_label, ".")
+
+	database := parts[0]
+	table := parts[1]
+	record_pkey := GetResult(parts[2], type_int).(int64)
+
+	options := make(map[string]interface{})
+	options["db"] = database
+
+	record := DatamanGet(table, int(record_pkey), options)
+
+	return record
+}
+
+func DatamanSetByLabel(record_label string, record map[string]interface{}) map[string]interface{} {
+	UdnLogLevel(nil, log_debug, "Dataman SET By Label: %s: %v\n", record_label, record)
+
+	parts := strings.Split(record_label, ".")
+
+	database := parts[0]
+	table := parts[1]
+
+	options := make(map[string]interface{})
+	options["db"] = database
+
+	record_result := DatamanSet(table, record, options)
+
+	return record_result
+}
+
 func DatamanGet(collection_name string, record_id int, options map[string]interface{}) map[string]interface{} {
 	//fmt.Printf("DatamanGet: %s: %d\n", collection_name, record_id)
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	get_map := map[string]interface{} {
 		"db":             datasource_database,
@@ -182,15 +240,29 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
-	UdnLogLevel(nil, log_debug, "Dataman GET: %s: %v\n", datasource_database, result.Return[0])
-
 	if result.Error != "" {
 		UdnLogLevel(nil, log_error, "Dataman GET: %s: ERRORS: %v\n", datasource_database, result.Error)
 	}
 
+	UdnLogLevel(nil, log_debug, "Dataman GET: %s: %v\n", datasource_database, result.Return[0])
+
 	record := result.Return[0]
 	if record != nil {
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, record_id)
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, record_id)
+
+		// If we have an Active Tombstone record, and we arent ignoring it
+		if record["_is_deleted"] != nil && options["ignore_tombstones"] != nil && record["_is_deleted"] == true && options["ignore_tombstones"] != true {
+			//TODO(g):SECURITY: Do I need to return an empty map with only _error?  I think maybe I do, it's secret data...
+			record["_error"] = "This record has been deleted with a Tombstone: _is_deleted = true"
+			UdnLogLevel(nil, log_error, "Dataman GET: %s: ERRORS: %s\n", record["_record_label"], record["_error"])
+		} else {
+			// If this is a secret, and we arent told to expose it, error
+			if record["_is_secret"] != nil && record["_is_secret"] == true && options["expose_secrets"] != true {
+				//TODO(g):SECURITY: Do I need to return an empty map with only _error?  I think maybe I do, it's secret data...
+				record["_error"] = "This record is secret"
+				UdnLogLevel(nil, log_error, "Dataman GET: %s: ERRORS: %s\n", record["_record_label"], record["_error"])
+			}
+		}
 	}
 
 	// Add all the joined fields as a flat namespace to the original table
@@ -202,23 +274,51 @@ func DatamanGet(collection_name string, record_id int, options map[string]interf
 }
 
 func DatamanSet(collection_name string, record map[string]interface{}, options map[string]interface{}) map[string]interface{} {
+	UdnLogLevel(nil, log_trace, "Dataman SET: %s: %v\n", collection_name, record)
+
 	// Duplicate this map, because we are messing with a live map, that we dont expect to change in this function...
 	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
 	record = MapCopy(record)
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	// Remove the _id field, if it is nil.  This means it should be new/insert
 	if record["_id"] == nil || record["_id"] == "<nil>" || record["_id"] == "\u003cnil\u003e" || record["_id"] == "" {
 		//fmt.Printf("DatamanSet: Removing _id key: %s\n", record["_id"])
 		delete(record, "_id")
 	} else {
-		//fmt.Printf("DatamanSet: Not Removing _id: %s\n", record["_id"])
+		// If this a new record (negative ID), clear the negative value out so it is not submitted
+		record_id := GetResult(record["_id"], type_int).(int64)
+
+		if record_id < 0 {
+			UdnLogLevel(nil, log_trace, "DatamanSet: New Record: Removing _id: %d\n", record_id)
+			delete(record, "_id")
+		} else {
+			//UdnLogLevel(nil, log_trace, "DatamanSet: Not Removing _id: %s\n", record["_id"])
+		}
 	}
 
 	// Delete the defaults base64 encoded map, it is never part of a record, it is to ensure we keep our defaults
 	if record["_defaults"] != nil {
 		delete(record, "_defaults")
+	}
+
+	// Delete the record label
+	if record["_record_label"] != nil {
+		delete(record, "_record_label")
+	}
+
+
+	// Put the deep fields into their containers
+	for k, v := range record {
+		if strings.Contains(k, "||") {
+			parts := strings.Split(k, "||")
+			part_array := GetResult(parts, type_array).([]interface{})
+
+			// Update the record
+			UdnLogLevel(nil, log_trace, "DatamanSet: %s: %s: %v\n", collection_name, k, part_array)
+			Direct_MapSet(part_array, v, record)
+		}
 	}
 
 	// Fix data manually, for now
@@ -245,13 +345,21 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 				}
 			}
 		}
+
+		// If we have any different trimming the key, then trim and remove the old one.  Spaces are not allowed
+		trimmed_key := strings.TrimSpace(k)
+		if k != trimmed_key {
+			record[trimmed_key] = record[k]
+			delete(record, k)
+		}
 	}
+
 
 	// Fixup the record, if its not a new one, by getti
 	// ng any values
 	//TODO(g):REMOVE: This is fixing up implementation problems in Dataman, which Thomas will fix...
 	if record["_id"] != nil && record["_id"] != "" {
-		//fmt.Printf("Ensuring all fields are present (HACK): %s: %v\n", collection_name, record["_id"])
+		UdnLogLevel(nil, log_error, "Ensuring all fields are present (HACK): %s: %v\n", collection_name, record["_id"])
 
 		// Record ID will be an integer
 		var record_id int64
@@ -260,16 +368,22 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		case string:
 			record_id, err = strconv.ParseInt(record["_id"].(string), 10, 32)
 			if err != nil {
-				UdnLogLevel(nil, log_error,"Record _id is not an integer: %s: %s", collection_name, record)
+				UdnLogLevel(nil, log_error,"Record _id is not an integer: %s: %v\n", collection_name, record)
 				delete(record, "_id")
 			}
 		default:
+			UdnLogLevel(nil, log_error,"Record _id type: %T\n", record["_id"])
 			record_id = GetResult(record["_id"], type_int).(int64)
 		}
 
-		options := make(map[string]interface{})
+		record["_id"] = record_id
 
-		record_current := DatamanGet(collection_name, int(record_id), options)
+		UdnLogLevel(nil, log_trace,"record_id type: %T\n", record_id)
+
+		get_options := make(map[string]interface{})
+		get_options["db"] = options["db"]
+
+		record_current := DatamanGet(collection_name, int(record_id), get_options)
 
 		//// Set all the fields we have in the existing record, into our new record, if they dont exist, which defeats Thomas' current bug not allowing me to save data unless all fields are present
 		//for k, v := range record_current {
@@ -281,15 +395,134 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 
 		// Remove any fields that arent present in the record_current
 		for k, _ := range record {
+			// Key does not exist in
 			if _, has_key := record_current[k]; !has_key {
+				// This is a deep key, and cannot exist on it's own
+				//TODO(g): This feature isnt finished yet.
+				if strings.Contains(k, "||") {
+					//parts := strings.Split(k, "||")
+					field_args := SimpleDottedStringToArray(k, "||")
+					_ = MapGet(field_args, record_current)
+					//UdnLogLevel(nil, log_trace, "Deep field: %s: %s: %v: %v\n", collection_name, k, field_args, field_value)
+				}
+
+
+
+				//UdnLogLevel(nil, log_debug, "Before Removing field:  Record Current: %s: %s: %v: %s\n", collection_name, k, record_current[k], JsonDump(record_current))
+				//
+				//UdnLogLevel(nil, log_debug, "Before Removing field: %s: %s: %s\n", collection_name, k, JsonDump(record))
+
+
 				UdnLogLevel(nil, log_debug, "Removing field: %s: %s: %v\n", collection_name, k, record[k])
 				delete(record, k)
+			} else {
+				//TODO(g): Remove, after confirming all of this is now handled in ChangeSubmit...
+
+				// Update any map records, so we overlay
+				switch record_current[k].(type) {
+				case map[string]interface{}:
+					UdnLogLevel(nil, log_debug, "Map Update Record:  Record Current: %s: %s: %v: %s\n", collection_name, k, record_current[k], JsonDump(record_current))
+
+					UdnLogLevel(nil, log_debug, "Map Update Record: %s: %s: %s\n", collection_name, k, JsonDump(record))
+
+
+					current_value_map := record_current[k].(map[string]interface{})
+					incoming_value_map := record[k].(map[string]interface{})
+
+
+					record[k] = MapUpdate(current_value_map, incoming_value_map)
+
+				}
+
 			}
 		}
 	} else {
-		// This is a new record, we just tested for it above, remove empty string _id
-		delete(record, "_id")
+		// This is a new record, we just tested for it above, remove empty string _id, if it exists
+		if _, ok := record["_id"]; ok {
+			UdnLogLevel(nil, log_debug, "Removing _id: %s: %v\n", collection_name, record)
+			delete(record, "_id")
+		}
 	}
+
+	// Remove fields I know I put in here, that I dont want to go in
+	//TODO(g):REMOVE: Same as the others
+	delete(record, "_table")
+	delete(record, "_web_data_widget_instance_id")
+
+	var dataman_query *query.Query
+
+	// Insert if this doesnt have the _id PKEY, otherwise SET (update)
+	if record["_id"] == nil {
+		// Form the Dataman query -- INSERT
+		dataman_query = &query.Query{
+			query.Insert,
+			map[string]interface{} {
+				"db":             datasource_database,
+				"shard_instance": "public",
+				"collection":     collection_name,
+				"record":         record,
+			},
+		}
+
+	} else {
+		// Form the Dataman query -- SET
+		dataman_query = &query.Query{
+			query.Set,
+			map[string]interface{} {
+				"db":             datasource_database,
+				"shard_instance": "public",
+				"collection":     collection_name,
+				"record":         record,
+			},
+		}
+	}
+
+	//UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
+	UdnLogLevel(nil, log_trace, "Dataman SET: Query: JSON: %s\n", JsonDump(dataman_query))
+
+	////ABORT -- ABORT
+	//UdnLogLevel(nil, log_trace, "Dataman SET: Query: ABORT ABORT ABORT\n")
+	//return record		//DEBUG- ABORT ABORT ABORT <<----==-------
+
+	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
+
+
+	if result.ValidationError != nil {
+		UdnLogLevel(nil, log_error, "Dataman SET: Validation ERROR: %s\n", JsonDump(result.ValidationError))
+	}
+
+
+	//result_bytes, _ := json.Marshal(result)
+	//UdnLogLevel(nil, log_trace, "Dataman SET: %s\n", result_bytes)
+
+	if result.Error != "" {
+		UdnLogLevel(nil, log_error, "Dataman SET: ERROR: %v\n", result.Error)
+	}
+
+	if result.Return != nil {
+		record := result.Return[0]
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record["_id"].(int64)))
+
+		UdnLogLevel(nil, log_trace, "Dataman SET: Result Record: JSON: %v\n", record)
+
+		return record
+	} else {
+		UdnLogLevel(nil, log_trace, "Dataman SET: Failed Result: nil: %v\n", result.Error)
+		record := make(map[string]interface{})
+		record["_error"] = result.ValidationError
+		return record
+	}
+}
+
+
+func DatamanInsert(collection_name string, record map[string]interface{}, options map[string]interface{}) map[string]interface{} {
+	UdnLogLevel(nil, log_trace, "Dataman INSERT: %s: %v\n", collection_name, record)
+
+	// Duplicate this map, because we are messing with a live map, that we dont expect to change in this function...
+	//TODO(g):REMOVE: Once I dont need to manipulate the map in this function anymore...
+	record = MapCopy(record)
+
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	// Remove fields I know I put in here, that I dont want to go in
 	//TODO(g):REMOVE: Same as the others
@@ -298,7 +531,7 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 
 	// Form the Dataman query
 	dataman_query := &query.Query{
-		query.Set,
+		query.Insert,
 		map[string]interface{} {
 			"db":             datasource_database,
 			"shard_instance": "public",
@@ -307,48 +540,93 @@ func DatamanSet(collection_name string, record map[string]interface{}, options m
 		},
 	}
 
-	UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
-	//fmt.Printf("Dataman SET: Record: JSON: %v\n", JsonDump(record))
-	//fmt.Printf("Dataman SET: Query: JSON: %v\n", JsonDump(dataman_query))
+	//UdnLogLevel(nil, log_debug,"Dataman SET: Record: %v\n", record)
+	UdnLogLevel(nil, log_trace, "Dataman INSERT: Query: JSON: %v\n", JsonDump(dataman_query))
 
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
+
+	if result.ValidationError != nil {
+		UdnLogLevel(nil, log_error, "Dataman INSERT: Validation ERROR: %s\n", JsonDump(result.ValidationError))
+	}
+
+
 	//result_bytes, _ := json.Marshal(result)
-	//fmt.Printf("Dataman SET: %s\n", result_bytes)
+	//UdnLogLevel(nil, log_trace, "Dataman SET: %s\n", result_bytes)
 
 	if result.Error != "" {
-		UdnLogLevel(nil, log_error, "Dataman SET: ERROR: %v\n", result.Error)
+		UdnLogLevel(nil, log_error, "Dataman INSERT: ERROR: %v\n", result.Error)
 	}
 
 	if result.Return != nil {
 		record := result.Return[0]
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
-		UdnLogLevel(nil, log_trace, "Dataman SET: Result Record: JSON: %v\n", record)
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record["_id"].(int64)))
+
+		UdnLogLevel(nil, log_trace, "Dataman INSERT: Result Record: JSON: %v\n", record)
 
 		return record
 	} else {
-		return nil
+		UdnLogLevel(nil, log_trace, "Dataman INSERT: Failed Result: nil: %v\n", result.Error)
+		record := make(map[string]interface{})
+		record["_error"] = result.ValidationError
+		return record
 	}
 }
 
-func DatamanFilter(collection_name string, filter map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
+func DatamanFilter(collection_name string, filter_input_map map[string]interface{}, options map[string]interface{}) []map[string]interface{} {
 
 	//fmt.Printf("DatamanFilter: %s:  Filter: %v  Join: %v\n\n", collection_name, filter, options["join"])
 	//fmt.Printf("Sort: %v\n", options["sort"])		//TODO(g): Sorting
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
-	filter = MapCopy(filter)
+	filter_input_map = MapCopy(filter_input_map)
 
-	for k, v := range filter {
+	for k, v := range filter_input_map {
 		switch v.(type) {
 		case string:
-			filter[k] = []string{"=", v.(string)}
+			filter_input_map[k] = []string{"=", v.(string)}
 		case int64:
-			filter[k] = []string{"=", fmt.Sprintf("%d", v)}
+			filter_input_map[k] = []string{"=", fmt.Sprintf("%d", v)}
 		}
 	}
 
+	var filter interface{}
+	filter = filter_input_map
+
+	// If we were given Time Range options to filter on, handle these
+	if options["time_range"] != nil && options["time_range_fields"] != nil {
+		// Make a full filter out of this, as we need multiple of the same fields to AND together, so incorporate the filter_map we got as an arg
+		filter_full := make([]interface{}, 0)
+		filter_full = append(filter_full, filter_input_map)
+
+		UdnLogLevel(nil, log_trace, "Dataman Filter: Time Range 001: %s\n\n", JsonDump(filter_full))
+
+		//TODO(g): Handle errors from parsing
+		time_range_part := strings.Split(options["time_range"].(string), " - ")
+		time_range_start, _ := time.Parse(time_format_db, time_range_part[0])
+		time_range_stop, _ := time.Parse(time_format_db, time_range_part[1])
+
+		for _, field := range options["time_range_fields"].([]interface{}) {
+			field_str := field.(string)
+
+			filter_item_start := map[string]interface{}{
+				field_str: []interface{}{">=", time_range_start},
+			}
+			filter_item_stop := map[string]interface{}{
+				field_str: []interface{}{"<", time_range_stop},
+			}
+
+			filter_item := []interface{}{filter_item_start, "AND", filter_item_stop}
+
+			// Join this item and previous together logically with AND
+			filter_full = append(filter_full, "AND")
+			filter_full = append(filter_full, filter_item)
+		}
+
+		// Update the filter to the full filter we made here
+		filter = filter_full
+	}
 
 	filter_map := map[string]interface{} {
 		"db":             datasource_database,
@@ -365,10 +643,11 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 	//fmt.Printf("Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
 	//fmt.Printf("Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
 	UdnLogLevel(nil, log_trace, "Dataman Filter: %s\n\n", JsonDump(filter_map))
-	UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
-	UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
+	//UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter: %s\n\n", SnippetData(filter_map["filter"], 120))
+	//UdnLogLevel(nil, log_trace, "Dataman Filter Map Filter Array: %s\n\n", SnippetData(filter_map["filter"].(map[string]interface{})["name"], 120))
 
 	dataman_query := &query.Query{query.Filter, filter_map}
+
 
 	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
 
@@ -380,19 +659,40 @@ func DatamanFilter(collection_name string, filter map[string]interface{}, option
 
 	// Add all the joined fields as a flat namespace to the original table
 	for _, record := range result.Return {
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+		field_id := "_id"
+		if record[field_id] == nil {
+			field_id = "id"
+		}
+
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record[field_id].(int64)))
 		if options["join"] != nil {
 			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
 		}
 	}
 
-	return result.Return
+	// Filter any Tombstone Deleted records
+	final_record_array := make([]map[string]interface{}, 0)
+
+	for _, record := range result.Return {
+		// Ensure we remove any records with _is_deleted==true unless options.ignore_tombstones==true
+		// If we have an Active Tombstone record, and we arent ignoring it
+		if record["_is_deleted"] == true && options["ignore_tombstones"] != true {
+			// Not adding this record to final_record_array, because it was deleted by tombstone, and we arent ignoring that with options flag
+		} else {
+			// If this record could be a secret (!nil), and either we want to expose secrets, or this isnt a secret, add the item to the result
+			if record["_is_secret"] == nil || options["expose_secrets"] == true || record["_is_secret"] == false {
+				final_record_array = append(final_record_array, record)
+			}
+		}
+	}
+
+	return final_record_array
 }
 
 func DatamanFilterFull(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
 	// Contains updated functionality of DatamanFilter where multiple constraints can be used as per dataman specs
 
-	datasource_instance, datasource_database := GetDatasourceInstance(options)
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
 
 	// filter should be a map[string]interface{} for single filters and []interface{} for multi-filters
 	// dataman handles all cases so it is fine for filter to be interface{}
@@ -431,15 +731,274 @@ func DatamanFilterFull(collection_name string, filter interface{}, options map[s
 
 	// Add all the joined fields as a flat namespace to the original table
 	for _, record := range result.Return {
-		record["_record_label"] = GetRecordLabel(datasource_database, collection_name, int(record["_id"].(int64)))
+		record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record["_id"].(int64)))
 		if options["join"] != nil {
 			AddJoinAsFlatNamespace(record, options["join"].([]interface{}))
 		}
 	}
 
-	return result.Return
+	// Filter any Tombstone Deleted records
+	final_record_array := make([]map[string]interface{}, 0)
+
+	for _, record := range result.Return {
+		// Ensure we remove any records with _is_deleted==true unless options.ignore_tombstones==true
+		// If we have an Active Tombstone record, and we arent ignoring it
+		if record["_is_deleted"] == true && options["ignore_tombstones"] != true {
+			// Not adding this record to final_record_array, because it was deleted by tombstone, and we arent ignoring that with options flag
+		} else {
+			// If this record could be a secret (!nil), and either we want to expose secrets, or this isnt a secret, add the item to the result
+			if record["_is_secret"] == nil || options["expose_secrets"] == true || record["_is_secret"] == false {
+				final_record_array = append(final_record_array, record)
+			}
+		}
+	}
+
+	return final_record_array
 }
 
+func DatamanFormat(filter_string string, args ...interface{}) interface{} {
+	// Given a json formatted string (similar to what is used in __data_filter, decode it into a dataman compatible structure)
+	filter_string = strings.Replace(filter_string, "'", "\"", -1)
+	filter_string = fmt.Sprintf(filter_string, args...)
+
+	filter_string_bytes := []byte(filter_string)
+
+	var filter interface{}
+
+	if err := json.Unmarshal(filter_string_bytes, &filter); err != nil {
+		log.Panic(err)
+	}
+
+	return filter
+}
+
+func DatamanDelete(collection_name string, record_id int64, options map[string]interface{}) map[string]interface{} {
+	// The delete function looks at the table schema_table_delete_dependency to determine
+	// Whether to delete or NULL FK dependencies on the deleted entry (recursively)
+	UdnLogLevel(nil, log_trace, "Delete entry: collection name: %v, record_id: %v, options: %v\n", collection_name, record_id, options)
+
+	_, datasource_database, _ := GetDatasourceInstance(options)
+
+	var record map[string]interface{}
+
+	// Find the schema_id
+	schema_filter := DatamanFormat("{'name':['=', '%s']}", datasource_database)
+	schema_result := DatamanFilterFull("schema", schema_filter, make(map[string]interface{}))
+	var schema_id int64
+
+	if len(schema_result) > 0 {
+		schema_id = schema_result[0]["_id"].(int64)
+	} else {
+		UdnLogLevel(nil, log_error, "Cannot find schema in database for delete. Aborting delete.\n")
+		return record
+	}
+
+	// Find the table_id
+	table_filter := DatamanFormat("[{'name':['=', '%s']}, 'AND', {'schema_id':['=', '%d']}]", collection_name, schema_id)
+	table_result := DatamanFilterFull("schema_table", table_filter, make(map[string]interface{}))
+	var table_id int64
+
+	if len(table_result) > 0 {
+		table_id = table_result[0]["_id"].(int64)
+	} else {
+		UdnLogLevel(nil, log_error, "Cannot find table_id in schema_table for delete. Aborting delete.\n")
+		return record
+	}
+
+	// For the given entry, check if there are any dependencies
+	dependency_list := make([]map[string]interface{}, 0, 10)
+	FindDeleteDependency(schema_id, table_id, record_id, &dependency_list)
+
+	UdnLogLevel(nil, log_debug, "\nDependency List: %v\n\n", dependency_list)
+
+	if len(dependency_list) > 0 {
+		// Go through the list of dependencies backwards and perform NULL or delete as needed
+		for i := len(dependency_list) - 1; i >= 0; i-- {
+			dependent_table_name := dependency_list[i]["table_name"].(string)
+
+			if (dependency_list[i]["delete"].(bool)) {
+				// Delete the dependent entry
+				DatamanDeleteRaw(dependent_table_name, dependency_list[i]["record_id"].(int64), make(map[string]interface{}))
+			} else {
+				// NULL the entry's FK reference
+				dependent_table_field_name := dependency_list[i]["table_field_name"].(string)
+				dependent_record_id := dependency_list[i]["record_id"].(int64)
+
+				DatamanNullRaw(dependent_table_name, dependent_table_field_name, dependent_record_id, make(map[string]interface{}))
+			}
+		}
+	}
+
+	// After resolving all dependencies, delete the current entry
+	//TODO(z):Return all deleted/NULLed dependencies instead of only the specified one (needed?)
+	record = DatamanDeleteRaw(collection_name, record_id,  options)
+	return record
+}
+
+//func DatamanDeleteFilter(collection_name string, filter interface{}, options map[string]interface{}) []map[string]interface{} {
+// Add function when necessary - currently UDN_DataDeleteFilter runs DatamanDelete on each entry in the filtered list
+//}
+
+func FindDeleteDependency(schema_id int64, schema_table_id int64, record_id int64, dependency_list *[]map[string]interface{}) {
+	// Dependencies are formatted as a array of map[string]interface{}
+	// Fields in the map
+	// "schema_name" - string
+	// "table_name" - string
+	// "table_field_name" - string
+	// "record_id" - int64/pkey
+	// "delete" - bool (True = delete, False = NULL)
+
+	// Recursively find dependencies and add them to dependency_list
+
+	// Find the _id for schema_table_field PK
+	table_field_filter := DatamanFormat("[{'schema_table_id':['=', '%d']}, 'AND', {'name': ['=', '_id']}]", schema_table_id)
+	table_field_result := DatamanFilterFull("schema_table_field", table_field_filter, make(map[string]interface{}))
+	var table_field_id int64
+
+	// If the field exists, look for dependent fields
+	if len(table_field_result) > 0 {
+		table_field_id = table_field_result[0]["_id"].(int64)
+
+		// Find all dependent fields from foreign_key_schema_table_field_id
+		dependent_table_field_filter := DatamanFormat("{'foreign_key_schema_table_field_id':['=', '%d']}", table_field_id)
+		dependent_table_field_result := DatamanFilterFull("schema_table_field", dependent_table_field_filter, make(map[string]interface{}))
+
+		// For each dependent field - find the dependent table, look for dependent entries, and add them to the dependency list
+		for _, dependent_table_field := range dependent_table_field_result {
+			dependent_table_id := dependent_table_field["schema_table_id"].(int64)
+			dependent_table_field_name := dependent_table_field["name"].(string)
+			dependent_entry_name := dependent_table_field["name"]
+
+			dependent_table_filter := DatamanFormat("{'_id':['=', '%d']}", dependent_table_id)
+			dependent_table_result := DatamanFilterFull("schema_table", dependent_table_filter, make(map[string]interface{}))
+			dependent_table_name := ""
+
+			if len(dependent_table_result) > 0 {
+				dependent_table_name = dependent_table_result[0]["name"].(string)
+			}
+
+			// Look in the dependent table and look for dependent entries that need to be NULL/deleted
+			dependent_entry_filter := DatamanFormat("{'%s':['=', '%d']}", dependent_entry_name, record_id)
+			dependent_entry_result := DatamanFilterFull(dependent_table_name, dependent_entry_filter, make(map[string]interface{}))
+
+			// Check the delete_dependency table for the action to be performed on the dependent entries (NULL/deleted)
+			delete_dependency_filter := DatamanFormat("[{'delete_schema_table_field_id':['=', '%d']}, 'AND', {'schema_table_id':['=','%d']}]", table_field_id, dependent_table_id)
+			delete_dependency_result := DatamanFilterFull("schema_table_delete_dependency", delete_dependency_filter, make(map[string]interface{}))
+
+			// Set the flag for either delete or NULL dependent entries
+			delete := len(delete_dependency_result) > 0
+
+			// Find the schema name
+			schema_filter := DatamanFormat("{'_id':['=', '%d']}", schema_id)
+			schema_result := DatamanFilterFull("schema", schema_filter, make(map[string]interface{}))
+			schema_name := ""
+
+			if len(schema_result) > 0 {
+				schema_name = schema_result[0]["name"].(string)
+			}
+
+			// Used so that only one call to IsUniqueDependency is needed as we need to make a second pass for the recursion
+			seen_record_id := make(map[int64]bool)
+
+			// Go through each entry and store it in the dependency list (if it is uniqeu)
+			for _, dependent_entry := range dependent_entry_result {
+				// Check if the entry is unique
+
+				// Add each dependent entry to the dependency list
+				dependency := make(map[string]interface{})
+				dependency["schema_name"] = schema_name
+				dependency["table_name"] = dependent_table_name
+				dependency["record_id"] = dependent_entry["_id"]
+				dependency["table_field_name"] = dependent_table_field_name
+				dependency["delete"] = delete
+
+				if IsUniqueDependency(dependency, *dependency_list) {
+					*dependency_list = AppendArrayMap(*dependency_list, dependency)
+					seen_record_id[dependency["record_id"].(int64)] = false
+				} else {
+					seen_record_id[dependency["record_id"].(int64)] = true
+				}
+			}
+
+			// if dependent entries marked for delete, recursively call FindDeleteDependency on each dependent entry
+			if delete {
+				for _, dependent_entry := range dependent_entry_result {
+					dependent_record_id := dependent_entry["_id"].(int64)
+
+					if !seen_record_id[dependent_record_id] {
+						FindDeleteDependency(schema_id, dependent_table_id, dependent_record_id, dependency_list)
+					}
+				}
+			}
+		}
+	}
+}
+
+func DatamanDeleteRaw(collection_name string, record_id int64, options map[string]interface{}) map[string]interface{}{
+	// Used for deleting the a single entry with no other FK dependent on the deleted entry
+	// If there are other FK(s) dependent on the deleted entry, please use DatamanDelete
+	datasource_instance, datasource_database, selected_db := GetDatasourceInstance(options)
+
+	delete_map := map[string]interface{} {
+		"db":             datasource_database,
+		"shard_instance": "public",
+		"collection":     collection_name,
+		"pkey": map[string]interface{}{"_id": record_id},
+	}
+
+	UdnLogLevel(nil, log_debug, "Dataman Delete: %s: %v\n\n", datasource_database, delete_map)
+
+	dataman_query := &query.Query{query.Delete, delete_map}
+
+	result := datasource_instance.HandleQuery(context.Background(), dataman_query)
+
+	record := make(map[string]interface{})
+
+	if result.Error == "" {
+		UdnLogLevel(nil, log_debug, "Dataman Delete: %s: %v\n", datasource_database, result.Return[0])
+
+		record = result.Return[0]
+
+		if record != nil {
+			record["_record_label"] = GetRecordLabel(selected_db, collection_name, int(record_id))
+		}
+	} else {
+		// Send the error & msg back to the UDN caller
+		record["error"] = "Dataman Delete: Could not delete entry"
+		record["error_message"] = result.Error
+		UdnLogLevel(nil, log_error, "Dataman Delete: %s: ERRORS: %v\n", datasource_database, result.Error)
+	}
+
+	return record
+}
+
+func DatamanNullRaw(collection_name string, field_name string, record_id int64, options map[string]interface{}) map[string]interface{}{
+	// Used for NULLing the a single entry with a FK dependency
+	record := DatamanFormat("{'_id': '%d', '%s': 'null'}", record_id, field_name)
+
+	record.(map[string]interface{})[field_name] = nil
+	result_map := DatamanSet(collection_name, record.(map[string]interface{}), options)
+
+	UdnLogLevel(nil, log_trace,"Set dependent entry to null: %v\n", result_map)
+
+	return result_map
+}
+
+func IsUniqueDependency(dependency map[string]interface{}, dependency_list []map[string]interface{}) bool{
+	// Check if dependency exists in dependency_list
+	// TODO(z): make more efficient - currently O(n) time where n = number of items in dependency_list - however there are not many items in most cases
+	// ^ think of a way to create maps for O(1) avg lookup time?
+	for _, cur_dependency := range dependency_list {
+		if cur_dependency["schema_name"] == dependency["schema_name"] &&
+			cur_dependency["table_name"] == dependency["table_name"] &&
+			cur_dependency["table_field_name"] == dependency["table_field_name"] &&
+			cur_dependency["record_id"] == dependency["record_id"] {
+			return false
+		}
+	}
+
+	return true
+}
 
 /*
 
@@ -457,52 +1016,59 @@ NULL = Unknown, test for existence and update.  Assume it is desired to be creat
  */
 
 
-func DatamanEnsureDatabases(pgconnect string, database string, current_path string, new_path string) {
-
-	//TODO(g): Do multiple DBs in the future (schema), for now just limit it to opsdb, because thats all we need now
-	limited_database_search := "_default"
-
+func DatamanEnsureDatabases(database_config DatabaseConfig, new_path interface{}) {
+	UdnLogLevel(nil, log_info, "Dataman Ensure Database: Database Config: %v\n\n", database_config)
 
 	// Get the Hard coded OpsDB record from the database `schema` table
 	option_map := make(map[string]interface{})
 	filter_map := make(map[string]interface{})
-	filter_map["name"] = limited_database_search
+	filter_map["name"] = database_config.Name
 	schema_result := DatamanFilter("schema", filter_map, option_map)
 	schema_map := schema_result[0]
 
 	UdnLogLevel(nil, log_info, "Schema: %v\n\n", schema_map)
 
-	default_schema := DatasourceInstance["_default"].StoreSchema
+
+	datasource := DatasourceInstance[database_config.Name].StoreSchema
 
 	//TODO(g): Remove when we have the Dataman capability to ALTER tables to set PKEYs
-	db, err := sql.Open("postgres", pgconnect)
+	UdnLogLevel(nil, log_info, "Direct Database Connect: \"%s\"\n\n", database_config.ConnectOptions)
+	db, err := sql.Open("postgres", database_config.ConnectOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
+	//// Make sure we see all the DBs in the Instance
+	//db_list := datasource.ListDatabase(context.Background())
+	//UdnLogLevel(nil, log_info, "Schema DB List: %s\n\n", JsonDump(db_list))
 
 
-	UdnLogLevel(nil, log_info, "\nList DB Start: %v\n\n", time.Now().String())
-	//db_list := default_schema.ListDatabase(context.Background())
-	db_item := default_schema.GetDatabase(context.Background(), limited_database_search)
-	UdnLogLevel(nil, log_info, "\nList DB Stop: %v\n\n", time.Now().String())
+
+	//UdnLogLevel(nil, log_info, "\nList DB Start: %v\n\n", time.Now().String())
+	//db_list := datasource.ListDatabase(context.Background())
+	//UdnLogLevel(nil, log_info, "\nList DB Stop: %v\n\n", time.Now().String())
+
+	UdnLogLevel(nil, log_info, "Get Database: %s (%s)\n\n", database_config.Name, database_config.Database)
+	db_item := datasource.GetDatabase(context.Background(), database_config.Database)
 
 	UdnLogLevel(nil, log_info, "\n\nFound DB Item: %v\n\n", db_item.Name)
+	UdnLogLevel(nil, log_info, "\n\nFound DB Total: %v\n\n", JsonDump(db_item))
 
-	//shard_instance := default_schema.ListShardInstance(context.Background(), db_item.Name)
+	//shard_instance := datasource.ListShardInstance(context.Background(), db_item.Name)
 
 
 	//TODO(g): Make an empty list of the collections, so we can track what we have, to find missing ones
 	collection_array := make([]string, 0)
+	missing_collection_array := make([]string, 0)
 
 
 	//fmt.Printf("\n\nFound DB Shard Instance: %v -- %v\n\n", shard_instance, db_item.ShardInstances["public"])
 
-	//collections := default_schema.ListCollection(context.Background(), db_item.Name, "public")
+	//collections := datasource.ListCollection(context.Background(), db_item.Name, "public")
 
 	for _, collection := range db_item.ShardInstances["public"].Collections {
-		UdnLogLevel(nil, log_info, "\n\nFound DB Collections: %s\n", collection.Name)
+		UdnLogLevel(nil, log_info, "\n\n%s: Found DB Collections: %s\n", db_item.Name, collection.Name)
 
 		option_map := make(map[string]interface{})
 		filter_map := make(map[string]interface{})
@@ -513,7 +1079,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 		collection_map := make(map[string]interface{})
 		if len(collection_result) > 0 {
 			collection_map = collection_result[0]
-			UdnLogLevel(nil, log_info, "OpsDB Collection: %v\n\n", collection_map)
+			UdnLogLevel(nil, log_info, "%s: Collection: %v\n\n", db_item.Name, collection_map)
 
 			// Add collection to our tracking array
 			collection_array = append(collection_array, collection.Name)
@@ -525,7 +1091,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 			// Check: Index, Primary Index
 
 			for _, field := range collection.Fields {
-				UdnLogLevel(nil, log_info, "\n\nFound DB Collections: %s  Field: %s  Type: %s   (Default: %v -- Not Null: %v -- Relation: %v)\n", collection.Name, field.Name, field.FieldType.Name, field.Default, field.NotNull, field.Relation)
+				UdnLogLevel(nil, log_info, "\n\n%s: Found DB Collections: %s  Field: %s  Type: %s   (Default: %v -- Not Null: %v -- Relation: %v)\n", db_item.Name, collection.Name, field.Name, field.FieldType.Name, field.Default, field.NotNull, field.Relation)
 
 				// Check: Not Null, Relation, Default, Type
 
@@ -538,22 +1104,33 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 				collection_field_map := make(map[string]interface{})
 				if len(collection_field_result) > 0 {
 					collection_field_map = collection_field_result[0]
-					UdnLogLevel(nil, log_info, "OpsDB Collection Field: %v\n\n", collection_field_map)
+					UdnLogLevel(nil, log_info, "%s: Collection Field: %v\n\n", db_item.Name, collection_field_map)
 
 					// Add collection to our tracking array
 					collection_field_array = append(collection_field_array, field.Name)
 
 
 				} else {
-					UdnLogLevel(nil, log_info, "OpsDB Collection Field: MISSING: %s\n\n", field.Name)
+					UdnLogLevel(nil, log_info, "%s: Collection Field: MISSING: %s\n\n", db_item.Name, field.Name)
 
 				}
 			}
 		} else {
-			UdnLogLevel(nil, log_info, "OpsDB Collection: MISSING: %s\n\n", collection.Name)
+			UdnLogLevel(nil, log_info, "%s: Collection: MISSING: %s\n\n", db_item.Name, collection.Name)
 
+			missing_collection_array = append(missing_collection_array, collection.Name)
+
+			option_map := make(map[string]interface{})
+			record_map := make(map[string]interface{})
+			record_map["name"] = collection.Name
+			record_map["schema_id"] = schema_map["_id"]
+			record_map["data_json"] = JsonDump(collection)
+
+			DatamanSet("schema_table", record_map, option_map)
 		}
 	}
+
+	UdnLogLevel(nil, log_info, "%s: Missing Collections: %v\n\n", db_item.Name, missing_collection_array)
 
 
 	// Loop over all collections and see if there are any we have in the `schema` table, that we dont have accounted for in the actual database
@@ -569,7 +1146,7 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 	for _, collection_record := range all_collection_result {
 		if ok, _ := InArray(collection_record["name"].(string), collection_array) ; !ok {
-			UdnLogLevel(nil, log_info, "Not Found collection: %s\n\n", collection_record["name"])
+			UdnLogLevel(nil, log_info, "%s: Not Found collection: %s\n\n", db_item.Name, collection_record["name"])
 
 
 			new_collection := metadata.Collection{}
@@ -585,8 +1162,8 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 
 
 			// Create the new collection
-			err := default_schema.AddCollection(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection)
-			UdnLogLevel(nil, log_info, "Add New Collection: %s: ERROR: %s\n\n", new_collection.Name, err)
+			err := datasource.AddCollection(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection)
+			UdnLogLevel(nil, log_info, "%s: Add New Collection: %s: ERROR: %s\n\n", db_item.Name, new_collection.Name, err)
 
 			for _, field_map := range all_collection_field_result {
 				// Create fields we need to populate this table
@@ -603,8 +1180,8 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 				new_collection.Fields[new_field.Name] = &new_field
 
 				// Create the new collection field
-				err := default_schema.AddCollectionField(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_field)
-				UdnLogLevel(nil, log_info, "Add New Collection Field: %s: %s: ERROR: %s\n\n", new_collection.Name, new_field.Name, err)
+				err := datasource.AddCollectionField(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_field)
+				UdnLogLevel(nil, log_info, "%s: Add New Collection Field: %s: %s: ERROR: %s\n\n", db_item.Name, new_collection.Name, new_field.Name, err)
 
 				if field_map["is_primary_key"] == true {
 					new_index := metadata.CollectionIndex{}
@@ -617,14 +1194,14 @@ func DatamanEnsureDatabases(pgconnect string, database string, current_path stri
 					new_index.Fields = append(new_index.Fields, new_field.Name)
 
 					// Create the new collection field index
-//					err := default_schema.AddCollectionIndex(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_index)
+//					err := datasource.AddCollectionIndex(context.Background(), db_item, db_item.ShardInstances["public"], &new_collection, &new_index)
 
 					// Perform an ALTER table through SQL here, as dataman doesnt allow it
 					//TODO(g)...
 					//
 					sql := fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY (%s)", new_collection.Name, new_field.Name)
 					Query(db, sql)
-					UdnLogLevel(nil, log_info, "Add New Collection Field PKEY: %s: %s: ERROR: %s\n\n", new_collection.Name, new_index.Name, err)
+					UdnLogLevel(nil, log_info, "%s: Add New Collection Field PKEY: %s: %s: ERROR: %s\n\n", db_item.Name, new_collection.Name, new_index.Name, err)
 
 				}
 
@@ -829,59 +1406,131 @@ func SanitizeSQL(text string) string {
 	return text
 }
 
-func InitDataman(pgconnect string, database string, configfile string, databases map[string]DatabaseConfig) {
+func InitDataman(database_config DatabaseConfig, databases map[string]DatabaseConfig) {
+	configfile := database_config.Schema
 
-	datasource, config, err := InitDatamanDatabase(database, pgconnect, configfile)
+	datasource, config, err := InitDatamanDatabase(database_config)
 	if err != nil {
-		datasource, config, err = InitDatamanDatabase(database, pgconnect, "/etc/web6/schema.json")
-		if err != nil {
-			panic(fmt.Sprintf("Load schema configuration data: %s: %s", configfile, err.Error()))
-		}
+		panic(fmt.Sprintf("Load schema configuration data: %s: %s", configfile, err.Error()))
 	}
 
 	//TODO(g): Fix this, as this hardcodes everything to one.  Simple in the beginning, but maybe not useful now.  Maybe just the default?
-	DefaultDatabaseTarget = database
+	DefaultDatabaseTarget = database_config.Database
 
+	// Add this DB as the _default, because it is our default
 	DatasourceInstance["_default"] = datasource
 	DatasourceConfig["_default"] = config
-	DatasourceDatabase["_default"] = database
+	DatasourceDatabase["_default"] = database_config.Database
+	AllDatabaseConfig["_default"] = database_config
 
-	for database_name, database_data := range databases {
-		datasource, config, err = InitDatamanDatabase(database_data.Database, database_data.ConnectOptions, database_data.Schema)
+	// Also add this DB under it's own name, so that we can access it both ways
+	DatasourceInstance[database_config.Name] = datasource
+	DatasourceConfig[database_config.Name] = config
+	DatasourceDatabase[database_config.Name] = database_config.Database
+	AllDatabaseConfig[database_config.Name] = database_config
+
+
+	// Initialize all our secondary databases
+	for _, database_data := range databases {
+		datasource, config, err = InitDatamanDatabase(database_data)
 
 		if err != nil {
 			panic(fmt.Sprintf("Load schema configuration data: %s: %s", database_data.Schema, err.Error()))
 		}
 
-		DatasourceInstance[database_name] = datasource
-		DatasourceConfig[database_name] = config
-		DatasourceDatabase[database_name] = database_data.Database
+		DatasourceInstance[database_data.Name] = datasource
+		DatasourceConfig[database_data.Name] = config
+		DatasourceDatabase[database_data.Name] = database_data.Database
+		AllDatabaseConfig[database_data.Name] = database_data
 	}
 
 }
 
-func InitDatamanDatabase(database string, connect_string string, configfile string) (*storagenode.DatasourceInstance, *storagenode.DatasourceInstanceConfig, error) {
+
+func InitDatamanDatabase(database_config DatabaseConfig) (*storagenode.DatasourceInstance, *storagenode.DatasourceInstanceConfig, error) {
 	// Initialize the DefaultDatabase
 	config := storagenode.DatasourceInstanceConfig{
 		StorageNodeType: "postgres",
 		StorageConfig: map[string]interface{}{
-			"pg_string": connect_string,
+			"pg_string": database_config.ConnectOptions,
 		},
 	}
 
 	// This is the development location
-	schema_str, err := ioutil.ReadFile(configfile)
+	schema_str, err := ioutil.ReadFile(database_config.Schema)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Cannot read database config file: %s", configfile)
+		return nil, nil, fmt.Errorf("Cannot read database config file: %s", database_config.Schema)
 	}
 
 	var meta metadata.Meta
 	err = json.Unmarshal(schema_str, &meta)
 	if err != nil {
-		panic(fmt.Sprintf("Cannot parse JSON config data: %s: %s", configfile, err.Error()))
+		panic(fmt.Sprintf("Cannot parse JSON config data: %s: %s", database_config.Schema, err.Error()))
 	}
 
 	datasource, err := storagenode.NewLocalDatasourceInstance(&config, &meta)
 
 	return datasource, &config, err
 }
+
+func ValidateField(database string, table string, record_pkey string, field_name string, value interface{}, field_map map[string]interface{}) string {
+	error := ""
+
+	UdnLogLevel(nil, log_trace, "Validation Field: %s.%s.%s.%s: %v\n", database, table, record_pkey, field_name, value)
+
+	// String
+	if field_map["argument_type_id"].(int64) == 2 {
+		value_str := GetResult(value, type_string).(string)
+
+		if field_map["length_minimum"] != nil && int64(len([]rune(value_str))) < field_map["length_minimum"].(int64) {
+			error = fmt.Sprintf("Must be longer than %d character(s)", field_map["length_minimum"])
+		}
+
+	}
+
+	if error != "" {
+		UdnLogLevel(nil, log_trace, "Validation Field: %s.%s.%s.%s: %v: ERROR: %s\n", database, table, record_pkey, field_name, value, error)
+	}
+
+	return error
+}
+
+
+
+func GetDatasource(record_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+
+	//TODO(g): Cache these
+	result_map := DatamanGet("datasource", int(record_id), options)
+
+	return result_map
+}
+
+func GetSchema(record_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+
+	//TODO(g): Cache these
+	result_map := DatamanGet("schema", int(record_id), options)
+
+	return result_map
+}
+
+func GetSchemaTable(record_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+
+	//TODO(g): Cache these
+	result_map := DatamanGet("schema_table", int(record_id), options)
+
+	return result_map
+}
+
+
+func GetSchemaTableField(record_id int64) map[string]interface{} {
+	options := make(map[string]interface{})
+
+	//TODO(g): Cache these
+	result_map := DatamanGet("schema_table_field", int(record_id), options)
+
+	return result_map
+}
+
